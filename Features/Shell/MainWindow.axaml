@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:StreamAssist.Features.Shell"
+        xmlns:keyboard="using:StreamAssist.Features.Keyboard"
+        x:Class="StreamAssist.Features.Shell.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="StreamAssist"
+        Background="#0f0f0f">
+
+    <!--
+        This window is intentionally thin — it's just a container.
+        Later you'll add a sidebar or tab strip here to switch between
+        the Keyboard, Audio, OBS, and Chatbot panels.
+    -->
+    <keyboard:KeyboardView DataContext="{Binding KeyboardViewModel}"/>
+
+</Window>

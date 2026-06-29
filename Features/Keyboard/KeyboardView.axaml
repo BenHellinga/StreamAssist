@@ -1,0 +1,151 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             x:Class="StreamAssist.Features.Keyboard.KeyboardView"
+             x:DataType="vm:KeyboardViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.key">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.07"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.07"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.key.pressed">
+            <Setter Property="Background" Value="#7c3aed"/>
+            <Setter Property="BorderBrush" Value="#a78bfa"/>
+        </Style>
+        <Style Selector="Border.key TextBlock">
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.key.pressed TextBlock">
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="MinWidth" Value="220"/>
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#2a2a2a"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+            <Setter Property="Padding" Value="10,4"/>
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3a3a3a"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel Margin="16">
+
+        <!-- ── Top toolbar ─────────────────────────────────────────────── -->
+        <StackPanel DockPanel.Dock="Top"
+                    Orientation="Horizontal"
+                    Spacing="24"
+                    Margin="0,0,0,14">
+
+            <!-- Config picker -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="label" Text="Config"/>
+                <ComboBox ItemsSource="{Binding ConfigNames}"
+                          SelectedItem="{Binding SelectedConfigName}"
+                          MinWidth="140"/>
+                <Button Content="＋ New"
+                        Command="{Binding CreateConfigCommand}"
+                        ToolTip.Tip="Create a copy of the current config with the name below"/>
+                <TextBox Text="{Binding NewConfigName}"
+                         PlaceholderText="Config name…"
+                         Width="130"/>
+                <Button Content="🗑"
+                        Command="{Binding DeleteConfigCommand}"
+                        ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
+            </StackPanel>
+
+            <!-- Device picker -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="label" Text="Device"/>
+                <ComboBox ItemsSource="{Binding AvailableDevices}"
+                          SelectedItem="{Binding SelectedDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:KeyboardDeviceInfo">
+                            <TextBlock Text="{Binding DisplayLabel}"
+                                       FontSize="11"
+                                       FontFamily="Cascadia Code,Consolas,Monospace"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+        </StackPanel>
+
+        <!-- ── Keyboard container ──────────────────────────────────────── -->
+        <!-- Resize by changing the Border's Width/Height/Margin/Alignment. -->
+        <!-- The Viewbox scales the canvas contents to fit whatever         -->
+        <!-- space the Border occupies.                                     -->
+        <Border x:Name="KeyboardContainer"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top">
+
+            <Viewbox Stretch="Uniform"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Top">
+
+            <Canvas Width="{Binding CanvasWidth}"
+                    Height="{Binding CanvasHeight}">
+                <ItemsControl ItemsSource="{Binding Keys}"
+                            Width="{Binding CanvasWidth}"
+                            Height="{Binding CanvasHeight}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerTheme>
+                            <ControlTheme TargetType="ContentPresenter"
+                                        x:DataType="vm:KeyboardKeyInfo">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </ControlTheme>
+                        </ItemsControl.ItemContainerTheme>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KeyboardKeyInfo">
+                                <Border Classes="key"
+                                        Classes.pressed="{Binding IsPressed}"
+                                        Width="{Binding W}"
+                                        Height="{Binding H}">
+                                    <TextBlock Text="{Binding Label}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Canvas>
+
+            </Viewbox>
+        </Border>
+
+    </DockPanel>
+
+</UserControl>
