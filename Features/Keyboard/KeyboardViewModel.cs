@@ -4,6 +4,9 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Features.Shell;
+using System.Diagnostics;
+using System;
+using Avalonia.Logging;
 
 namespace StreamAssist.Features.Keyboard;
 
@@ -299,6 +302,8 @@ public partial class KeyboardViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteConfig()
     {
+        Debug.WriteLine("test");
+
         if (SelectedConfigName is null) return;
         if (!_settings.DeleteConfig(SelectedConfigName)) return;
 
