@@ -8,7 +8,7 @@ namespace StreamAssist.Features.Keyboard;
 
 
 
-public class KeyboardInputManager : IDisposable
+public class InputManager : IDisposable
 {
     private string? _selectedKeyboardId;
     private bool _disposed;
@@ -58,9 +58,9 @@ public class KeyboardInputManager : IDisposable
 
 
 
-    public static IReadOnlyList<KeyboardDeviceInfo> GetAvailableKeyboards()
+    public static IReadOnlyList<KeyboardInfo> GetAvailableKeyboards()
     {
-        var results = new List<KeyboardDeviceInfo>();
+        var results = new List<KeyboardInfo>();
         var seen = new HashSet<(int, int)>();
 
         foreach (RawInputDevice? device in RawInputDevice.GetDevices())
@@ -69,7 +69,7 @@ public class KeyboardInputManager : IDisposable
             if (device.DeviceType != RawInputDeviceType.Keyboard) continue;
             if (!seen.Add((device.VendorId, device.ProductId))) continue;
             
-            results.Add(new KeyboardDeviceInfo(
+            results.Add(new KeyboardInfo(
                 DevicePath: device.DevicePath,
                 ManufacturerName: device.ManufacturerName ?? "Unknown",
                 ProductName: device.ProductName ?? "Unknown",

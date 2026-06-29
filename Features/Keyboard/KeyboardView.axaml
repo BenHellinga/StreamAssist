@@ -90,7 +90,7 @@
                 <ComboBox ItemsSource="{Binding AvailableDevices}"
                           SelectedItem="{Binding SelectedDevice}">
                     <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:KeyboardDeviceInfo">
+                        <DataTemplate x:DataType="vm:KeyboardInfo">
                             <TextBlock Text="{Binding DisplayLabel}"
                                        FontSize="11"
                                        FontFamily="Cascadia Code,Consolas,Monospace"/>
@@ -125,13 +125,13 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemContainerTheme>
                             <ControlTheme TargetType="ContentPresenter"
-                                        x:DataType="vm:KeyboardKeyInfo">
+                                        x:DataType="vm:KeyInfo">
                                 <Setter Property="Canvas.Left" Value="{Binding X}"/>
                                 <Setter Property="Canvas.Top" Value="{Binding Y}"/>
                             </ControlTheme>
                         </ItemsControl.ItemContainerTheme>
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:KeyboardKeyInfo">
+                            <DataTemplate x:DataType="vm:KeyInfo">
                                 <Border Classes="key"
                                         Classes.pressed="{Binding IsPressed}"
                                         Width="{Binding W}"

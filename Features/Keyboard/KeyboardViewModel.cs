@@ -15,7 +15,7 @@ namespace StreamAssist.Features.Keyboard;
 public partial class KeyboardViewModel : ViewModelBase
 {
     // general object classes
-    private readonly KeyboardInputManager _inputManager;
+    private readonly InputManager _inputManager;
     private readonly KeyboardFeatureSettings  _settings;
 
     // keyboard display construction
@@ -24,14 +24,14 @@ public partial class KeyboardViewModel : ViewModelBase
     private const bool _INCLUDE_UNUSEABLE = true;
     public double CanvasWidth { get; init; } = _KEY_SIZE * 22 + _KEY_MARGIN * 24;
     public double CanvasHeight { get; init; } = _KEY_SIZE * 6 + _KEY_MARGIN * 6;
-    public ObservableCollection<KeyboardKeyInfo> Keys { get; } = [];
-    private readonly Dictionary<ushort, KeyboardKeyInfo> _keyMap = [];
+    public ObservableCollection<KeyInfo> Keys { get; } = [];
+    private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
     // menu items
-    public ObservableCollection<KeyboardDeviceInfo> AvailableDevices { get; } = [];
+    public ObservableCollection<KeyboardInfo> AvailableDevices { get; } = [];
     public ObservableCollection<string> ConfigNames { get; } = [];
-    public static readonly KeyboardDeviceInfo NoneDevice = new(null, "None", "", 0, 0);
-    [ObservableProperty] private KeyboardDeviceInfo? _selectedDevice;
+    public static readonly KeyboardInfo NoneDevice = new(null, "None", "", 0, 0);
+    [ObservableProperty] private KeyboardInfo? _selectedDevice;
     [ObservableProperty] private string? _selectedConfigName;
     [ObservableProperty] private string _newConfigName = "";
 
@@ -44,7 +44,7 @@ public partial class KeyboardViewModel : ViewModelBase
 
 
 
-    public KeyboardViewModel(KeyboardInputManager inputManager, KeyboardFeatureSettings settings)
+    public KeyboardViewModel(InputManager inputManager, KeyboardFeatureSettings settings)
     {
         _inputManager  = inputManager;
         _settings = settings;
@@ -195,7 +195,7 @@ public partial class KeyboardViewModel : ViewModelBase
         {
             if (!(_INCLUDE_UNUSEABLE || useable)) continue;
 
-            var key = new KeyboardKeyInfo(label, vk, x, y, w, h);
+            var key = new KeyInfo(label, vk, x, y, w, h);
             Keys.Add(key);
             _keyMap.TryAdd(vk, key);
         }
@@ -207,7 +207,7 @@ public partial class KeyboardViewModel : ViewModelBase
     {
         AvailableDevices.Clear();
         AvailableDevices.Add(NoneDevice);
-        foreach (var d in KeyboardInputManager.GetAvailableKeyboards())
+        foreach (var d in InputManager.GetAvailableKeyboards())
             AvailableDevices.Add(d);
     }
 
@@ -238,7 +238,7 @@ public partial class KeyboardViewModel : ViewModelBase
     {
         var savedId = _settings.Active.SelectedDeviceId;
 
-        KeyboardDeviceInfo match = NoneDevice;
+        KeyboardInfo match = NoneDevice;
         if (savedId is not null)
             foreach (var d in AvailableDevices)
                 if (d.DevicePath == savedId) { match = d; break; }
@@ -256,7 +256,7 @@ public partial class KeyboardViewModel : ViewModelBase
 
 
 
-    partial void OnSelectedDeviceChanged(KeyboardDeviceInfo? value)
+    partial void OnSelectedDeviceChanged(KeyboardInfo? value)
     {
         if (_suppressCallbacks) return;
         if (value is null) return;

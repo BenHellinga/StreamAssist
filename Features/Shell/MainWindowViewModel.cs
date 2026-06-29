@@ -25,7 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // public ObsFeatureSettings     ObsSettings     { get; } = new();
 
     // ── Services (own OS resources — sockets, hooks, audio devices) ───────
-    public KeyboardInputManager KeyboardInputManager { get; } = new();
+    public InputManager KeyboardInputManager { get; } = new();
 
     // public AudioService   AudioService   { get; } = new();
     // public ObsService     ObsService     { get; } = new();

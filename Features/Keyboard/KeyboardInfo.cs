@@ -5,7 +5,7 @@ namespace StreamAssist.Features.Keyboard;
 /// <summary>
 /// Dataclass for keyboard devices
 /// </summary>
-public class KeyboardDeviceInfo(string? DevicePath, string ProductName, string ManufacturerName, int ProductId, int VendorId)
+public class KeyboardInfo(string? DevicePath, string ProductName, string ManufacturerName, int ProductId, int VendorId)
 {
     public string? DevicePath { get; init; } = DevicePath;
     public string ProductName { get; init; } = ProductName;
