@@ -10,6 +10,10 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
+    
+    <Compile Remove="AI Generated\**\*.*" />
+    <Content Remove="AI Generated\**\*.*" />
+    <EmbeddedResource Remove="AI Generated\**\*.*" />
   </ItemGroup>
 
   <ItemGroup>

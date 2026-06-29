@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             x:Class="StreamAssist.Features.Keyboard.KeyboardDisplay"
+             x:DataType="vm:KeyboardDisplayViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.key">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.07"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.07"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.key.pressed">
+            <Setter Property="Background" Value="#7c3aed"/>
+            <Setter Property="BorderBrush" Value="#a78bfa"/>
+        </Style>
+        <Style Selector="Border.key.bound">
+            <Setter Property="BorderBrush" Value="#4a6fa5"/>
+        </Style>
+        <Style Selector="Border.key.dragover">
+            <Setter Property="Background" Value="#2a3a2a"/>
+            <Setter Property="BorderBrush" Value="#6abf69"/>
+        </Style>
+        <Style Selector="Border.key TextBlock">
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.key.pressed TextBlock">
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Viewbox Stretch="Uniform"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Top">
+
+        <Canvas Width="{Binding CanvasWidth}"
+                Height="{Binding CanvasHeight}">
+            <ItemsControl ItemsSource="{Binding Keys}"
+                          Width="{Binding CanvasWidth}"
+                          Height="{Binding CanvasHeight}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerTheme>
+                    <ControlTheme TargetType="ContentPresenter"
+                                  x:DataType="vm:KeyboardKeyInfo">
+                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                        <Setter Property="Canvas.Top"  Value="{Binding Y}"/>
+                    </ControlTheme>
+                </ItemsControl.ItemContainerTheme>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:KeyboardKeyInfo">
+                        <Border Classes="key"
+                                Classes.pressed="{Binding IsPressed}"
+                                Classes.bound="{Binding HasBoundAction}"
+                                Width="{Binding W}"
+                                Height="{Binding H}">
+                            <Panel>
+                                <TextBlock Text="{Binding Label}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                                <!-- Small indicator dot when an action is bound -->
+                                <Ellipse Width="5" Height="5"
+                                         Fill="#4a9eff"
+                                         HorizontalAlignment="Right"
+                                         VerticalAlignment="Top"
+                                         Margin="0,3,4,0"
+                                         IsVisible="{Binding HasBoundAction}"/>
+                            </Panel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Canvas>
+
+    </Viewbox>
+
+</UserControl>
