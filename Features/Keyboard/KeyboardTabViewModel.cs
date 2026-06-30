@@ -8,13 +8,13 @@ namespace StreamAssist.Features.Keyboard;
 
 /// <summary>
 /// Drives the KeyboardTab view. Composition root for the keyboard feature -
-/// owns the shared InputManager/KeyboardFeatureSettings and hands each off
-/// to the TopMenu and KeyboardDisplay child viewmodels.
+/// owns the shared InputManager/KeyboardFeatureSettings and hands them off
+/// to KeyboardList (which owns the per-keyboard slots), plus the
+/// feature-wide ActionList and the shared ActionPanel.
 /// </summary>
 public partial class KeyboardTabViewModel : ViewModelBase
 {
-    public TopMenuViewModel TopMenu { get; }
-    public KeyboardDisplayViewModel KeyboardDisplay { get; }
+    public KeyboardListViewModel KeyboardList { get; }
     public ActionListViewModel ActionList { get; } = new();
     public ActionPanelViewModel ActionPanel { get; } = new();
 
@@ -25,7 +25,7 @@ public partial class KeyboardTabViewModel : ViewModelBase
     [ObservableProperty]
     private GridLength _actionListWidth = new(300);
 
-    // Same pattern, but for the row split between KeyboardDisplay and
+    // Same pattern, but for the row split between KeyboardList and
     // ActionPanel.
     [ObservableProperty]
     private GridLength _actionPanelHeight = new(160);
@@ -38,9 +38,6 @@ public partial class KeyboardTabViewModel : ViewModelBase
 
     public KeyboardTabViewModel(InputManager inputManager, KeyboardFeatureSettings settings)
     {
-        TopMenu = new TopMenuViewModel(inputManager, settings);
-        KeyboardDisplay = new KeyboardDisplayViewModel(inputManager);
-
-        KeyboardDisplay.KeySelected += ActionPanel.ShowKey;
+        KeyboardList = new KeyboardListViewModel(inputManager, settings, ActionPanel);
     }
 }

@@ -7,13 +7,10 @@
 
     <DockPanel Margin="16">
 
-        <local:TopMenu DockPanel.Dock="Top"
-                       Margin="0,0,0,14"
-                       DataContext="{Binding TopMenu}"/>
-
-        <!-- ActionList width now resizable via GridSplitter — drag updates -->
-        <!-- ActionListWidth directly (two-way bound), sticking for the     -->
-        <!-- rest of the session, same as MainWindow's console splitter.    -->
+        <!-- ActionList width and ActionPanel height are resizable via    -->
+        <!-- GridSplitter — dragging updates the bound GridLength         -->
+        <!-- directly (two-way bound), so the resize sticks for the rest  -->
+        <!-- of the session, same as MainWindow's console splitter.       -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="240"/>
@@ -21,9 +18,8 @@
                 <ColumnDefinition Width="{Binding ActionListWidth, Mode=TwoWay}" MinWidth="200"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Keyboard on top, ActionPanel below, resizable splitter   -->
-            <!-- between them — same two-way GridLength pattern as the    -->
-            <!-- column splitter on the right.                            -->
+            <!-- KeyboardList (all keyboards + +/-) on top, ActionPanel    -->
+            <!-- below, resizable splitter between them.                  -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" MinHeight="160"/>
@@ -31,7 +27,7 @@
                     <RowDefinition Height="{Binding ActionPanelHeight, Mode=TwoWay}" MinHeight="70"/>
                 </Grid.RowDefinitions>
 
-                <local:KeyboardDisplay Grid.Row="0" DataContext="{Binding KeyboardDisplay}"/>
+                <local:KeyboardList Grid.Row="0" DataContext="{Binding KeyboardList}"/>
 
                 <GridSplitter Grid.Row="1"
                               Height="6"

@@ -4,9 +4,9 @@ namespace StreamAssist.Features.Keyboard;
 
 
 
-public partial class TopMenu : UserControl
+public partial class KeyboardSlot : UserControl
 {
-    public TopMenu()
+    public KeyboardSlot()
     {
         InitializeComponent();
     }

@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             xmlns:local="using:StreamAssist.Features.Keyboard"
+             x:Class="StreamAssist.Features.Keyboard.KeyboardSlot"
+             x:DataType="vm:KeyboardSlotViewModel">
+
+    <!-- One keyboard: its own menu (config/device picker) above its own -->
+    <!-- display. Fully independent from any other KeyboardSlot.         -->
+    <StackPanel Spacing="10">
+        <local:KeyboardMenu DataContext="{Binding KeyboardMenu}"/>
+        <local:KeyboardDisplay DataContext="{Binding KeyboardDisplay}"/>
+    </StackPanel>
+
+</UserControl>

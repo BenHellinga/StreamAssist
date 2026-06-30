@@ -11,9 +11,11 @@ namespace StreamAssist.Features.Keyboard;
 
 
 /// <summary>
-/// Drives the KeyboardDisplay view (the rendered keyboard canvas).
+/// Drives the KeyboardDisplay view (the rendered keyboard canvas) for ONE
+/// keyboard slot. Listens to InputManager's broadcast of ALL keyboards and
+/// filters to whichever device path SelectedDeviceId currently points at.
 /// </summary>
-public partial class KeyboardDisplayViewModel : ViewModelBase
+public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 {
     // general object classes
     private readonly InputManager _inputManager;
@@ -27,8 +29,13 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
     public ObservableCollection<KeyInfo> Keys { get; } = [];
     private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
-    // Raised when a key is left-clicked, so a parent (KeyboardTabViewModel)
-    // can forward the selection to the ActionPanel. Passes null for "clear".
+    // The device this particular slot is currently listening to. Set by the
+    // owning KeyboardSlotViewModel whenever its KeyboardMenu's device/config
+    // selection changes. Null = listen to nothing.
+    public string? SelectedDeviceId { get; set; }
+
+    // Raised when a key is left-clicked, so a parent can forward the
+    // selection to the (shared) ActionPanel. Passes null for "clear".
     public event Action<KeyInfo?>? KeySelected;
 
 
@@ -41,10 +48,30 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
     {
         _inputManager = inputManager;
 
-        inputManager.KeyPressed  += vk => Dispatcher.UIThread.Post(() => SetKeyState(vk, true));
-        inputManager.KeyReleased += vk => Dispatcher.UIThread.Post(() => SetKeyState(vk, false));
+        _inputManager.KeyPressed  += OnRawKeyPressed;
+        _inputManager.KeyReleased += OnRawKeyReleased;
 
         InitKeys();
+    }
+
+
+
+    // raw input filtering
+
+
+
+    private void OnRawKeyPressed(string devicePath, ushort vk)
+    {
+        if (devicePath != SelectedDeviceId) return;
+        Dispatcher.UIThread.Post(() => SetKeyState(vk, true));
+    }
+
+
+
+    private void OnRawKeyReleased(string devicePath, ushort vk)
+    {
+        if (devicePath != SelectedDeviceId) return;
+        Dispatcher.UIThread.Post(() => SetKeyState(vk, false));
     }
 
 
@@ -220,5 +247,13 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
         {
             AppLog.WriteLine($"Action '{action.Name}' threw: {ex.Message}");
         }
+    }
+
+
+
+    public void Dispose()
+    {
+        _inputManager.KeyPressed  -= OnRawKeyPressed;
+        _inputManager.KeyReleased -= OnRawKeyReleased;
     }
 }

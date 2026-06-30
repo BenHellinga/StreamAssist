@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StreamAssist.Features.Keyboard"
-             x:Class="StreamAssist.Features.Keyboard.TopMenu"
-             x:DataType="vm:TopMenuViewModel">
+             x:Class="StreamAssist.Features.Keyboard.KeyboardMenu"
+             x:DataType="vm:KeyboardMenuViewModel">
 
     <UserControl.Styles>
         <Style Selector="TextBlock.label">

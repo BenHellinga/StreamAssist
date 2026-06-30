@@ -10,7 +10,6 @@ namespace StreamAssist.Features.Keyboard;
 
 public class InputManager : IDisposable
 {
-    private string? _selectedKeyboardId;
     private bool _disposed;
 
     private Win32.WNDPROC? _wndProcDelegate;
@@ -25,8 +24,12 @@ public class InputManager : IDisposable
 
 
 
-    public event Action<ushort>? KeyPressed;
-    public event Action<ushort>? KeyReleased;
+    // Broadcasts every keystroke from every connected keyboard, tagged with
+    // the originating device's path. There's no concept of a single
+    // "selected" device at this level anymore — each consumer (one per
+    // keyboard slot) filters for the device path it cares about.
+    public event Action<string, ushort>? KeyPressed;
+    public event Action<string, ushort>? KeyReleased;
 
 
 
@@ -51,10 +54,6 @@ public class InputManager : IDisposable
             Marshal.GetFunctionPointerForDelegate(_wndProcDelegate)
         );
     }
-
-
-
-    public void SetDevice(string? keyboardId) => _selectedKeyboardId = keyboardId;
 
 
 
@@ -89,17 +88,16 @@ public class InputManager : IDisposable
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-        if (msg == WM_INPUT && _selectedKeyboardId is not null)
+        if (msg == WM_INPUT)
         {
             var data = RawInputData.FromHandle(lParam);
-            if (data is RawInputKeyboardData kb &&
-                kb.Device?.DevicePath == _selectedKeyboardId)
+            if (data is RawInputKeyboardData kb && kb.Device?.DevicePath is { } path)
             {
                 var vk     = (ushort)kb.Keyboard.VirutalKey;
                 var isDown = !kb.Keyboard.Flags.HasFlag(RawKeyboardFlags.Up);
 
-                if (isDown) KeyPressed?.Invoke(vk);
-                else        KeyReleased?.Invoke(vk);
+                if (isDown) KeyPressed?.Invoke(path, vk);
+                else        KeyReleased?.Invoke(path, vk);
             }
         }
 

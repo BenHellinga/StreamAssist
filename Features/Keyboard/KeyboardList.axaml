@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             xmlns:local="using:StreamAssist.Features.Keyboard"
+             x:Class="StreamAssist.Features.Keyboard.KeyboardList"
+             x:DataType="vm:KeyboardListViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.add-remove">
+            <Setter Property="Background" Value="#2a2a2a"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.add-remove:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3a3a3a"/>
+        </Style>
+        <Style Selector="Button.add-remove:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- ── All keyboard slots, stacked, with +/- pinned below ─────────── -->
+    <DockPanel>
+
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Spacing="10"
+                    Margin="0,14,0,0">
+            <Button Classes="add-remove"
+                    Content="+"
+                    Command="{Binding AddKeyboardCommand}"
+                    ToolTip.Tip="Add another keyboard"/>
+            <Button Classes="add-remove"
+                    Content="－"
+                    Command="{Binding RemoveKeyboardCommand}"
+                    ToolTip.Tip="Remove the last keyboard"/>
+        </StackPanel>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Slots}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="28"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:KeyboardSlotViewModel">
+                        <local:KeyboardSlot DataContext="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>
