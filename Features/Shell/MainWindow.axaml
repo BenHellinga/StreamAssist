@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:StreamAssist.Features.Shell"
+        xmlns:shell="using:StreamAssist.Features.Shell"
         xmlns:keyboard="using:StreamAssist.Features.Keyboard"
         x:Class="StreamAssist.Features.Shell.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -11,7 +12,32 @@
         This window is intentionally thin — it's just a container.
         Later you'll add a sidebar or tab strip here to switch between
         the Keyboard, Audio, OBS, and Chatbot panels.
+
+        The console's initial width comes from MainWindowViewModel.ConsoleWidth,
+        which defaults from AppLog.ConsoleWidthRatio (see OutputConsoleViewModel.cs).
+        After that, drag the GridSplitter below to resize — it updates
+        ConsoleWidth directly (two-way bound), so the resize sticks for
+        the rest of the session.
     -->
-    <keyboard:KeyboardTab DataContext="{Binding KeyboardTabViewModel}"/>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding ConsoleWidth, Mode=TwoWay}" MinWidth="120"/>
+            <ColumnDefinition Width="6"/>
+            <ColumnDefinition Width="*" MinWidth="240"/>
+        </Grid.ColumnDefinitions>
+
+        <shell:OutputConsole Grid.Column="0"
+                              DataContext="{Binding OutputConsoleViewModel}"/>
+
+        <GridSplitter Grid.Column="1"
+                       Width="6"
+                       Background="#333333"
+                       HorizontalAlignment="Stretch"
+                       Cursor="SizeWestEast"/>
+
+        <keyboard:KeyboardTab Grid.Column="2"
+                               DataContext="{Binding KeyboardTabViewModel}"/>
+
+    </Grid>
 
 </Window>

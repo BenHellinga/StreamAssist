@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Features.Keyboard;
 using StreamAssist.Features.Shell;
 
@@ -33,10 +35,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // ── Feature ViewModels (consume services + settings) ──────────────────
     public KeyboardTabViewModel KeyboardTabViewModel { get; }
+    public OutputConsoleViewModel OutputConsoleViewModel { get; } = new();
 
     // public AudioViewModel   AudioViewModel   { get; }
     // public ObsViewModel     ObsViewModel     { get; }
     // public ChatbotViewModel ChatbotViewModel { get; }
+
+    // ── Layout ──────────────────────────────────────────────────────────
+    // Initial console width comes from AppLog.ConsoleWidthRatio (tune it
+    // there). After that, the GridSplitter in MainWindow.axaml drives this
+    // directly as the user drags — it's a normal settable property, not a
+    // fixed ratio, so the resize sticks for the rest of the session.
+    [ObservableProperty]
+    private GridLength _consoleWidth = new(AppLog.ConsoleWidthRatio, GridUnitType.Star);
 
     public MainWindowViewModel()
     {
@@ -47,6 +58,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Construct ViewModels, injecting both the service and its settings
         KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardInputManager, KeyboardSettings);
+
+        AppLog.WriteLine("StreamAssist started.");
 
         // Example of cross-feature wiring (uncomment when you have OBS):
         // KeyboardService.KeyPressed += async vk => {
