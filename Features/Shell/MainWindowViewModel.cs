@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Features.Keyboard;
@@ -41,6 +42,14 @@ public partial class MainWindowViewModel : ViewModelBase
     // public ObsViewModel     ObsViewModel     { get; }
     // public ChatbotViewModel ChatbotViewModel { get; }
 
+    // ── Tabs (the strip at the top of the window) ──────────────────────────
+    // To add a new tab once you have another feature ready:
+    //   Tabs.Add(new TabItemViewModel("Audio", AudioViewModel));
+    public ObservableCollection<TabItemViewModel> Tabs { get; } = [];
+
+    [ObservableProperty]
+    private TabItemViewModel? _selectedTab;
+
     // ── Layout ──────────────────────────────────────────────────────────
     // Initial console width comes from AppLog.ConsoleWidthRatio (tune it
     // there). After that, the GridSplitter in MainWindow.axaml drives this
@@ -59,6 +68,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // Construct ViewModels, injecting both the service and its settings
         KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardInputManager, KeyboardSettings);
 
+        Tabs.Add(new TabItemViewModel("Keyboard", KeyboardTabViewModel));
+        // Tabs.Add(new TabItemViewModel("Audio", AudioViewModel));
+        // Tabs.Add(new TabItemViewModel("OBS", ObsViewModel));
+        // Tabs.Add(new TabItemViewModel("Chatbot", ChatbotViewModel));
+        SelectedTab = Tabs[0];
+
         AppLog.WriteLine("StreamAssist started.");
 
         // Example of cross-feature wiring (uncomment when you have OBS):
@@ -75,4 +90,17 @@ public partial class MainWindowViewModel : ViewModelBase
         // ObsService.Dispose();
         // ChatbotService.Dispose();
     }
+}
+
+
+
+/// <summary>
+/// One entry in the top tab strip — a title plus the viewmodel to show
+/// when it's selected. Not a "feature" in its own right, so it doesn't
+/// get its own axaml/view/viewmodel trio — just a plain data holder.
+/// </summary>
+public class TabItemViewModel(string title, object content)
+{
+    public string Title { get; } = title;
+    public object Content { get; } = content;
 }

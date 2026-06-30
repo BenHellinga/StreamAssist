@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Features.Shell;
-using System.Diagnostics;
 
 namespace StreamAssist.Features.Keyboard;
 
@@ -139,7 +138,7 @@ public partial class TopMenuViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteConfig()
     {
-        Debug.WriteLine("test");
+        AppLog.WriteLine("test");
 
         if (SelectedConfigName is null) return;
         if (!_settings.DeleteConfig(SelectedConfigName)) return;

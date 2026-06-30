@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace StreamAssist.Core.Models;
+namespace StreamAssist.Core;
 
 /// <summary>
 /// Anything can be bound to it. Base class for any action triggerable by the keyboard or chatbot.
