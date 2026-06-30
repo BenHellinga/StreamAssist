@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
+using StreamAssist.Core;
 
 namespace StreamAssist.Features.Shell;
 

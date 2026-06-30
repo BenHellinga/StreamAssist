@@ -31,6 +31,14 @@
         <Style Selector="Border.key.pressed TextBlock">
             <Setter Property="Foreground" Value="#ffffff"/>
         </Style>
+        <Style Selector="Border.key.bound">
+            <Setter Property="BorderBrush" Value="#22c55e"/>
+            <Setter Property="BorderThickness" Value="2"/>
+        </Style>
+        <Style Selector="Border.key.dragover">
+            <Setter Property="Background" Value="#2a3a2a"/>
+            <Setter Property="BorderBrush" Value="#22c55e"/>
+        </Style>
     </UserControl.Styles>
 
     <!-- ── Keyboard container ──────────────────────────────────────── -->
@@ -66,9 +74,22 @@
                         <DataTemplate x:DataType="vm:KeyInfo">
                             <Border Classes="key"
                                     Classes.pressed="{Binding IsPressed}"
+                                    Classes.bound="{Binding HasBoundAction}"
                                     Width="{Binding W}"
-                                    Height="{Binding H}">
-                                <TextBlock Text="{Binding Label}"/>
+                                    Height="{Binding H}"
+                                    DragDrop.AllowDrop="True"
+                                    DragDrop.DragOver="OnKeyDragOver"
+                                    DragDrop.DragLeave="OnKeyDragLeave"
+                                    DragDrop.Drop="OnKeyDrop">
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="{Binding Label}"/>
+                                    <TextBlock Text="{Binding BoundActionName}"
+                                               IsVisible="{Binding HasBoundAction}"
+                                               FontSize="8"
+                                               Foreground="#22c55e"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

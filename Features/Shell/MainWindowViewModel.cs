@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Features.Keyboard;
-using StreamAssist.Features.Shell;
+using StreamAssist.Core;
 
 namespace StreamAssist.Features.Shell;
 

@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using StreamAssist.Features.Shell;
+using StreamAssist.Core;
 
 namespace StreamAssist;
 

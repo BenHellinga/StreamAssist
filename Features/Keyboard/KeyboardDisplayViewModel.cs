@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Avalonia.Threading;
+using StreamAssist.Core;
 using StreamAssist.Features.Shell;
 
 namespace StreamAssist.Features.Keyboard;
@@ -19,7 +22,6 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
     private const double _KEY_SIZE = 55;
     private const double _KEY_MARGIN = 7;
     private const bool _INCLUDE_UNUSEABLE = true;
-    
     public double CanvasWidth { get; init; } = _KEY_SIZE * 22 + _KEY_MARGIN * 24;
     public double CanvasHeight { get; init; } = _KEY_SIZE * 6 + _KEY_MARGIN * 6;
     public ObservableCollection<KeyInfo> Keys { get; } = [];
@@ -187,7 +189,25 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
 
     private void SetKeyState(ushort vk, bool isDown)
     {
-        if (_keyMap.TryGetValue(vk, out var key))
-            key.IsPressed = isDown;
+        if (!_keyMap.TryGetValue(vk, out var key)) return;
+
+        key.IsPressed = isDown;
+
+        if (isDown && key.BoundAction is { } action)
+            _ = ExecuteSafelyAsync(action);
+    }
+
+
+
+    private static async Task ExecuteSafelyAsync(IFeatureAction action)
+    {
+        try
+        {
+            await action.ExecuteAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.WriteLine($"Action '{action.Name}' threw: {ex.Message}");
+        }
     }
 }

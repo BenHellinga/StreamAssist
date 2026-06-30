@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Features.Shell;
+using StreamAssist.Core;
 
 namespace StreamAssist.Features.Keyboard;
 

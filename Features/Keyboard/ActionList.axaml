@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             xmlns:core="using:StreamAssist.Core"
+             x:Class="StreamAssist.Features.Keyboard.ActionList"
+             x:DataType="vm:ActionListViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.action-name">
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+        </Style>
+        <Style Selector="TextBlock.action-desc">
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.header">
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+        </Style>
+        <Style Selector="Border.action-card">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Border.action-card:pointerover">
+            <Setter Property="Background" Value="#262626"/>
+            <Setter Property="BorderBrush" Value="#7c3aed"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+
+        <TextBlock DockPanel.Dock="Top"
+                   Classes="header"
+                   Text="Actions"
+                   Margin="0,0,0,8"/>
+
+        <!-- ── Action list ─────────────────────────────────────────────── -->
+        <!-- Drag a card onto a key to bind it (drag origin handled in     -->
+        <!-- ActionList.axaml.cs; the key drop target comes later).        -->
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Actions}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="core:IFeatureAction">
+                        <Border Classes="action-card"
+                                Tag="{Binding}"
+                                PointerPressed="OnActionPointerPressed">
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="action-name" Text="{Binding Name}"/>
+                                <TextBlock Classes="action-desc"
+                                           Text="{Binding Description}"
+                                           MaxLines="2"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

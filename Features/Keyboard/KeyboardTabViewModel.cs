@@ -1,4 +1,4 @@
-using StreamAssist.Features.Shell;
+using StreamAssist.Core;
 
 namespace StreamAssist.Features.Keyboard;
 
@@ -13,6 +13,7 @@ public partial class KeyboardTabViewModel : ViewModelBase
 {
     public TopMenuViewModel TopMenu { get; }
     public KeyboardDisplayViewModel KeyboardDisplay { get; }
+    public ActionListViewModel ActionList { get; } = new();
 
 
 

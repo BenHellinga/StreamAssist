@@ -11,7 +11,12 @@
                        Margin="0,0,0,14"
                        DataContext="{Binding TopMenu}"/>
 
-        <local:KeyboardDisplay DataContext="{Binding KeyboardDisplay}"/>
+        <!-- ActionList width is fixed here (260) — bump it if your action -->
+        <!-- names/descriptions need more room.                            -->
+        <Grid ColumnDefinitions="*,16,260">
+            <local:KeyboardDisplay Grid.Column="0" DataContext="{Binding KeyboardDisplay}"/>
+            <local:ActionList Grid.Column="2" DataContext="{Binding ActionList}"/>
+        </Grid>
 
     </DockPanel>
 

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StreamAssist.Features.Shell;
+namespace StreamAssist.Core;
 
 /// <summary>
 /// Base class for all ViewModels. ViewLocator uses this to identify
