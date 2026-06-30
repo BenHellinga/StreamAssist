@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using StreamAssist.Config;
+using System;
 
 namespace StreamAssist.Features.Keyboard;
 
@@ -64,4 +65,18 @@ public class KeyboardRootData
 public class KeyboardFeatureSettings : FeatureSettings<KeyboardConfig, KeyboardRootData>
 {
     public KeyboardFeatureSettings() : base("keyboard") { }
+
+    /// <summary>Raised after a key binding inside some config changes (added,
+    /// changed, or removed) — lets every KeyboardDisplayViewModel currently
+    /// showing that config refresh itself, not just the one that made the edit.</summary>
+    public event Action<string>? BindingsChanged;
+
+    /// <summary>Persist a key-binding edit and notify anyone watching that config.
+    /// Use this instead of the inherited Save() when the change is to a
+    /// config's KeyBindings specifically.</summary>
+    public void SaveAndNotifyBindingsChanged(string configName)
+    {
+        Save();
+        BindingsChanged?.Invoke(configName);
+    }
 }

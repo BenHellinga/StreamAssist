@@ -68,6 +68,7 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
         _inputManager.KeyPressed  += OnRawKeyPressed;
         _inputManager.KeyReleased += OnRawKeyReleased;
+        _settings.BindingsChanged += OnBindingsChanged;
 
         InitKeys();
     }
@@ -279,7 +280,7 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
         else
             config.KeyBindings.Remove(key.VK);
 
-        _settings.Save();
+        _settings.SaveAndNotifyBindingsChanged(ActiveConfigName);
     }
 
     /// <summary>
@@ -322,10 +323,23 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
+    /// <summary>
+    /// Fires for EVERY display whenever ANY display edits a config's bindings.
+    /// Only re-applies if it's actually our config — re-running ApplyConfig is
+    /// safe even for the display that made the edit, since it's wrapped in
+    /// _suppressBindingPersist and just re-syncs Keys to what's already on disk.
+    /// </summary>
+    private void OnBindingsChanged(string configName)
+    {
+        if (configName != ActiveConfigName) return;
+        ApplyConfig(configName);
+    }
+
     public void Dispose()
     {
         _inputManager.KeyPressed  -= OnRawKeyPressed;
         _inputManager.KeyReleased -= OnRawKeyReleased;
+        _settings.BindingsChanged -= OnBindingsChanged;
 
         foreach (var key in Keys)
             key.PropertyChanged -= OnKeyPropertyChanged;
