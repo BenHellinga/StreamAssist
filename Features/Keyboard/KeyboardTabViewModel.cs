@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Core;
 
 namespace StreamAssist.Features.Keyboard;
@@ -14,6 +16,13 @@ public partial class KeyboardTabViewModel : ViewModelBase
     public TopMenuViewModel TopMenu { get; }
     public KeyboardDisplayViewModel KeyboardDisplay { get; }
     public ActionListViewModel ActionList { get; } = new();
+
+    // Bound to the GridSplitter column in KeyboardTab.axaml. Dragging the
+    // splitter updates this directly (two-way bound), so the resize sticks
+    // for the rest of the session — same pattern as MainWindowViewModel's
+    // ConsoleWidth.
+    [ObservableProperty]
+    private GridLength _actionListWidth = new(300);
 
 
 

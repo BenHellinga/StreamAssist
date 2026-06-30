@@ -11,10 +11,25 @@
                        Margin="0,0,0,14"
                        DataContext="{Binding TopMenu}"/>
 
-        <!-- ActionList width is fixed here (260) — bump it if your action -->
-        <!-- names/descriptions need more room.                            -->
-        <Grid ColumnDefinitions="*,16,260">
+        <!-- ActionList width now resizable via GridSplitter — drag updates -->
+        <!-- ActionListWidth directly (two-way bound), sticking for the     -->
+        <!-- rest of the session, same as MainWindow's console splitter.    -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="240"/>
+                <ColumnDefinition Width="26"/>
+                <ColumnDefinition Width="{Binding ActionListWidth, Mode=TwoWay}" MinWidth="200"/>
+            </Grid.ColumnDefinitions>
+
             <local:KeyboardDisplay Grid.Column="0" DataContext="{Binding KeyboardDisplay}"/>
+
+            <GridSplitter Grid.Column="1"
+                           Width="6"
+                           Margin="10,0"
+                           Background="#333333"
+                           HorizontalAlignment="Stretch"
+                           Cursor="SizeWestEast"/>
+
             <local:ActionList Grid.Column="2" DataContext="{Binding ActionList}"/>
         </Grid>
 
