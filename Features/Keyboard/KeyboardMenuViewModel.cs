@@ -1,28 +1,22 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Core;
 
 namespace StreamAssist.Features.Keyboard;
 
-
-
 /// <summary>
 /// Drives the KeyboardMenu view (config + device pickers) for ONE keyboard
-/// slot. Configs are scoped entirely to this slot — two different slots can
-/// both have a config named "Streaming" and they share nothing.
-///
-/// NOTE: configs are in-memory only for now, not yet written through to
-/// KeyboardFeatureSettings/disk — that lands with the rest of the
-/// persistence rework next round. Right now a "config" is just a saved
-/// device selection; once key-binding persistence exists it'll live here
-/// too, and CreateConfig's "copy" will pick that up automatically.
+/// slot. Configs are GLOBAL — shared by name across every slot, backed by
+/// KeyboardFeatureSettings — so creating/deleting/renaming a config here
+/// affects every slot, kept in sync via _settings.ConfigsChanged. Device
+/// selection stays purely local to this slot.
 /// </summary>
-public partial class KeyboardMenuViewModel : ViewModelBase
+public partial class KeyboardMenuViewModel : ViewModelBase, IDisposable
 {
-    private const string DefaultConfigName = "Default";
+    private readonly KeyboardFeatureSettings _settings;
 
     public ObservableCollection<KeyboardInfo> AvailableDevices { get; } = [];
     public ObservableCollection<string> ConfigNames { get; } = [];
@@ -32,34 +26,45 @@ public partial class KeyboardMenuViewModel : ViewModelBase
     [ObservableProperty] private string? _selectedConfigName;
     [ObservableProperty] private string _newConfigName = "";
 
-    // name -> selected device id, per config, scoped to this slot only.
-    private readonly Dictionary<string, string?> _configDeviceIds = new() { [DefaultConfigName] = null };
-
     private bool _suppressCallbacks;
 
-    /// Raised whenever the effective device for this slot changes — either
-    /// from picking a device directly, or from switching configs. The
-    /// owning KeyboardSlotViewModel forwards this to its KeyboardDisplay.
+    /// Raised whenever the selected device changes via direct user pick.
     public event Action<string?>? DeviceChanged;
 
+    /// Raised whenever the selected config changes — either a direct user
+    /// pick, or an automatic fallback to Default because the previously
+    /// selected config was deleted (possibly from a different slot).
+    public event Action<string>? ConfigChanged;
 
-
-    public KeyboardMenuViewModel()
+    public KeyboardMenuViewModel(KeyboardFeatureSettings settings)
     {
+        _settings = settings;
+        _settings.ConfigsChanged += OnConfigsChanged;
+
         RefreshDevices();
-        ConfigNames.Add(DefaultConfigName);
+        RefreshConfigNames();
 
         _suppressCallbacks = true;
-        SelectedConfigName = DefaultConfigName;
+        SelectedConfigName = ConfigNames.Contains("Default") ? "Default" : ConfigNames.FirstOrDefault() ?? "Default";
         SelectedDevice = NoneDevice;
         _suppressCallbacks = false;
     }
 
-
+    /// <summary>
+    /// Restores a previously-saved device/config selection without firing
+    /// DeviceChanged/ConfigChanged. The caller (KeyboardSlotViewModel) is
+    /// responsible for pushing these values into KeyboardDisplay itself,
+    /// since those events are suppressed here.
+    /// </summary>
+    public void InitializeFrom(KeyboardSlotData data)
+    {
+        _suppressCallbacks = true;
+        SelectedConfigName = ConfigNames.Contains(data.SelectedConfigName) ? data.SelectedConfigName : "Default";
+        SelectedDevice = FindDevice(data.SelectedDeviceId);
+        _suppressCallbacks = false;
+    }
 
     // helper methods
-
-
 
     private void RefreshDevices()
     {
@@ -69,7 +74,20 @@ public partial class KeyboardMenuViewModel : ViewModelBase
             AvailableDevices.Add(d);
     }
 
+    private void RefreshConfigNames()
+    {
+        var latest = _settings.ConfigNames;
 
+        // Remove names that no longer exist
+        for (int i = ConfigNames.Count - 1; i >= 0; i--)
+            if (!latest.Contains(ConfigNames[i]))
+                ConfigNames.RemoveAt(i);
+
+        // Add any new names that aren't already present
+        foreach (var name in latest)
+            if (!ConfigNames.Contains(name))
+                ConfigNames.Add(name);
+    }
 
     private KeyboardInfo FindDevice(string? devicePath)
     {
@@ -81,64 +99,86 @@ public partial class KeyboardMenuViewModel : ViewModelBase
         return NoneDevice;
     }
 
-
-
     // callbacks
-
-
 
     partial void OnSelectedDeviceChanged(KeyboardInfo? value)
     {
         if (_suppressCallbacks) return;
         if (value is null) return;
 
-        if (SelectedConfigName is { } name)
-            _configDeviceIds[name] = value.DevicePath;
-
         DeviceChanged?.Invoke(value.DevicePath);
     }
-
-
 
     partial void OnSelectedConfigNameChanged(string? value)
     {
         if (_suppressCallbacks) return;
         if (value is null) return;
-        if (!_configDeviceIds.TryGetValue(value, out var deviceId)) return;
 
-        _suppressCallbacks = true;
-        SelectedDevice = FindDevice(deviceId);
-        _suppressCallbacks = false;
-
-        DeviceChanged?.Invoke(deviceId);
+        ConfigChanged?.Invoke(value);
     }
 
+    /// <summary>
+    /// Fires for EVERY KeyboardMenuViewModel whenever any of them (or any
+    /// other config consumer) creates, deletes, or renames a config — that's
+    /// what keeps slots' dropdowns in sync with each other.
+    /// </summary>
+    private void OnConfigsChanged()
+    {
+        // Capture intent BEFORE touching the collection — a bound ComboBox can
+        // null out SelectedConfigName as a side effect of items being
+        // added/removed below, so we can't trust the property's value once
+        // RefreshConfigNames returns. _settings is the real source of truth.
+        var previousSelection = SelectedConfigName;
 
+        RefreshConfigNames();
+
+        var stillExists = previousSelection is not null && _settings.TryGetConfig(previousSelection, out _);
+
+        if (!stillExists)
+        {
+            // Our config was deleted (by us or another slot) — fall back to
+            // Default. Goes through the normal setter, so it naturally cascades:
+            // OnSelectedConfigNameChanged → ConfigChanged → this slot's
+            // KeyboardDisplay.ApplyConfig("Default").
+            SelectedConfigName = "Default";
+        }
+        else if (SelectedConfigName != previousSelection)
+        {
+            // Our config is still valid, but the UI binding nulled (or changed)
+            // the property as a side effect of the collection mutation —
+            // restore it explicitly so this slot's display doesn't go blank.
+            SelectedConfigName = previousSelection;
+        }
+    }
 
     [RelayCommand]
     private void CreateConfig()
     {
         var name = NewConfigName.Trim();
         if (string.IsNullOrEmpty(name)) return;
-        if (_configDeviceIds.ContainsKey(name)) return;
+        if (!_settings.CreateConfig(name)) return; // false if name already taken; ConfigsChanged not fired
 
-        // Copy this slot's currently-selected device into the new config.
-        _configDeviceIds[name] = SelectedDevice?.DevicePath;
-        ConfigNames.Add(name);
+        // ConfigsChanged has already refreshed ConfigNames (incl. the new
+        // one) on every menu by the time CreateConfig returns. Select it
+        // here, on this slot specifically.
         SelectedConfigName = name;
         NewConfigName = "";
     }
-
-
 
     [RelayCommand]
     private void DeleteConfig()
     {
         if (SelectedConfigName is not { } name) return;
-        if (name == DefaultConfigName) return;
 
-        _configDeviceIds.Remove(name);
-        ConfigNames.Remove(name);
-        SelectedConfigName = DefaultConfigName;
+        // No-op (and no event) if name is "Default" or already gone.
+        // Otherwise our own ConfigsChanged subscription — fired
+        // synchronously inside this call — handles the refresh + Default
+        // fallback for this menu and every other one.
+        _settings.DeleteConfig(name);
+    }
+
+    public void Dispose()
+    {
+        _settings.ConfigsChanged -= OnConfigsChanged;
     }
 }

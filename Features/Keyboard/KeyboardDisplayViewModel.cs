@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using StreamAssist.Core;
@@ -14,11 +15,19 @@ namespace StreamAssist.Features.Keyboard;
 /// Drives the KeyboardDisplay view (the rendered keyboard canvas) for ONE
 /// keyboard slot. Listens to InputManager's broadcast of ALL keyboards and
 /// filters to whichever device path SelectedDeviceId currently points at.
+///
+/// Also owns persistence of key bindings: whichever config is currently
+/// "active" for this display (set via ApplyConfig) has its KeyBindings
+/// dictionary kept in sync whenever any KeyInfo.BoundAction changes, by
+/// listening to each KeyInfo's PropertyChanged — so it doesn't matter
+/// whether a binding came from drag-drop, a right-click unbind, or
+/// anywhere else; it all funnels through that one observable property.
 /// </summary>
 public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 {
     // general object classes
     private readonly InputManager _inputManager;
+    private readonly KeyboardFeatureSettings _settings;
 
     // keyboard display construction
     private const double _KEY_SIZE = 55;
@@ -30,13 +39,21 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
     private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
     // The device this particular slot is currently listening to. Set by the
-    // owning KeyboardSlotViewModel whenever its KeyboardMenu's device/config
+    // owning KeyboardSlotViewModel whenever its KeyboardMenu's device
     // selection changes. Null = listen to nothing.
     public string? SelectedDeviceId { get; set; }
+
+    // The config whose KeyBindings this display currently reflects (and
+    // writes through to on any binding change). Set via ApplyConfig.
+    public string ActiveConfigName { get; private set; } = "Default";
 
     // Raised when a key is left-clicked, so a parent can forward the
     // selection to the (shared) ActionPanel. Passes null for "clear".
     public event Action<KeyInfo?>? KeySelected;
+
+    // Set while ApplyConfig is pushing saved bindings onto Keys, so those
+    // writes don't get interpreted as user edits and re-saved redundantly.
+    private bool _suppressBindingPersist;
 
 
 
@@ -44,9 +61,10 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
-    public KeyboardDisplayViewModel(InputManager inputManager)
+    public KeyboardDisplayViewModel(InputManager inputManager, KeyboardFeatureSettings settings)
     {
         _inputManager = inputManager;
+        _settings = settings;
 
         _inputManager.KeyPressed  += OnRawKeyPressed;
         _inputManager.KeyReleased += OnRawKeyReleased;
@@ -211,6 +229,7 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
             if (!(_INCLUDE_UNUSEABLE || useable)) continue;
 
             var key = new KeyInfo(label, vk, x, y, w, h);
+            key.PropertyChanged += OnKeyPropertyChanged;
             Keys.Add(key);
             _keyMap.TryAdd(vk, key);
         }
@@ -237,6 +256,58 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
+    // persistence
+
+
+
+    private void OnKeyPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressBindingPersist) return;
+        if (e.PropertyName != nameof(KeyInfo.BoundAction)) return;
+        if (sender is not KeyInfo key) return;
+
+        PersistBinding(key);
+    }
+
+    private void PersistBinding(KeyInfo key)
+    {
+        // Config may have been deleted out from under us — nothing to write into.
+        if (!_settings.TryGetConfig(ActiveConfigName, out var config)) return;
+
+        if (key.BoundAction is { } action)
+            config.KeyBindings[key.VK] = ActionResolver.GetKey(action);
+        else
+            config.KeyBindings.Remove(key.VK);
+
+        _settings.Save();
+    }
+
+    /// <summary>
+    /// Switches which config's key bindings this display reflects, applying
+    /// the saved bindings (or clearing all keys if the config has none, or
+    /// no longer exists). Called whenever this slot's KeyboardMenu reports
+    /// a config change, and once up front during slot construction.
+    /// </summary>
+    public void ApplyConfig(string configName)
+    {
+        ActiveConfigName = configName;
+
+        var bindings = _settings.TryGetConfig(configName, out var config)
+            ? config.KeyBindings
+            : new Dictionary<ushort, string>();
+
+        _suppressBindingPersist = true;
+        foreach (var key in Keys)
+        {
+            key.BoundAction = bindings.TryGetValue(key.VK, out var typeName)
+                ? ActionResolver.Resolve(typeName)
+                : null;
+        }
+        _suppressBindingPersist = false;
+    }
+
+
+
     private static async Task ExecuteSafelyAsync(IFeatureAction action)
     {
         try
@@ -255,5 +326,8 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
     {
         _inputManager.KeyPressed  -= OnRawKeyPressed;
         _inputManager.KeyReleased -= OnRawKeyReleased;
+
+        foreach (var key in Keys)
+            key.PropertyChanged -= OnKeyPropertyChanged;
     }
 }

@@ -7,28 +7,49 @@ using System.Text.Json.Serialization;
 
 namespace StreamAssist.Config;
 
+/// <summary>Marker type for features that don't need extra root-level data.</summary>
+public sealed class NoRootData;
+
+/// <summary>
+/// Convenience version of <see cref="FeatureSettings{TConfig, TRootData}"/> for the
+/// common case of a feature that only needs per-config data, with nothing extra at
+/// the root. See that class for the full docs on the on-disk layout and API.
+/// </summary>
+public class FeatureSettings<TConfig> : FeatureSettings<TConfig, NoRootData>
+    where TConfig : class, new()
+{
+    protected FeatureSettings(string featureFileName) : base(featureFileName) { }
+}
+
 /// <summary>
 /// Wraps a feature's JSON file on disk. The file looks like:
 ///
 /// {
-///   "activeConfig": "Default",
 ///   "configs": {
 ///     "Default":      { ...feature settings... },
 ///     "StreamingDay": { ...feature settings... }
-///   }
+///   },
+///   "rootData": { ...feature-wide settings that aren't scoped to one config... }
 /// }
+///
+/// "activeConfig" only appears if a feature actually calls SwitchConfig — for
+/// features (like Keyboard) where every config is just shared, named data with
+/// no single "active" one, it's simply omitted.
 ///
 /// Usage — create a concrete subclass per feature:
 ///
-///   public class KeyboardFeatureSettings : FeatureSettings&lt;KeyboardConfig&gt;
+///   public class KeyboardFeatureSettings : FeatureSettings&lt;KeyboardConfig, KeyboardRootData&gt;
 ///   {
 ///       public KeyboardFeatureSettings() : base("keyboard") { }
 ///   }
 ///
-/// Then call Load() at startup, read/write Active, call Save() after changes.
-/// Call CreateConfig / SwitchConfig / DeleteConfig to manage named configs.
+/// Then call Load() at startup, read/write Active or RootData, call Save() after
+/// changes. Call CreateConfig / SwitchConfig / DeleteConfig to manage named configs;
+/// subscribe to ConfigsChanged if multiple consumers need to stay in sync.
 /// </summary>
-public class FeatureSettings<TConfig> where TConfig : class, new()
+public class FeatureSettings<TConfig, TRootData>
+    where TConfig : class, new()
+    where TRootData : class, new()
 {
     // ── Paths ─────────────────────────────────────────────────────────────
 
@@ -48,27 +69,39 @@ public class FeatureSettings<TConfig> where TConfig : class, new()
 
     private class Envelope
     {
+        // Nullable + omitted when null: most features (e.g. Keyboard) never
+        // call SwitchConfig, so this shouldn't clutter their JSON.
         [JsonPropertyName("activeConfig")]
-        public string ActiveConfig { get; set; } = "Default";
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ActiveConfig { get; set; } = null;
 
         [JsonPropertyName("configs")]
         public Dictionary<string, TConfig> Configs { get; set; } = new()
         {
             ["Default"] = new TConfig()
         };
+
+        [JsonPropertyName("rootData")]
+        public TRootData RootData { get; set; } = new();
     }
 
     // ── Public API ────────────────────────────────────────────────────────
 
-    /// <summary>The name of the currently active config.</summary>
-    public string ActiveConfigName => _envelope.ActiveConfig;
+    /// <summary>The name of the currently active config (falls back to "Default" if unset).</summary>
+    public string ActiveConfigName => _envelope.ActiveConfig ?? "Default";
 
     /// <summary>The settings object for the active config. Mutate this directly, then call Save().</summary>
-    public TConfig Active => _envelope.Configs[_envelope.ActiveConfig];
+    public TConfig Active => _envelope.Configs[ActiveConfigName];
 
     /// <summary>All config names in this feature file, alphabetically.</summary>
     public IReadOnlyList<string> ConfigNames =>
         _envelope.Configs.Keys.OrderBy(k => k).ToList();
+
+    /// <summary>Feature-wide data that isn't scoped to any single config (e.g. UI layout state). Mutate directly, then call Save().</summary>
+    public TRootData RootData => _envelope.RootData;
+
+    /// <summary>Raised after CreateConfig/DeleteConfig/RenameConfig actually changes something — lets multiple independent consumers (e.g. several keyboard slots) stay in sync with each other.</summary>
+    public event Action? ConfigsChanged;
 
     protected FeatureSettings(string featureFileName)
     {
@@ -95,9 +128,12 @@ public class FeatureSettings<TConfig> where TConfig : class, new()
         if (!_envelope.Configs.ContainsKey("Default"))
             _envelope.Configs["Default"] = new TConfig();
 
-        // If the saved active config was deleted, fall back to Default
-        if (!_envelope.Configs.ContainsKey(_envelope.ActiveConfig))
-            _envelope.ActiveConfig = "Default";
+        // If the saved active config was deleted, clear it so it falls back
+        // to Default via ActiveConfigName rather than persisting a stale value.
+        if (_envelope.ActiveConfig is not null && !_envelope.Configs.ContainsKey(_envelope.ActiveConfig))
+            _envelope.ActiveConfig = null;
+
+        _envelope.RootData ??= new TRootData();
     }
 
     /// <summary>Persist the current state to disk.</summary>
@@ -134,6 +170,7 @@ public class FeatureSettings<TConfig> where TConfig : class, new()
             : new TConfig();
 
         Save();
+        ConfigsChanged?.Invoke();
         return true;
     }
 
@@ -149,9 +186,10 @@ public class FeatureSettings<TConfig> where TConfig : class, new()
         _envelope.Configs.Remove(name);
 
         if (_envelope.ActiveConfig == name)
-            _envelope.ActiveConfig = "Default";
+            _envelope.ActiveConfig = null;
 
         Save();
+        ConfigsChanged?.Invoke();
         return true;
     }
 
@@ -172,7 +210,20 @@ public class FeatureSettings<TConfig> where TConfig : class, new()
             _envelope.ActiveConfig = newName;
 
         Save();
+        ConfigsChanged?.Invoke();
         return true;
+    }
+
+    /// <summary>Looks up a config by name without throwing. Use this for callers that aren't sure the config still exists.</summary>
+    public bool TryGetConfig(string name, out TConfig config) =>
+        _envelope.Configs.TryGetValue(name, out config!);
+
+    /// <summary>Looks up a config by name. Throws if it doesn't exist — prefer TryGetConfig for untrusted names.</summary>
+    public TConfig GetConfig(string name)
+    {
+        if (!_envelope.Configs.TryGetValue(name, out var config))
+            throw new KeyNotFoundException($"No config named '{name}'.");
+        return config;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

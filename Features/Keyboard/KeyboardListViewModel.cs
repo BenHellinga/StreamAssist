@@ -4,34 +4,41 @@ using StreamAssist.Core;
 
 namespace StreamAssist.Features.Keyboard;
 
-
-
 /// <summary>
 /// Owns the full set of keyboard slots — the entire middle area of the
-/// Keyboard tab. The "+" button adds a new independent slot; "−" removes
-/// the most recently added one (at least one always remains).
+/// Keyboard tab. Restores saved slots (device + config picks) on startup;
+/// the "+" button adds a new independent slot, "−" removes the most
+/// recently added one (at least one always remains). The slot count and
+/// each slot's picks are persisted to keyboard.json on every change.
 /// </summary>
 public partial class KeyboardListViewModel : ViewModelBase
 {
     private readonly InputManager _inputManager;
-
-    // Reserved for the persistence rework landing next round — not yet
-    // read from or written to.
     private readonly KeyboardFeatureSettings _settings;
-
     private readonly ActionPanelViewModel _actionPanel;
 
     public ObservableCollection<KeyboardSlotViewModel> Slots { get; } = [];
 
-
-
+    /// <summary>
+    /// Assumes _settings.Load() has already been called by app startup,
+    /// before this is constructed.
+    /// </summary>
     public KeyboardListViewModel(InputManager inputManager, KeyboardFeatureSettings settings, ActionPanelViewModel actionPanel)
     {
         _inputManager = inputManager;
         _settings = settings;
         _actionPanel = actionPanel;
 
-        AddSlotInternal(); // always start with one keyboard
+        var savedSlots = _settings.RootData.Slots;
+        if (savedSlots.Count == 0)
+        {
+            AddSlotInternal(null); // fresh install — always start with one keyboard
+        }
+        else
+        {
+            foreach (var slotData in savedSlots)
+                AddSlotInternal(slotData);
+        }
     }
 
 
@@ -39,8 +46,9 @@ public partial class KeyboardListViewModel : ViewModelBase
     [RelayCommand]
     private void AddKeyboard()
     {
-        AddSlotInternal();
+        AddSlotInternal(null);
         RemoveKeyboardCommand.NotifyCanExecuteChanged();
+        PersistSlots();
     }
 
 
@@ -55,6 +63,7 @@ public partial class KeyboardListViewModel : ViewModelBase
         last.Dispose();
 
         RemoveKeyboardCommand.NotifyCanExecuteChanged();
+        PersistSlots();
     }
 
 
@@ -63,10 +72,26 @@ public partial class KeyboardListViewModel : ViewModelBase
 
 
 
-    private void AddSlotInternal()
+    private void AddSlotInternal(KeyboardSlotData? initialData)
     {
-        var slot = new KeyboardSlotViewModel(_inputManager);
+        var slot = new KeyboardSlotViewModel(_inputManager, _settings, initialData);
         slot.KeyboardDisplay.KeySelected += _actionPanel.ShowKey;
+
+        // Re-persist this slot's picks whenever they change.
+        slot.KeyboardMenu.DeviceChanged += _ => PersistSlots();
+        slot.KeyboardMenu.ConfigChanged += _ => PersistSlots();
+
         Slots.Add(slot);
+    }
+
+
+
+    private void PersistSlots()
+    {
+        _settings.RootData.Slots.Clear();
+        foreach (var slot in Slots)
+            _settings.RootData.Slots.Add(slot.CaptureState());
+
+        _settings.Save();
     }
 }
