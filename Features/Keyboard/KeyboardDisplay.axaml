@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             x:Class="StreamAssist.Features.Keyboard.KeyboardDisplay"
+             x:DataType="vm:KeyboardDisplayViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.key">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.07"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.07"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.key.pressed">
+            <Setter Property="Background" Value="#7c3aed"/>
+            <Setter Property="BorderBrush" Value="#a78bfa"/>
+        </Style>
+        <Style Selector="Border.key TextBlock">
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.key.pressed TextBlock">
+            <Setter Property="Foreground" Value="#ffffff"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- ── Keyboard container ──────────────────────────────────────── -->
+    <!-- Resize by changing the Border's Width/Height/Margin/Alignment. -->
+    <!-- The Viewbox scales the canvas contents to fit whatever         -->
+    <!-- space the Border occupies.                                     -->
+    <Border x:Name="KeyboardContainer"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top">
+
+        <Viewbox Stretch="Uniform"
+                 HorizontalAlignment="Stretch"
+                 VerticalAlignment="Top">
+
+        <Canvas Width="{Binding CanvasWidth}"
+                Height="{Binding CanvasHeight}">
+            <ItemsControl ItemsSource="{Binding Keys}"
+                        Width="{Binding CanvasWidth}"
+                        Height="{Binding CanvasHeight}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerTheme>
+                        <ControlTheme TargetType="ContentPresenter"
+                                    x:DataType="vm:KeyInfo">
+                            <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                            <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                        </ControlTheme>
+                    </ItemsControl.ItemContainerTheme>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:KeyInfo">
+                            <Border Classes="key"
+                                    Classes.pressed="{Binding IsPressed}"
+                                    Width="{Binding W}"
+                                    Height="{Binding H}">
+                                <TextBlock Text="{Binding Label}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Canvas>
+
+        </Viewbox>
+    </Border>
+
+</UserControl>

@@ -12,6 +12,6 @@
         Later you'll add a sidebar or tab strip here to switch between
         the Keyboard, Audio, OBS, and Chatbot panels.
     -->
-    <keyboard:KeyboardView DataContext="{Binding KeyboardViewModel}"/>
+    <keyboard:KeyboardTab DataContext="{Binding KeyboardTabViewModel}"/>
 
 </Window>

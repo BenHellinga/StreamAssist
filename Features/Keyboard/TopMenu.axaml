@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StreamAssist.Features.Keyboard"
+             x:Class="StreamAssist.Features.Keyboard.TopMenu"
+             x:DataType="vm:TopMenuViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="MinWidth" Value="220"/>
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#1e1e1e"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#2a2a2a"/>
+            <Setter Property="Foreground" Value="#cccccc"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+            <Setter Property="Padding" Value="10,4"/>
+        </Style>
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3a3a3a"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- ── Top toolbar ─────────────────────────────────────────────── -->
+    <StackPanel Orientation="Horizontal"
+                Spacing="24">
+
+        <!-- Config picker -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="label" Text="Config"/>
+            <ComboBox ItemsSource="{Binding ConfigNames}"
+                      SelectedItem="{Binding SelectedConfigName}"
+                      MinWidth="140"/>
+            <Button Content="＋ New"
+                    Command="{Binding CreateConfigCommand}"
+                    ToolTip.Tip="Create a copy of the current config with the name below"/>
+            <TextBox Text="{Binding NewConfigName}"
+                     PlaceholderText="Config name…"
+                     Width="130"/>
+            <Button Content="🗑"
+                    Command="{Binding DeleteConfigCommand}"
+                    ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
+        </StackPanel>
+
+        <!-- Device picker -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="label" Text="Device"/>
+            <ComboBox ItemsSource="{Binding AvailableDevices}"
+                      SelectedItem="{Binding SelectedDevice}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:KeyboardInfo">
+                        <TextBlock Text="{Binding DisplayLabel}"
+                                   FontSize="11"
+                                   FontFamily="Cascadia Code,Consolas,Monospace"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+    </StackPanel>
+
+</UserControl>

@@ -32,7 +32,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // public ChatbotService ChatbotService { get; } = new();
 
     // ── Feature ViewModels (consume services + settings) ──────────────────
-    public KeyboardViewModel KeyboardViewModel { get; }
+    public KeyboardTabViewModel KeyboardTabViewModel { get; }
 
     // public AudioViewModel   AudioViewModel   { get; }
     // public ObsViewModel     ObsViewModel     { get; }
@@ -46,7 +46,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // ObsSettings.Load();
 
         // Construct ViewModels, injecting both the service and its settings
-        KeyboardViewModel = new KeyboardViewModel(KeyboardInputManager, KeyboardSettings);
+        KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardInputManager, KeyboardSettings);
 
         // Example of cross-feature wiring (uncomment when you have OBS):
         // KeyboardService.KeyPressed += async vk => {
