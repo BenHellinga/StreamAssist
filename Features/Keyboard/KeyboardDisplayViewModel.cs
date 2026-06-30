@@ -27,6 +27,10 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
     public ObservableCollection<KeyInfo> Keys { get; } = [];
     private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
+    // Raised when a key is left-clicked, so a parent (KeyboardTabViewModel)
+    // can forward the selection to the ActionPanel. Passes null for "clear".
+    public event Action<KeyInfo?>? KeySelected;
+
 
 
     // constructor
@@ -196,6 +200,13 @@ public partial class KeyboardDisplayViewModel : ViewModelBase
         if (isDown && key.BoundAction is { } action)
             _ = ExecuteSafelyAsync(action);
     }
+
+
+
+    // Called by KeyboardDisplay's code-behind on left-click. Right-click
+    // (unbind) is handled entirely in the code-behind since it only ever
+    // touches the KeyInfo it already has a reference to.
+    internal void NotifyKeySelected(KeyInfo key) => KeySelected?.Invoke(key);
 
 
 

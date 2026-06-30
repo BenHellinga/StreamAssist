@@ -44,59 +44,67 @@
     <!-- ── Keyboard container ──────────────────────────────────────── -->
     <!-- Resize by changing the Border's Width/Height/Margin/Alignment. -->
     <!-- The Viewbox scales the canvas contents to fit whatever         -->
-    <!-- space the Border occupies.                                     -->
-    <Border x:Name="KeyboardContainer"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Top">
+    <!-- space the Border occupies. Wrapped in a ScrollViewer so the    -->
+    <!-- Viewbox always has "infinite" height to measure against -      -->
+    <!-- it auto-scales horizontally only, and scrolls vertically when  -->
+    <!-- the parent row gets squeezed (e.g. ActionPanel dragged up).    -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
 
-        <Viewbox Stretch="Uniform"
-                 HorizontalAlignment="Stretch"
-                 VerticalAlignment="Top">
+        <Border x:Name="KeyboardContainer"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top">
 
-        <Canvas Width="{Binding CanvasWidth}"
-                Height="{Binding CanvasHeight}">
-            <ItemsControl ItemsSource="{Binding Keys}"
-                        Width="{Binding CanvasWidth}"
-                        Height="{Binding CanvasHeight}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemContainerTheme>
-                        <ControlTheme TargetType="ContentPresenter"
-                                    x:DataType="vm:KeyInfo">
-                            <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                            <Setter Property="Canvas.Top" Value="{Binding Y}"/>
-                        </ControlTheme>
-                    </ItemsControl.ItemContainerTheme>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:KeyInfo">
-                            <Border Classes="key"
-                                    Classes.pressed="{Binding IsPressed}"
-                                    Classes.bound="{Binding HasBoundAction}"
-                                    Width="{Binding W}"
-                                    Height="{Binding H}"
-                                    DragDrop.AllowDrop="True"
-                                    DragDrop.DragOver="OnKeyDragOver"
-                                    DragDrop.DragLeave="OnKeyDragLeave"
-                                    DragDrop.Drop="OnKeyDrop">
-                                <StackPanel VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="{Binding Label}"/>
-                                    <TextBlock Text="{Binding BoundActionName}"
-                                               IsVisible="{Binding HasBoundAction}"
-                                               FontSize="8"
-                                               Foreground="#22c55e"
-                                               TextAlignment="Center"
-                                               TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </Canvas>
+            <Viewbox Stretch="Uniform"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Top">
 
-        </Viewbox>
-    </Border>
+            <Canvas Width="{Binding CanvasWidth}"
+                    Height="{Binding CanvasHeight}">
+                <ItemsControl ItemsSource="{Binding Keys}"
+                            Width="{Binding CanvasWidth}"
+                            Height="{Binding CanvasHeight}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerTheme>
+                            <ControlTheme TargetType="ContentPresenter"
+                                        x:DataType="vm:KeyInfo">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </ControlTheme>
+                        </ItemsControl.ItemContainerTheme>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KeyInfo">
+                                <Border Classes="key"
+                                        Classes.pressed="{Binding IsPressed}"
+                                        Classes.bound="{Binding HasBoundAction}"
+                                        Width="{Binding W}"
+                                        Height="{Binding H}"
+                                        DragDrop.AllowDrop="True"
+                                        DragDrop.DragOver="OnKeyDragOver"
+                                        DragDrop.DragLeave="OnKeyDragLeave"
+                                        DragDrop.Drop="OnKeyDrop"
+                                        PointerPressed="OnKeyPointerPressed">
+                                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{Binding Label}"/>
+                                        <TextBlock Text="{Binding BoundActionName}"
+                                                   IsVisible="{Binding HasBoundAction}"
+                                                   FontSize="8"
+                                                   Foreground="#22c55e"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Canvas>
+
+            </Viewbox>
+        </Border>
+    </ScrollViewer>
 
 </UserControl>

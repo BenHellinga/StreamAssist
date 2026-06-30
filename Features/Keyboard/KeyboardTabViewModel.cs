@@ -16,6 +16,7 @@ public partial class KeyboardTabViewModel : ViewModelBase
     public TopMenuViewModel TopMenu { get; }
     public KeyboardDisplayViewModel KeyboardDisplay { get; }
     public ActionListViewModel ActionList { get; } = new();
+    public ActionPanelViewModel ActionPanel { get; } = new();
 
     // Bound to the GridSplitter column in KeyboardTab.axaml. Dragging the
     // splitter updates this directly (two-way bound), so the resize sticks
@@ -23,6 +24,11 @@ public partial class KeyboardTabViewModel : ViewModelBase
     // ConsoleWidth.
     [ObservableProperty]
     private GridLength _actionListWidth = new(300);
+
+    // Same pattern, but for the row split between KeyboardDisplay and
+    // ActionPanel.
+    [ObservableProperty]
+    private GridLength _actionPanelHeight = new(160);
 
 
 
@@ -34,5 +40,7 @@ public partial class KeyboardTabViewModel : ViewModelBase
     {
         TopMenu = new TopMenuViewModel(inputManager, settings);
         KeyboardDisplay = new KeyboardDisplayViewModel(inputManager);
+
+        KeyboardDisplay.KeySelected += ActionPanel.ShowKey;
     }
 }

@@ -50,4 +50,30 @@ public partial class KeyboardDisplay : UserControl
             AppLog.WriteLine($"Bound '{action.Name}' to {key.Label.Replace("\n", " ")}.");
         }
     }
+
+
+
+    private void OnKeyPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border { DataContext: KeyInfo key } border) return;
+
+        var props = e.GetCurrentPoint(border).Properties;
+
+        // Right click on a key clears its binding (no-op if already unbound).
+        if (props.IsRightButtonPressed)
+        {
+            if (key.BoundAction is { } bound)
+            {
+                AppLog.WriteLine($"Unbound '{bound.Name}' from {key.Label.Replace("\n", " ")}.");
+                key.BoundAction = null;
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        // Left click selects the key so its details show in the ActionPanel.
+        if (props.IsLeftButtonPressed && DataContext is KeyboardDisplayViewModel vm)
+            vm.NotifyKeySelected(key);
+    }
 }
