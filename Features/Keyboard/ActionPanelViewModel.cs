@@ -5,12 +5,6 @@ namespace StreamAssist.Features.Keyboard;
 
 
 
-/// <summary>
-/// Drives the ActionPanel view - the strip below the keyboard that shows
-/// details for whichever bound key was last clicked. Empty until a
-/// selection comes in via ShowKey, and clears itself if the clicked key
-/// turns out to have no BoundAction.
-/// </summary>
 public partial class ActionPanelViewModel : ViewModelBase
 {
     [ObservableProperty] private string _actionName = "";

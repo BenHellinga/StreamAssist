@@ -24,10 +24,6 @@ public class InputManager : IDisposable
 
 
 
-    // Broadcasts every keystroke from every connected keyboard, tagged with
-    // the originating device's path. There's no concept of a single
-    // "selected" device at this level anymore — each consumer (one per
-    // keyboard slot) filters for the device path it cares about.
     public event Action<string, ushort>? KeyPressed;
     public event Action<string, ushort>? KeyReleased;
 

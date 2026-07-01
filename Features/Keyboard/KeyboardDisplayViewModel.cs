@@ -38,21 +38,12 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
     public ObservableCollection<KeyInfo> Keys { get; } = [];
     private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
-    // The device this particular slot is currently listening to. Set by the
-    // owning KeyboardSlotViewModel whenever its KeyboardMenu's device
-    // selection changes. Null = listen to nothing.
+    // wiring
     public string? SelectedDeviceId { get; set; }
-
-    // The config whose KeyBindings this display currently reflects (and
-    // writes through to on any binding change). Set via ApplyConfig.
     public string ActiveConfigName { get; private set; } = "Default";
-
-    // Raised when a key is left-clicked, so a parent can forward the
-    // selection to the (shared) ActionPanel. Passes null for "clear".
     public event Action<KeyInfo?>? KeySelected;
 
-    // Set while ApplyConfig is pushing saved bindings onto Keys, so those
-    // writes don't get interpreted as user edits and re-saved redundantly.
+    // represes redundant saves/updates
     private bool _suppressBindingPersist;
 
 
@@ -250,9 +241,6 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
-    // Called by KeyboardDisplay's code-behind on left-click. Right-click
-    // (unbind) is handled entirely in the code-behind since it only ever
-    // touches the KeyInfo it already has a reference to.
     internal void NotifyKeySelected(KeyInfo key) => KeySelected?.Invoke(key);
 
 
@@ -270,9 +258,10 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
         PersistBinding(key);
     }
 
+
+
     private void PersistBinding(KeyInfo key)
     {
-        // Config may have been deleted out from under us — nothing to write into.
         if (!_settings.TryGetConfig(ActiveConfigName, out var config)) return;
 
         if (key.BoundAction is { } action)
@@ -283,12 +272,8 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
         _settings.SaveAndNotifyBindingsChanged(ActiveConfigName);
     }
 
-    /// <summary>
-    /// Switches which config's key bindings this display reflects, applying
-    /// the saved bindings (or clearing all keys if the config has none, or
-    /// no longer exists). Called whenever this slot's KeyboardMenu reports
-    /// a config change, and once up front during slot construction.
-    /// </summary>
+
+
     public void ApplyConfig(string configName)
     {
         ActiveConfigName = configName;
@@ -323,17 +308,13 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
-    /// <summary>
-    /// Fires for EVERY display whenever ANY display edits a config's bindings.
-    /// Only re-applies if it's actually our config — re-running ApplyConfig is
-    /// safe even for the display that made the edit, since it's wrapped in
-    /// _suppressBindingPersist and just re-syncs Keys to what's already on disk.
-    /// </summary>
     private void OnBindingsChanged(string configName)
     {
         if (configName != ActiveConfigName) return;
         ApplyConfig(configName);
     }
+
+
 
     public void Dispose()
     {

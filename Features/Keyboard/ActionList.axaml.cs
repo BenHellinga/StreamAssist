@@ -8,9 +8,8 @@ namespace StreamAssist.Features.Keyboard;
 
 public partial class ActionList : UserControl
 {
-    // The drag-data format key used when an action card is dragged out of
-    // this list. The eventual key drop target should check for this format.
-    public static readonly DataFormat<IFeatureAction> ActionDragFormat = DataFormat.CreateInProcessFormat<IFeatureAction>("StreamAssist.FeatureAction");
+    public static readonly DataFormat<IFeatureAction> ActionDragFormat =
+        DataFormat.CreateInProcessFormat<IFeatureAction>("StreamAssist.FeatureAction");
 
 
 
