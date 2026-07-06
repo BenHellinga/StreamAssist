@@ -53,8 +53,8 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:KeyboardSlotViewModel">
-                        <local:KeyboardSlot DataContext="{Binding}"/>
+                    <DataTemplate x:DataType="vm:KeyboardDisplayViewModel">
+                        <local:KeyboardDisplay DataContext="{Binding}"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Core;
 using StreamAssist.Features.Shell;
 
@@ -12,16 +15,17 @@ namespace StreamAssist.Features.Keyboard;
 
 
 /// <summary>
-/// Drives the KeyboardDisplay view (the rendered keyboard canvas) for ONE
-/// keyboard slot. Listens to InputManager's broadcast of ALL keyboards and
-/// filters to whichever device path SelectedDeviceId currently points at.
+/// Drives one independent keyboard slot: the toolbar (config/device pickers)
+/// and the rendered keyboard canvas beneath it. Listens to InputManager's
+/// broadcast of ALL keyboards and filters to whichever device path
+/// SelectedDevice currently points at.
 ///
 /// Also owns persistence of key bindings: whichever config is currently
-/// "active" for this display (set via ApplyConfig) has its KeyBindings
-/// dictionary kept in sync whenever any KeyInfo.BoundAction changes, by
-/// listening to each KeyInfo's PropertyChanged — so it doesn't matter
-/// whether a binding came from drag-drop, a right-click unbind, or
-/// anywhere else; it all funnels through that one observable property.
+/// selected has its KeyBindings dictionary kept in sync whenever any
+/// KeyInfo.BoundAction changes, by listening to each KeyInfo's
+/// PropertyChanged — so it doesn't matter whether a binding came from
+/// drag-drop, a right-click unbind, or anywhere else; it all funnels
+/// through that one observable property.
 /// </summary>
 public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 {
@@ -38,13 +42,22 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
     public ObservableCollection<KeyInfo> Keys { get; } = [];
     private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
+    // device / config toolbar
+    public ObservableCollection<KeyboardInfo> AvailableDevices { get; } = [];
+    public ObservableCollection<string> ConfigNames { get; } = [];
+    public static readonly KeyboardInfo NoneDevice = new(null, "None", "", 0, 0);
+
+    [ObservableProperty] private KeyboardInfo? _selectedDevice;
+    [ObservableProperty] private string? _selectedConfigName;
+    [ObservableProperty] private string _newConfigName = "";
+
     // wiring
-    public string? SelectedDeviceId { get; set; }
     public string ActiveConfigName { get; private set; } = "Default";
     public event Action<KeyInfo?>? KeySelected;
 
-    // represes redundant saves/updates
+    // suppress redundant saves/callbacks
     private bool _suppressBindingPersist;
+    private bool _suppressCallbacks;
 
 
 
@@ -52,7 +65,7 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
-    public KeyboardDisplayViewModel(InputManager inputManager, KeyboardFeatureSettings settings)
+    public KeyboardDisplayViewModel(InputManager inputManager, KeyboardFeatureSettings settings, KeyboardSlotData? initialData = null)
     {
         _inputManager = inputManager;
         _settings = settings;
@@ -60,8 +73,26 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
         _inputManager.KeyPressed  += OnRawKeyPressed;
         _inputManager.KeyReleased += OnRawKeyReleased;
         _settings.BindingsChanged += OnBindingsChanged;
+        _settings.ConfigsChanged  += OnConfigsChanged;
 
         InitKeys();
+        RefreshDevices();
+        RefreshConfigNames();
+
+        _suppressCallbacks = true;
+        SelectedConfigName = ConfigNames.Contains("Default") ? "Default" : ConfigNames.FirstOrDefault() ?? "Default";
+        SelectedDevice = NoneDevice;
+        _suppressCallbacks = false;
+
+        if (initialData is not null)
+        {
+            _suppressCallbacks = true;
+            SelectedConfigName = ConfigNames.Contains(initialData.SelectedConfigName) ? initialData.SelectedConfigName : "Default";
+            SelectedDevice = FindDevice(initialData.SelectedDeviceId);
+            _suppressCallbacks = false;
+        }
+
+        ApplyConfig(SelectedConfigName ?? "Default");
     }
 
 
@@ -72,7 +103,7 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
     private void OnRawKeyPressed(string devicePath, ushort vk)
     {
-        if (devicePath != SelectedDeviceId) return;
+        if (devicePath != SelectedDevice?.DevicePath) return;
         Dispatcher.UIThread.Post(() => SetKeyState(vk, true));
     }
 
@@ -80,13 +111,13 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
     private void OnRawKeyReleased(string devicePath, ushort vk)
     {
-        if (devicePath != SelectedDeviceId) return;
+        if (devicePath != SelectedDevice?.DevicePath) return;
         Dispatcher.UIThread.Post(() => SetKeyState(vk, false));
     }
 
 
 
-    // helper methods
+    // helper methods - key layout
 
 
 
@@ -245,7 +276,102 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
-    // persistence
+    // helper methods - device / config toolbar
+
+
+
+    private void RefreshDevices()
+    {
+        AvailableDevices.Clear();
+        AvailableDevices.Add(NoneDevice);
+        foreach (var d in InputManager.GetAvailableKeyboards())
+            AvailableDevices.Add(d);
+    }
+
+
+
+    private void RefreshConfigNames()
+    {
+        var latest = _settings.ConfigNames;
+
+        for (int i = ConfigNames.Count - 1; i >= 0; i--)
+            if (!latest.Contains(ConfigNames[i]))
+                ConfigNames.RemoveAt(i);
+
+        // Add any new names that aren't already present
+        foreach (var name in latest)
+            if (!ConfigNames.Contains(name))
+                ConfigNames.Add(name);
+    }
+
+
+
+    private KeyboardInfo FindDevice(string? devicePath)
+    {
+        if (devicePath is null) return NoneDevice;
+
+        foreach (var d in AvailableDevices)
+            if (d.DevicePath == devicePath) return d;
+
+        return NoneDevice;
+    }
+
+
+
+    // callbacks - device / config toolbar
+
+
+
+    partial void OnSelectedConfigNameChanged(string? value)
+    {
+        if (_suppressCallbacks) return;
+        if (value is null) return;
+
+        ApplyConfig(value);
+    }
+
+
+
+    private void OnConfigsChanged()
+    {
+        var previousSelection = SelectedConfigName;
+
+        RefreshConfigNames();
+
+        var stillExists = previousSelection is not null && _settings.TryGetConfig(previousSelection, out _);
+
+        if (!stillExists)
+            SelectedConfigName = "Default";
+        else if (SelectedConfigName != previousSelection)
+            SelectedConfigName = previousSelection;
+    }
+
+
+
+    [RelayCommand]
+    private void CreateConfig()
+    {
+        var name = NewConfigName.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+        if (!_settings.CreateConfig(name)) return; // false if name already taken; ConfigsChanged not fired
+
+        SelectedConfigName = name;
+        NewConfigName = "";
+    }
+
+
+
+    [RelayCommand]
+    private void DeleteConfig()
+    {
+        if (SelectedConfigName is not { } name) return;
+
+        _settings.DeleteConfig(name);
+    }
+
+
+
+    // persistence - key bindings
 
 
 
@@ -316,11 +442,24 @@ public partial class KeyboardDisplayViewModel : ViewModelBase, IDisposable
 
 
 
+    // state capture (for saving/restoring across app sessions)
+
+
+
+    public KeyboardSlotData CaptureState() => new()
+    {
+        SelectedDeviceId = SelectedDevice?.DevicePath,
+        SelectedConfigName = SelectedConfigName ?? "Default"
+    };
+
+
+
     public void Dispose()
     {
         _inputManager.KeyPressed  -= OnRawKeyPressed;
         _inputManager.KeyReleased -= OnRawKeyReleased;
         _settings.BindingsChanged -= OnBindingsChanged;
+        _settings.ConfigsChanged  -= OnConfigsChanged;
 
         foreach (var key in Keys)
             key.PropertyChanged -= OnKeyPropertyChanged;

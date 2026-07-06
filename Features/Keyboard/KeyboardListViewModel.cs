@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Core;
 
@@ -12,7 +13,7 @@ public partial class KeyboardListViewModel : ViewModelBase
     private readonly KeyboardFeatureSettings _settings;
     private readonly ActionPanelViewModel _actionPanel;
 
-    public ObservableCollection<KeyboardSlotViewModel> Slots { get; } = [];
+    public ObservableCollection<KeyboardDisplayViewModel> Slots { get; } = [];
 
 
 
@@ -63,13 +64,20 @@ public partial class KeyboardListViewModel : ViewModelBase
 
     private void AddSlotInternal(KeyboardSlotData? initialData)
     {
-        var slot = new KeyboardSlotViewModel(_inputManager, _settings, initialData);
-        slot.KeyboardDisplay.KeySelected += _actionPanel.ShowKey;
-
-        slot.KeyboardMenu.DeviceChanged += _ => PersistSlots();
-        slot.KeyboardMenu.ConfigChanged += _ => PersistSlots();
+        var slot = new KeyboardDisplayViewModel(_inputManager, _settings, initialData);
+        slot.KeySelected += _actionPanel.ShowKey;
+        slot.PropertyChanged += OnSlotPropertyChanged;
 
         Slots.Add(slot);
+    }
+
+
+
+    private void OnSlotPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(KeyboardDisplayViewModel.SelectedDevice)
+                            or nameof(KeyboardDisplayViewModel.SelectedConfigName))
+            PersistSlots();
     }
 
 
