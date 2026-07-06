@@ -2,9 +2,9 @@ namespace StreamAssist.Features.Keyboard;
 
 
 
-public class KeyboardInfo(string? DevicePath, string ProductName, string ManufacturerName, int ProductId, int VendorId)
+public class KeyboardInfo(string DevicePath, string ProductName, string ManufacturerName, int ProductId, int VendorId)
 {
-    public string? DevicePath { get; init; } = DevicePath;
+    public string DevicePath { get; init; } = DevicePath;
     public string ProductName { get; init; } = ProductName;
     public string ManufacturerName { get; init; } = ManufacturerName;
     public int ProductId { get; init; } = ProductId;

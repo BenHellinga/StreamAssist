@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StreamAssist.Features.Keyboard"
-             x:Class="StreamAssist.Features.Keyboard.KeyboardDisplay"
-             x:DataType="vm:KeyboardDisplayViewModel">
+             x:Class="StreamAssist.Features.Keyboard.KeyboardSlot"
+             x:DataType="vm:KeyboardSlotViewModel">
 
     <UserControl.Styles>
         <!-- toolbar styles -->
@@ -80,13 +80,13 @@
             <!-- Config picker -->
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Classes="label" Text="Config"/>
-                <ComboBox ItemsSource="{Binding ConfigNames}"
-                          SelectedItem="{Binding SelectedConfigName}"
+                <ComboBox ItemsSource="{Binding AllConfigs}"
+                          SelectedItem="{Binding MenuConfig}"
                           MinWidth="140"/>
                 <Button Content="＋ New"
                         Command="{Binding CreateConfigCommand}"
                         ToolTip.Tip="Create a copy of the current config with the name below"/>
-                <TextBox Text="{Binding NewConfigName}"
+                <TextBox Text="{Binding InputConfig}"
                          PlaceholderText="Config name…"
                          Width="130"/>
                 <Button Content="🗑"
@@ -97,8 +97,8 @@
             <!-- Device picker -->
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Classes="label" Text="Device"/>
-                <ComboBox ItemsSource="{Binding AvailableDevices}"
-                          SelectedItem="{Binding SelectedDevice}">
+                <ComboBox ItemsSource="{Binding AllDevices}"
+                          SelectedItem="{Binding MenuDevice}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:KeyboardInfo">
                             <TextBlock Text="{Binding DisplayLabel}"

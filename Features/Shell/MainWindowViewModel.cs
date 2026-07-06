@@ -11,21 +11,20 @@ namespace StreamAssist.Features.Shell;
 /// controlling their lifetime from app start to app close.
 ///
 /// To add a new feature later:
-///   1. Create Features/MyFeature/MyFeatureConfig.cs      (the settings model)
-///   2. Create Features/MyFeature/MyFeatureSettings.cs    (extends FeatureSettings&lt;T&gt;)
-///   3. Create Features/MyFeature/MyFeatureService.cs
-///   4. Create Features/MyFeature/MyFeatureViewModel.cs
-///   5. Add the service, settings, and viewmodel properties below.
-///   6. Call settings.Load() in the constructor.
-///   7. Call service.Dispose() and any cleanup in Dispose().
+///   1. Create Features/MyFeature/MyFeatureData.cs        (the settings model, a plain class)
+///   2. Create Features/MyFeature/MyFeatureService.cs
+///   3. Create Features/MyFeature/MyFeatureViewModel.cs
+///   4. Add the service, settings, and viewmodel properties below.
+///   5. Call JsonFileStore.Load&lt;MyFeatureData&gt;("myfeature") in the constructor.
+///   6. Call service.Dispose() and any cleanup in Dispose().
 /// </summary>
 public partial class MainWindowViewModel : ViewModelBase
 {
-    // ── Feature settings (one instance per feature, owns its JSON file) ───
-    public KeyboardFeatureSettings KeyboardSettings { get; } = new();
+    // ── Feature settings (one instance per feature, loaded from its own JSON file) ───
+    public KeyboardListData KeyboardSettings { get; }
 
-    // public ChatbotFeatureSettings ChatbotSettings { get; } = new();
-    // public ObsFeatureSettings     ObsSettings     { get; } = new();
+    // public ChatbotListData ChatbotSettings { get; }
+    // public ObsListData     ObsSettings     { get; }
 
     // ── Services (own OS resources — sockets, hooks, audio devices) ───────
     public InputManager KeyboardInputManager { get; } = new();
@@ -61,9 +60,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         // Load all settings from disk before constructing ViewModels
-        KeyboardSettings.Load();
-        // ChatbotSettings.Load();
-        // ObsSettings.Load();
+        KeyboardSettings = JsonFileStore.Load<KeyboardListData>("keyboard");
+        // ChatbotSettings = JsonFileStore.Load<ChatbotListData>("chatbot");
+        // ObsSettings     = JsonFileStore.Load<ObsListData>("obs");
 
         // Construct ViewModels, injecting both the service and its settings
         KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardInputManager, KeyboardSettings);

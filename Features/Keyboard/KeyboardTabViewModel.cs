@@ -12,11 +12,8 @@ public partial class KeyboardTabViewModel : ViewModelBase
     public ActionListViewModel ActionList { get; } = new();
     public ActionPanelViewModel ActionPanel { get; } = new();
 
-    [ObservableProperty]
-    private GridLength _actionListWidth = new(300);
-
-    [ObservableProperty]
-    private GridLength _actionPanelHeight = new(160);
+    [ObservableProperty] private GridLength _actionListWidth = new(300);
+    [ObservableProperty] private GridLength _actionPanelHeight = new(160);
 
 
 
@@ -24,7 +21,7 @@ public partial class KeyboardTabViewModel : ViewModelBase
 
 
 
-    public KeyboardTabViewModel(InputManager inputManager, KeyboardFeatureSettings settings)
+    public KeyboardTabViewModel(InputManager inputManager, KeyboardListData settings)
     {
         KeyboardList = new KeyboardListViewModel(inputManager, settings, ActionPanel);
     }

@@ -1,45 +1,58 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using StreamAssist.Core;
 using StreamAssist.Features.Shell;
-using System.Diagnostics;
-using System;
-using Avalonia.Logging;
 
 namespace StreamAssist.Features.Keyboard;
 
 
 
-/// <summary>
-/// Drives the KeyboardView.
-/// </summary>
-public partial class KeyboardViewModel : ViewModelBase
+public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 {
-    // general object classes
-    private readonly InputManager _inputManager;
-    private readonly KeyboardFeatureSettings  _settings;
-
-    // keyboard display construction
+    // keyboard constants
     private const double _KEY_SIZE = 55;
     private const double _KEY_MARGIN = 7;
-    private const bool _INCLUDE_UNUSEABLE = true;
     public double CanvasWidth { get; init; } = _KEY_SIZE * 22 + _KEY_MARGIN * 24;
     public double CanvasHeight { get; init; } = _KEY_SIZE * 6 + _KEY_MARGIN * 6;
-    public ObservableCollection<KeyInfo> Keys { get; } = [];
-    private readonly Dictionary<ushort, KeyInfo> _keyMap = [];
 
-    // menu items
-    public ObservableCollection<KeyboardInfo> AvailableDevices { get; } = [];
-    public ObservableCollection<string> ConfigNames { get; } = [];
-    public static readonly KeyboardInfo NoneDevice = new(null, "None", "", 0, 0);
-    [ObservableProperty] private KeyboardInfo? _selectedDevice;
-    [ObservableProperty] private string? _selectedConfigName;
-    [ObservableProperty] private string _newConfigName = "";
+    private const bool _INCLUDE_UNUSEABLE = true; // this might want to be a toggle button
 
-    // callback control
-    private bool _suppressCallbacks;
+    // inherited dependencies
+    private readonly InputManager _inputManager;
+    private readonly KeyboardSlotData _slotData;
+    private readonly List<KeyboardConfigData> _configsData;
+    private readonly SuppressionCounter _suppressCallbacks;
+
+    // menu management
+    public ObservableCollection<KeyboardInfo> AllDevices { get; }
+    public ObservableCollection<string> AllConfigs { get; }
+    [ObservableProperty] private KeyboardInfo _menuDevice;
+    [ObservableProperty] private string _menuConfig;
+    [ObservableProperty] private string _inputConfig;
+
+    // key management
+    public ObservableCollection<KeyInfo> Keys { get; }
+    private readonly Dictionary<ushort, KeyInfo> _keyMap;
+
+
+
+    // events
+
+
+
+    public event Action<string, ObservableCollection<KeyInfo>>? CreateConfigRequested;
+    public event Action<string>? DeleteConfigRequested;
+    public event Action<string, KeyInfo>? ConfigBindingsUpdated;
+    public event Action<KeyInfo>? KeySelected;
+    public event Action? SaveRequested;
+
 
 
 
@@ -47,24 +60,220 @@ public partial class KeyboardViewModel : ViewModelBase
 
 
 
-    public KeyboardViewModel(InputManager inputManager, KeyboardFeatureSettings settings)
+    public KeyboardSlotViewModel(
+        InputManager inputManager, KeyboardSlotData slotData, List<KeyboardConfigData> configsData,
+        ObservableCollection<KeyboardInfo> allDevices, ObservableCollection<string> allConfigs, SuppressionCounter suppressCallbacks)
     {
-        _inputManager  = inputManager;
-        _settings = settings;
+        _inputManager = inputManager;
+        _slotData = slotData;
+        _configsData = configsData;
+        AllDevices = allDevices;
+        AllConfigs = allConfigs;
+        _suppressCallbacks = suppressCallbacks;
 
-        inputManager.KeyPressed  += vk => Dispatcher.UIThread.Post(() => SetKeyState(vk, true));
-        inputManager.KeyReleased += vk => Dispatcher.UIThread.Post(() => SetKeyState(vk, false));
+        _inputManager.KeyPressed += OnKeyPressed;
+        _inputManager.KeyReleased += OnKeyReleased;
+
+        _suppressCallbacks.Increment();
+
+        InputConfig = "";
+        MenuDevice = KeyboardListViewModel.NoneDevice;
+        MenuConfig = KeyboardListViewModel.NoneConfig;
+        Keys = [];
+        _keyMap = [];
 
         InitKeys();
-        RefreshDevices();
-        RefreshConfigNames();
+        RefreshDevice();
+        RefreshConfig();
+        RefreshBindings();
 
-        ApplySavedDevice();
+        _suppressCallbacks.Decrement();
     }
 
 
 
-    // helper methods
+    // menu callbacks
+
+
+
+    partial void OnMenuConfigChanged(string value)
+    {
+        if (_suppressCallbacks.IsSuppressed) return;
+
+        _suppressCallbacks.Increment();
+        _slotData.SelectedConfig = value;
+        RefreshBindings();
+        Save();
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    partial void OnMenuDeviceChanged(KeyboardInfo value)
+    {
+        if (_suppressCallbacks.IsSuppressed) return;
+
+        _suppressCallbacks.Increment();
+        _slotData.SelectedDevice = value.DevicePath;
+        Save();
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    [RelayCommand]
+    private void OnCreateConfig()
+    {
+        if (_suppressCallbacks.IsSuppressed) return;
+
+        var name = InputConfig.Trim();
+
+        if (string.IsNullOrEmpty(name)) return;
+        if (name == KeyboardListViewModel.NoneConfig) return;
+        if (_configsData.Any(c => c.Name == name)) return;
+
+        _suppressCallbacks.Increment();
+        _slotData.SelectedConfig = name;
+        CreateConfigRequested?.Invoke(name, Keys);
+        // MenuConfig updated through CreateConfigRequested -> RefreshConfig
+        InputConfig = "";
+        Save();
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    [RelayCommand]
+    private void OnDeleteConfig()
+    {
+        if (_suppressCallbacks.IsSuppressed) return;
+
+        var name = _slotData.SelectedConfig;
+
+        if (name == KeyboardListViewModel.NoneConfig) return;
+
+        _suppressCallbacks.Increment();
+        _slotData.SelectedConfig = KeyboardListViewModel.NoneConfig;
+        DeleteConfigRequested?.Invoke(name);
+        // MenuConfig updated through DeleteConfigRequested -> RefreshConfig
+        Save();
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    private void OnBindingsUpdated(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressCallbacks.IsSuppressed) return;
+        if (e.PropertyName != nameof(KeyInfo.BoundAction)) return;
+        if (sender is not KeyInfo key) return;
+
+        _suppressCallbacks.Increment();
+        ConfigBindingsUpdated?.Invoke(_slotData.SelectedConfig, key);
+        // bindings updated through ConfigBindingsUpdated -> RefreshBindings
+        Save();
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    // refresh methods
+
+
+
+    public void RefreshConfig()
+    {
+        _suppressCallbacks.Increment();
+
+        if (AllConfigs.Contains(_slotData.SelectedConfig))
+        {
+            MenuConfig = _slotData.SelectedConfig;
+        }
+        else
+        {
+            _slotData.SelectedConfig = KeyboardListViewModel.NoneConfig;
+            MenuConfig = KeyboardListViewModel.NoneConfig;
+        }
+
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    public void RefreshDevice()
+    {
+        _suppressCallbacks.Increment();
+
+        if (AllDevices.Select(d => d.DevicePath).Contains(_slotData.SelectedDevice))
+        {
+            MenuDevice = AllDevices.First(d => d.DevicePath == _slotData.SelectedDevice);
+        }
+        else
+        {
+            _slotData.SelectedDevice = KeyboardListViewModel.NoneDevice.DevicePath;
+            MenuDevice = KeyboardListViewModel.NoneDevice;
+        }
+
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    public void RefreshBindings()
+    {
+        _suppressCallbacks.Increment();
+
+        var configData = _configsData.FirstOrDefault(c => c.Name == _slotData.SelectedConfig);
+        var bindings = configData?.KeyBindings ?? [];
+
+        foreach (var key in Keys)
+            key.BoundAction = bindings.TryGetValue(key.VK, out var typename)
+                ? ActionResolver.Resolve(typename) : null;
+
+        _suppressCallbacks.Decrement();
+    }
+
+
+
+    // key methods
+
+
+
+    private void OnKeyPressed(string devicePath, ushort vk)
+    {
+        if (devicePath != _slotData.SelectedDevice) return;
+        Dispatcher.UIThread.Post(() => SetKeyState(vk, true));
+    }
+
+
+
+    private void OnKeyReleased(string devicePath, ushort vk)
+    {
+        if (devicePath != _slotData.SelectedDevice) return;
+        Dispatcher.UIThread.Post(() => SetKeyState(vk, false));
+    }
+
+
+
+    private void SetKeyState(ushort vk, bool isDown)
+    {
+        if (!_keyMap.TryGetValue(vk, out var key)) return;
+
+        key.IsPressed = isDown;
+        if (isDown && key.BoundAction is not null)
+            _ = key.BoundAction.SafeExecuteAsync();
+    }
+
+
+
+    internal void OnKeySelected(KeyInfo key)
+    {
+        KeySelected?.Invoke(key);
+    }
+
+
+
+    // init methods
 
 
 
@@ -199,6 +408,7 @@ public partial class KeyboardViewModel : ViewModelBase
             if (!(_INCLUDE_UNUSEABLE || useable)) continue;
 
             var key = new KeyInfo(label, vk, x, y, w, h);
+            key.PropertyChanged += OnBindingsUpdated;
             Keys.Add(key);
             _keyMap.TryAdd(vk, key);
         }
@@ -206,108 +416,27 @@ public partial class KeyboardViewModel : ViewModelBase
 
 
 
-    private void RefreshDevices()
+    // persistance methods
+
+
+
+    private void Save()
     {
-        AvailableDevices.Clear();
-        AvailableDevices.Add(NoneDevice);
-        foreach (var d in InputManager.GetAvailableKeyboards())
-            AvailableDevices.Add(d);
+        SaveRequested?.Invoke();
     }
 
 
 
-    private void RefreshConfigNames()
+    // disposal methods
+
+
+
+    public void Dispose()
     {
-        ConfigNames.Clear();
-        foreach (var name in _settings.ConfigNames)
-            ConfigNames.Add(name);
+        _inputManager.KeyPressed  -= OnKeyPressed;
+        _inputManager.KeyReleased -= OnKeyReleased;
 
-        _suppressCallbacks = true;
-        SelectedConfigName = _settings.ActiveConfigName;
-        _suppressCallbacks = false;
-    }
-
-
-
-    private void SetKeyState(ushort vk, bool isDown)
-    {
-        if (_keyMap.TryGetValue(vk, out var key))
-            key.IsPressed = isDown;
-    }
-
-
-
-    private void ApplySavedDevice()
-    {
-        var savedId = _settings.Active.SelectedDeviceId;
-
-        KeyboardInfo match = NoneDevice;
-        if (savedId is not null)
-            foreach (var d in AvailableDevices)
-                if (d.DevicePath == savedId) { match = d; break; }
-
-        _suppressCallbacks = true;
-        SelectedDevice = match;
-        _suppressCallbacks = false;
-
-        _inputManager.SetDevice(match?.DevicePath);
-    }
-
-
-
-    // callbacks
-
-
-
-    partial void OnSelectedDeviceChanged(KeyboardInfo? value)
-    {
-        if (_suppressCallbacks) return;
-        if (value is null) return;
-
-        _inputManager.SetDevice(value.DevicePath);
-        _settings.Active.SelectedDeviceId = value.DevicePath;
-        _settings.Save();
-    }
-
-
-
-    partial void OnSelectedConfigNameChanged(string? value)
-    {
-        if (_suppressCallbacks) return;
-        if (value is null) return;
-        if (value == _settings.ActiveConfigName) return;
-
-        _settings.SwitchConfig(value);
-        ApplySavedDevice();
-    }
-
-
-
-    [RelayCommand]
-    private void CreateConfig()
-    {
-        var name = NewConfigName.Trim();
-        if (string.IsNullOrEmpty(name)) return;
-
-        if (_settings.CreateConfig(name, copyFromActive: true))
-        {
-            RefreshConfigNames();
-            SelectedConfigName = name;
-            NewConfigName = "";
-        }
-    }
-
-
-
-    [RelayCommand]
-    private void DeleteConfig()
-    {
-        Debug.WriteLine("test");
-
-        if (SelectedConfigName is null) return;
-        if (!_settings.DeleteConfig(SelectedConfigName)) return;
-
-        RefreshConfigNames();
-        SelectedConfigName = _settings.ActiveConfigName;
+        foreach (var key in Keys)
+            key.PropertyChanged -= OnBindingsUpdated;
     }
 }

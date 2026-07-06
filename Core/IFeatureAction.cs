@@ -9,5 +9,5 @@ public interface IFeatureAction
 {
     string Name        { get; }
     string Description { get; }
-    Task ExecuteAsync();
+    Task SafeExecuteAsync();
 }

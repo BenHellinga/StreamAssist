@@ -7,9 +7,9 @@ namespace StreamAssist.Features.Keyboard;
 
 
 
-public partial class KeyboardDisplay : UserControl
+public partial class KeyboardSlot : UserControl
 {
-    public KeyboardDisplay()
+    public KeyboardSlot()
     {
         Resources["UnitToPixelConverter"] = UnitToPixelConverter.Instance;
         InitializeComponent();
@@ -63,7 +63,7 @@ public partial class KeyboardDisplay : UserControl
             return;
         }
 
-        if (props.IsLeftButtonPressed && DataContext is KeyboardDisplayViewModel vm)
-            vm.NotifyKeySelected(key);
+        if (props.IsLeftButtonPressed && DataContext is KeyboardSlotViewModel vm)
+            vm.OnKeySelected(key);
     }
 }
