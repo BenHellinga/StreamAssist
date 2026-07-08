@@ -28,6 +28,8 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="action:IStreamAction">
 
+                        <!-- each action card -->
+
                         <Border Classes="ActionCard"
                                 Tag="{Binding}"
                                 PointerPressed="OnActionPointerPressed">
