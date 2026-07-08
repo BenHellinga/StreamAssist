@@ -8,10 +8,6 @@
 
     <DockPanel Margin="16">
 
-        <!-- ActionList width and ActionPanel height are resizable via    -->
-        <!-- GridSplitter — dragging updates the bound GridLength         -->
-        <!-- directly (two-way bound), so the resize sticks for the rest  -->
-        <!-- of the session, same as MainWindow's console splitter.       -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="240"/>
@@ -19,8 +15,6 @@
                 <ColumnDefinition Width="{Binding ActionListWidth, Mode=TwoWay}" MinWidth="200"/>
             </Grid.ColumnDefinitions>
 
-            <!-- KeyboardList (all keyboards + +/-) on top, ActionPanel    -->
-            <!-- below, resizable splitter between them.                  -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" MinHeight="160"/>

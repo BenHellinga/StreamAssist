@@ -5,35 +5,6 @@
              x:Class="StreamAssist.Components.Keyboard.KeyboardList"
              x:DataType="vm:KeyboardListViewModel">
 
-    <UserControl.Styles>
-        <Style Selector="Button.add-remove">
-            <Setter Property="Background" Value="#2a2a2a"/>
-            <Setter Property="Foreground" Value="#cccccc"/>
-            <Setter Property="BorderBrush" Value="#444444"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Width" Value="36"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="CornerRadius" Value="5"/>
-        </Style>
-        <Style Selector="Button.add-remove:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#3a3a3a"/>
-        </Style>
-        <Style Selector="Button.add-remove:disabled">
-            <Setter Property="Opacity" Value="0.4"/>
-        </Style>
-        <Style Selector="Border.divider">
-            <Setter Property="Height" Value="1"/>
-            <Setter Property="Background" Value="#333333"/>
-        </Style>
-    </UserControl.Styles>
-
-    <!-- ── All keyboard slots, stacked, each with a divider below it,   -->
-    <!-- followed by the +/- buttons — all inside one scrollable region -->
-    <!-- so the buttons scroll away with the last slot rather than      -->
-    <!-- floating on top of it.                                         -->
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="20" Margin="0,0,0,100">

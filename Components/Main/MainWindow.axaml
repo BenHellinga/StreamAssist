@@ -8,31 +8,11 @@
         Title="StreamAssist"
         Background="#0f0f0f">
 
-    <!--
-        Layout:
-          Column 0 — output console (full height, top to bottom)
-          Column 1 — splitter
-          Column 2 — tab strip (top) + active tab's content (below)
-
-        The console's initial width comes from MainWindowViewModel.ConsoleWidth,
-        which defaults from AppLog.ConsoleWidthRatio (see OutputConsoleViewModel.cs).
-        After that, drag the GridSplitter to resize — it updates ConsoleWidth
-        directly (two-way bound), so the resize sticks for the rest of the session.
-
-        To add a new tab:
-          1. Add an implicit DataTemplate below (DataType -> View), no x:Key —
-             that's what lets the ContentControl auto-pick the right view.
-          2. Add a Tabs.Add(new TabItemViewModel("Audio", AudioViewModel)) line
-             in MainWindowViewModel's constructor.
-    -->
 
     <Window.DataTemplates>
         <DataTemplate DataType="keyboard:KeyboardTabViewModel">
             <keyboard:KeyboardTab DataContext="{Binding}"/>
         </DataTemplate>
-        <!-- <DataTemplate DataType="audio:AudioViewModel">
-            <audio:AudioView DataContext="{Binding}"/>
-        </DataTemplate> -->
     </Window.DataTemplates>
 
     <Grid>
