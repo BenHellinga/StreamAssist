@@ -1,19 +1,27 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StreamAssist.Components.StreamAction"
              x:Class="StreamAssist.Components.StreamAction.ActionPanel"
-             x:DataType="vm:ActionPanelViewModel">
+             x:DataType="action:ActionPanelViewModel"
 
-    <Border Classes="card" Padding="12,10" VerticalAlignment="Stretch">
-        <Grid>
+             xmlns:action="using:StreamAssist.Components.StreamAction">
+
+    <!-- action panel -->
+
+    <Border VerticalAlignment="Stretch">
+        <Grid Margin="5">
+
+            <!-- action info/data -->
+
             <StackPanel Spacing="4" IsVisible="{Binding HasSelection}">
-                <TextBlock Classes="title large" Text="{Binding ActionName}"/>
-                <TextBlock Classes="description large" Text="{Binding ActionDescription}"/>
+                <TextBlock Classes="Label" Text="{Binding ActionName}"/>
+                <TextBlock Classes="Description" Text="{Binding ActionDescription}"/>
             </StackPanel>
 
-            <TextBlock Classes="placeholder"
+            <TextBlock Classes="Placeholder"
+                       VerticalAlignment="Top"
                        Text="Click a bound key to see its action here."
                        IsVisible="{Binding !HasSelection}"/>
+
         </Grid>
     </Border>
 

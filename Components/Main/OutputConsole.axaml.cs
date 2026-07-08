@@ -19,7 +19,7 @@ public partial class OutputConsole : UserControl
 
     private void OnLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        // Auto-scroll to the bottom whenever a new line comes in.
+        // auto scroll on new lines
         Dispatcher.UIThread.Post(() => LogScrollViewer.ScrollToEnd());
     }
 }

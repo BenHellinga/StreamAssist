@@ -19,8 +19,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     // keyboard constants
     private const double _KEY_SIZE = 55;
     private const double _KEY_MARGIN = 7;
-    public double CanvasWidth { get; init; } = _KEY_SIZE * 22 + _KEY_MARGIN * 24;
-    public double CanvasHeight { get; init; } = _KEY_SIZE * 6 + _KEY_MARGIN * 6;
+    public double CanvasWidth { get; init; } = _KEY_SIZE * 22 + _KEY_MARGIN * 23;
+    public double CanvasHeight { get; init; } = _KEY_SIZE * 6 + _KEY_MARGIN * 5;
 
     private const bool _INCLUDE_UNUSEABLE = true; // this might want to be a toggle button
 

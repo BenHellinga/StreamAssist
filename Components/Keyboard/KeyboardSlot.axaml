@@ -1,102 +1,131 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StreamAssist.Components.Keyboard"
              x:Class="StreamAssist.Components.Keyboard.KeyboardSlot"
-             x:DataType="vm:KeyboardSlotViewModel">
+             x:DataType="keyboard:KeyboardSlotViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard">
+
+    <!-- keyboard slot -->
 
     <StackPanel Spacing="10">
 
-        <StackPanel Orientation="Horizontal" Spacing="24">
+        <!-- menu -->
 
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="label" Text="Config"/>
+        <StackPanel Orientation="Horizontal" Spacing="20">
+
+            <!-- config related -->
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+
+                <TextBlock Classes="Label" Text="Config"/>
+
+                <!-- configs dropdown -->
+
                 <ComboBox ItemsSource="{Binding AllConfigs}"
-                          SelectedItem="{Binding MenuConfig}"
-                          MinWidth="140"/>
-                <Button Content="＋"
+                          SelectedItem="{Binding MenuConfig}"/>
+
+                <!-- add config button -->
+
+                <Button Classes="Square"
+                        Content="＋"
                         Command="{Binding CreateConfigCommand}"
                         ToolTip.Tip="Create a copy of the current config with the name below"/>
+
+                <!-- input config box -->
+
                 <TextBox Text="{Binding InputConfig}"
                          PlaceholderText="Config name…"
-                         Width="130"/>
-                <Button Content="－"
+                         Width="150"/>
+
+                <!-- delete config button -->
+
+                <Button Classes="Square"
+                        Content="－"
                         Command="{Binding DeleteConfigCommand}"
                         ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
+
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Spacing="8">
+            <!-- device related -->
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+
                 <TextBlock Classes="label" Text="Device"/>
+
+                <!-- device dropdown -->
+
                 <ComboBox ItemsSource="{Binding AllDevices}"
                           SelectedItem="{Binding MenuDevice}">
                     <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:KeyboardInfo">
-                            <TextBlock Text="{Binding DisplayLabel}" FontSize="11"/>
+                        <DataTemplate x:DataType="keyboard:KeyboardInfo">
+                            <TextBlock Text="{Binding DisplayLabel}"/>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
-            </StackPanel>
 
+            </StackPanel>
         </StackPanel>
 
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
+        <!-- keyboard -->
 
-            <Border x:Name="KeyboardContainer"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top">
+        <Viewbox Stretch="Uniform"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top">
+            <ItemsControl ItemsSource="{Binding Keys}"
+                        Width="{Binding CanvasWidth}"
+                        Height="{Binding CanvasHeight}">
 
-                <Viewbox Stretch="Uniform"
-                         HorizontalAlignment="Stretch"
-                         VerticalAlignment="Top">
+                <!-- canvas -->
 
-                    <Canvas Width="{Binding CanvasWidth}"
-                            Height="{Binding CanvasHeight}">
-                        <ItemsControl ItemsSource="{Binding Keys}"
-                                      Width="{Binding CanvasWidth}"
-                                      Height="{Binding CanvasHeight}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <Canvas/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemContainerTheme>
-                                <ControlTheme TargetType="ContentPresenter"
-                                              x:DataType="vm:KeyInfo">
-                                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                                    <Setter Property="Canvas.Top" Value="{Binding Y}"/>
-                                </ControlTheme>
-                            </ItemsControl.ItemContainerTheme>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:KeyInfo">
-                                    <Border Classes="key"
-                                            Classes.pressed="{Binding IsPressed}"
-                                            Classes.bound="{Binding HasBoundAction}"
-                                            Width="{Binding W}"
-                                            Height="{Binding H}"
-                                            DragDrop.AllowDrop="True"
-                                            DragDrop.DragOver="OnKeyDragOver"
-                                            DragDrop.DragLeave="OnKeyDragLeave"
-                                            DragDrop.Drop="OnKeyDrop"
-                                            PointerPressed="OnKeyPointerPressed">
-                                        <StackPanel VerticalAlignment="Center" Spacing="2">
-                                            <TextBlock Text="{Binding Label}"/>
-                                            <TextBlock Text="{Binding BoundActionName}"
-                                                       IsVisible="{Binding HasBoundAction}"
-                                                       FontSize="8"
-                                                       Foreground="{DynamicResource Success}"
-                                                       TextAlignment="Center"
-                                                       TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Canvas>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-                </Viewbox>
-            </Border>
-        </ScrollViewer>
+                <!-- position each key -->
+
+                <ItemsControl.ItemContainerTheme>
+                    <ControlTheme TargetType="ContentPresenter"
+                                x:DataType="keyboard:KeyInfo">
+                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                    </ControlTheme>
+                </ItemsControl.ItemContainerTheme>
+
+                <!-- per key management -->
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="keyboard:KeyInfo">
+                        <Border Classes="ActionBoundable"
+                                Classes.pressed="{Binding IsPressed}"
+                                Classes.bound="{Binding HasBoundAction}"
+                                Width="{Binding W}"
+                                Height="{Binding H}"
+                                DragDrop.AllowDrop="True"
+                                DragDrop.DragOver="OnKeyDragOver"
+                                DragDrop.DragLeave="OnKeyDragLeave"
+                                DragDrop.Drop="OnKeyDrop"
+                                PointerPressed="OnKeyPointerPressed">
+
+                            <!-- key labels -->
+
+                            <StackPanel VerticalAlignment="Center" Spacing="2" Margin="3">
+                                <TextBlock Text="{Binding Label}"/>
+                                <TextBlock Text="{Binding BoundActionName}"
+                                           IsVisible="{Binding HasBoundAction}"
+                                           FontSize="8"
+                                           Foreground="{DynamicResource BoundAction}"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"/>
+
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+
+            </ItemsControl>
+        </Viewbox>
 
     </StackPanel>
-
 </UserControl>

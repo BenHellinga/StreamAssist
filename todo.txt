@@ -1,8 +1,6 @@
-- simplify styling in all axaml
 - start with chatbot
 - start with obs integration
 - allow parameters in actions
-- simplify shell
-- ask about file placements for shell and core
 - obs overlay?
-- separate action distplay and list
+
+- redo keyboard tab to dispose view model when switching tabs without breaking keybind functionality

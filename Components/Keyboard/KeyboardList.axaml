@@ -1,44 +1,65 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StreamAssist.Components.Keyboard"
-             xmlns:local="using:StreamAssist.Components.Keyboard"
              x:Class="StreamAssist.Components.Keyboard.KeyboardList"
-             x:DataType="vm:KeyboardListViewModel">
+             x:DataType="keyboard:KeyboardListViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard">
+
+    <!-- keyboard list -->
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="20" Margin="0,0,0,100">
+                  VerticalScrollBarVisibility="Auto"
+                  AllowAutoHide="False"
+                  Margin="0,0,0,5">
 
+        <!-- stack of keyboard list and add/remove buttons -->
+
+        <StackPanel Spacing="10" Margin="0,5,5,200">
             <ItemsControl ItemsSource="{Binding Slots}">
+
+                <!-- stack of keyboard/divider pairs -->
+
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Spacing="20"/>
+                        <StackPanel Spacing="10"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
+
+                <!-- stack of one keyboard/divider pair -->
+
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:KeyboardSlotViewModel">
-                        <StackPanel Spacing="20">
-                            <local:KeyboardSlot DataContext="{Binding}"/>
-                            <Border Classes="divider"/>
+                    <DataTemplate x:DataType="keyboard:KeyboardSlotViewModel">
+                        <StackPanel Spacing="10">
+
+                            <!-- keyboard slot -->
+
+                            <keyboard:KeyboardSlot DataContext="{Binding}" Margin="5,0"/>
+
+                            <Border Classes="Divider"/>
+
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
+
             </ItemsControl>
+
+            <!-- horizontal stack of add/remove buttons -->
 
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         Spacing="10">
-                <Button Classes="add-remove"
+
+                <Button Classes="Square" Height="40" FontSize="20"
                         Content="+"
                         Command="{Binding AddKeyboardCommand}"
                         ToolTip.Tip="Add another keyboard"/>
-                <Button Classes="add-remove"
+
+                <Button Classes="Square" Height="40" FontSize="20"
                         Content="－"
                         Command="{Binding RemoveKeyboardCommand}"
                         ToolTip.Tip="Remove the last keyboard"/>
+                        
             </StackPanel>
-
         </StackPanel>
     </ScrollViewer>
-
 </UserControl>

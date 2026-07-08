@@ -11,7 +11,7 @@ public partial class KeyboardSlot : UserControl
 {
     public KeyboardSlot()
     {
-        Resources["UnitToPixelConverter"] = UnitToPixelConverter.Instance;
+        // Resources["UnitToPixelConverter"] = UnitToPixelConverter.Instance;
         InitializeComponent();
     }
 

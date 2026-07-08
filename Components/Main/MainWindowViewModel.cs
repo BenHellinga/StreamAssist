@@ -50,13 +50,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private TabItemViewModel? _selectedTab;
 
-    // ── Layout ──────────────────────────────────────────────────────────
-    // Initial console width comes from AppLog.ConsoleWidthRatio (tune it
-    // there). After that, the GridSplitter in MainWindow.axaml drives this
-    // directly as the user drags — it's a normal settable property, not a
-    // fixed ratio, so the resize sticks for the rest of the session.
-    [ObservableProperty]
-    private GridLength _consoleWidth = new(AppLog.ConsoleWidthRatio, GridUnitType.Star);
+
 
     public MainWindowViewModel()
     {
@@ -69,6 +63,7 @@ public partial class MainWindowViewModel : ViewModelBase
         KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardInputManager, KeyboardSettings);
 
         Tabs.Add(new TabItemViewModel("Keyboard", KeyboardTabViewModel));
+        Tabs.Add(new TabItemViewModel("test", OutputConsoleViewModel));
         // Tabs.Add(new TabItemViewModel("Audio", AudioViewModel));
         // Tabs.Add(new TabItemViewModel("OBS", ObsViewModel));
         // Tabs.Add(new TabItemViewModel("Chatbot", ChatbotViewModel));

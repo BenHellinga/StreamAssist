@@ -1,30 +1,44 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:action="using:StreamAssist.Components.StreamAction"
              x:Class="StreamAssist.Components.StreamAction.ActionList"
-             x:DataType="action:ActionListViewModel">
+             x:DataType="action:ActionListViewModel"
+
+             xmlns:action="using:StreamAssist.Components.StreamAction">
+
+    <!-- action list -->
 
     <DockPanel>
 
         <TextBlock DockPanel.Dock="Top"
-                   Classes="header"
+                   Classes="Label"
                    Text="Actions"
-                   Margin="0,0,0,8"/>
+                   Margin="0,0,0,5"/>
+
+        <!-- list of actions -->
 
         <ScrollViewer>
             <ItemsControl ItemsSource="{Binding Actions}">
+
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="5"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="action:IStreamAction">
-                        <Border Classes="action-card"
+
+                        <Border Classes="ActionCard"
                                 Tag="{Binding}"
                                 PointerPressed="OnActionPointerPressed">
                             <StackPanel Spacing="2">
-                                <TextBlock Classes="title small" Text="{Binding Name}"/>
-                                <TextBlock Classes="description small"
+                                <TextBlock Classes="Label" Text="{Binding Name}"/>
+                                <TextBlock Classes="Description"
                                            Text="{Binding Description}"
                                            MaxLines="2"/>
                             </StackPanel>
                         </Border>
+
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
