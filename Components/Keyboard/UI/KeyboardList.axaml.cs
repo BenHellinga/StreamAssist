@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace StreamAssist.Components.Keyboard;
+namespace StreamAssist.Components.Keyboard.UI;
 
 
 

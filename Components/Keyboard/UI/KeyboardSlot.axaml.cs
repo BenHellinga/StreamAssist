@@ -3,7 +3,7 @@ using Avalonia.Input;
 using StreamAssist.Components.StreamAction;
 using System.Linq;
 
-namespace StreamAssist.Components.Keyboard;
+namespace StreamAssist.Components.Keyboard.UI;
 
 
 

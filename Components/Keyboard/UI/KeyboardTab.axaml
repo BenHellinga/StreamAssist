@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="StreamAssist.Components.Keyboard.KeyboardTab"
+             x:Class="StreamAssist.Components.Keyboard.UI.KeyboardTab"
              x:DataType="keyboard:KeyboardTabViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Keyboard"
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
              xmlns:action="using:StreamAssist.Components.StreamAction">
 
     <!-- keyboard tab -->

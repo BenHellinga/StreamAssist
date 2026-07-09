@@ -4,7 +4,7 @@
         x:DataType="main:MainWindowViewModel"
 
         xmlns:main="using:StreamAssist.Components.Main"
-        xmlns:keyboard="using:StreamAssist.Components.Keyboard"
+        xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
 
         Title="StreamAssist"
         Background="{DynamicResource MainBackground}">

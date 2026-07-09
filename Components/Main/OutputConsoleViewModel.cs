@@ -8,10 +8,6 @@ namespace StreamAssist.Components.Main;
 
 public partial class OutputConsoleViewModel : ViewModelBase
 {
-    public ObservableCollection<string> Lines => AppLog.Lines;
-
-
-
-    [RelayCommand]
-    private void Clear() => AppLog.Clear();
+    public static ObservableCollection<string> Lines => AppLog.Lines;
+    [RelayCommand] private static void Clear() => AppLog.Clear();
 }

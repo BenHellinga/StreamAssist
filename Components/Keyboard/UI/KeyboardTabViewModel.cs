@@ -2,8 +2,10 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.StreamAction;
+using StreamAssist.Components.Keyboard.Background;
+using StreamAssist.Components.Keyboard.Model;
 
-namespace StreamAssist.Components.Keyboard;
+namespace StreamAssist.Components.Keyboard.UI;
 
 
 
@@ -22,7 +24,7 @@ public partial class KeyboardTabViewModel : ViewModelBase
 
 
 
-    public KeyboardTabViewModel(InputManager inputManager, KeyboardListData settings)
+    public KeyboardTabViewModel(KeyboardInputManager inputManager, KeyboardListModel settings)
     {
         KeyboardList = new KeyboardListViewModel(inputManager, settings, ActionPanel);
     }

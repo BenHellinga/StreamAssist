@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.StreamAction;
 
-namespace StreamAssist.Components.Keyboard;
+namespace StreamAssist.Components.Keyboard.UI;
 
 
 

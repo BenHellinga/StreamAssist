@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="StreamAssist.Components.Keyboard.KeyboardSlot"
+             x:Class="StreamAssist.Components.Keyboard.UI.KeyboardSlot"
              x:DataType="keyboard:KeyboardSlotViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Keyboard">
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
 
     <!-- keyboard slot -->
 

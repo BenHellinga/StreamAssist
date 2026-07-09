@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Linearstar.Windows.RawInput;
 using Linearstar.Windows.RawInput.Native;
+using StreamAssist.Components.Keyboard.UI;
 
-namespace StreamAssist.Components.Keyboard;
+namespace StreamAssist.Components.Keyboard.Background;
 
 
 
-public class InputManager : IDisposable
+public class KeyboardInputManager : IDisposable
 {
     private bool _disposed;
 
@@ -62,6 +63,7 @@ public class InputManager : IDisposable
         {
             if (device?.DevicePath is null) continue;
             if (device.DeviceType != RawInputDeviceType.Keyboard) continue;
+            if (device.DevicePath.Contains("&Col")) continue;
             if (!seen.Add((device.VendorId, device.ProductId))) continue;
             
             results.Add(new KeyboardInfo(
@@ -102,6 +104,10 @@ public class InputManager : IDisposable
 
 
 
+    // disposal
+
+
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -110,26 +116,4 @@ public class InputManager : IDisposable
         if (_hwnd != IntPtr.Zero && _originalWndProc != IntPtr.Zero)
             Win32.SetWindowLongPtr(_hwnd, Win32.GWLP_WNDPROC, _originalWndProc);
     }
-}
-
-
-
-internal static class Win32
-{
-    public const int GWLP_WNDPROC = -4;
-
-
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate IntPtr WNDPROC(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
-
-
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
-    public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
-
-
-
-    [DllImport("user32.dll")]
-    public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 }
