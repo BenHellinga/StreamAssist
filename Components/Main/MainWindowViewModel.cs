@@ -58,6 +58,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // load managers
         KeyboardInputManager = new();
+        KeyboardListModel.SetDevices(KeyboardInputManager.Devices);
+
         KeyboardListManager = new(KeyboardInputManager, KeyboardListModel);
 
 
@@ -70,7 +72,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         SelectedTab = Tabs[0];
 
-        AppLog.WriteLine("StreamAssist started.");
+        AppLog.WriteLine("StreamAssist started");
     }
 
     public void Dispose()

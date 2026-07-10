@@ -51,12 +51,12 @@
 
                 <Button Classes="Square" Height="40" FontSize="20"
                         Content="+"
-                        Command="{Binding AddKeyboardCommand}"
+                        Command="{Binding AddSlotRequestedCommand}"
                         ToolTip.Tip="Add another keyboard"/>
 
                 <Button Classes="Square" Height="40" FontSize="20"
                         Content="－"
-                        Command="{Binding RemoveKeyboardCommand}"
+                        Command="{Binding RemoveSlotRequestedCommand}"
                         ToolTip.Tip="Remove the last keyboard"/>
                         
             </StackPanel>

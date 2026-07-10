@@ -1,8 +1,8 @@
-namespace StreamAssist.Components.Keyboard.UI;
+namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeyboardInfo(string DevicePath, string ProductName, string ManufacturerName, int ProductId, int VendorId)
+public class KeyboardDeviceModel(string DevicePath, string ProductName, string ManufacturerName, int ProductId, int VendorId)
 {
     public string DevicePath { get; init; } = DevicePath;
     public string ProductName { get; init; } = ProductName;
@@ -14,10 +14,8 @@ public class KeyboardInfo(string DevicePath, string ProductName, string Manufact
     {
         get
         {
-            if (ProductName == "None") return "None";
-
             string productName = string.IsNullOrWhiteSpace(ProductName) ? "Unknown" : ProductName;
-            string manufacturerName = string.IsNullOrWhiteSpace(ManufacturerName) ? "" : ManufacturerName;
+            string manufacturerName = string.IsNullOrWhiteSpace(ManufacturerName) ? "Unknown" : ManufacturerName;
             return $"{productName} - {manufacturerName} - {VendorId:X4}:{ProductId:X4}";
         }
     }

@@ -4,3 +4,11 @@
 - obs overlay?
 
 - redo keyboard tab to dispose view model when switching tabs without breaking keybind functionality
+
+
+
+
+
+TEST
+normal functionality
+keyboards defaulting when not found on boot up

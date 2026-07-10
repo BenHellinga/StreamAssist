@@ -38,7 +38,7 @@ public partial class KeyboardSlot : UserControl
 
     private void OnKeyDrop(object? sender, DragEventArgs e)
     {
-        if (sender is not Border { DataContext: KeyInfo key } border) return;
+        if (sender is not Border { DataContext: DisplayKey key } border) return;
 
         border.Classes.Set("dragover", false);
 
@@ -50,7 +50,7 @@ public partial class KeyboardSlot : UserControl
 
     private void OnKeyPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Border { DataContext: KeyInfo key } border) return;
+        if (sender is not Border { DataContext: DisplayKey key } border) return;
 
         var props = e.GetCurrentPoint(border).Properties;
 

@@ -1,0 +1,58 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using StreamAssist.Components.Main;
+
+namespace StreamAssist.Components.StreamAction;
+
+public static class ActionResolver
+{
+    private static readonly Dictionary<string, Type> _typeMap = BuildTypeMap();
+    private static readonly Dictionary<Type, string> _nameMap =
+        _typeMap.ToDictionary(kv => kv.Value, kv => kv.Key);
+
+    private static Dictionary<string, Type> BuildTypeMap() =>
+        AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(SafeGetTypes)
+            .Where(t => typeof(IStreamAction).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
+            .ToDictionary(t => t.Name, t => t);
+
+    // some assemblies throw when you ask for every type (e.g. missing optional deps) — skip those, don't crash startup
+    private static IEnumerable<Type> SafeGetTypes(Assembly a)
+    {
+        try { return a.GetTypes(); }
+        catch (ReflectionTypeLoadException e) { return e.Types.Where(t => t is not null)!; }
+    }
+
+    public static IStreamAction? Resolve(ActionBindingData data)
+    {
+        if (!_typeMap.TryGetValue(data.TypeName, out var type))
+        {
+            AppLog.WriteWarning($"Unknown action type '{data.TypeName}' - binding skipped");
+            return null;
+        }
+
+        try
+        {
+            return (IStreamAction?)data.Parameters.Deserialize(type);
+        }
+        catch (Exception ex)
+        {
+            AppLog.WriteError($"Failed to load action '{data.TypeName}': {ex.Message}");
+            return null;
+        }
+    }
+
+    public static ActionBindingData GetKey(IStreamAction action)
+    {
+        var type = action.GetType();
+        var typeName = _nameMap.TryGetValue(type, out var name) ? name : type.Name;
+        return new ActionBindingData
+        {
+            TypeName = typeName,
+            Parameters = JsonSerializer.SerializeToElement(action, type)
+        };
+    }
+}

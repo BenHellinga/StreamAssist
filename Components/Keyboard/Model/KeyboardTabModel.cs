@@ -7,7 +7,7 @@ namespace StreamAssist.Components.Keyboard.Model;
 public class KeyboardTabModel
 {
     [JsonPropertyName("keyboardList")]
-    public KeyboardListModel keyboardList { get; set; } = new();
+    public KeyboardListModel KeyboardList { get; set; } = new();
 
     [JsonPropertyName("actionListWidth")]
     public int actionListWidth = 100; // dont do anything yet

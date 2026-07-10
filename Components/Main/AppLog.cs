@@ -29,5 +29,19 @@ public static class AppLog
 
 
 
+    public static void WriteError(string message)
+    {
+        WriteLine($"Error: {message}");
+    }
+
+
+
+    public static void WriteWarning(string message)
+    {
+        WriteLine($"Warning: {message}");
+    }
+
+
+
     public static void Clear() => Dispatcher.UIThread.Post(Lines.Clear);
 }

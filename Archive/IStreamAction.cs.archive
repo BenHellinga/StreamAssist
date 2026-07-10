@@ -1,0 +1,10 @@
+using System.Threading.Tasks;
+
+namespace StreamAssist.Components.StreamAction;
+
+public interface IStreamAction
+{
+    string Name { get; }
+    string Description { get; set; }
+    Task SafeExecuteAsync();
+}

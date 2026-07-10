@@ -14,7 +14,7 @@ public partial class ActionPanelViewModel : ViewModelBase
 
 
 
-    public void ShowKey(KeyInfo? key)
+    public void ShowKey(DisplayKey? key)
     {
         if (key?.BoundAction is { } action)
         {

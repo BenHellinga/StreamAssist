@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Linearstar.Windows.RawInput;
 using Linearstar.Windows.RawInput.Native;
-using StreamAssist.Components.Keyboard.UI;
+using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
@@ -11,6 +11,9 @@ namespace StreamAssist.Components.Keyboard.Background;
 
 public class KeyboardInputManager : IDisposable
 {
+    // TODO GetAvailableKeyboards should probably be private, then setup callbacks for plugging/unplugging keyboards to update this reference
+    public static readonly List<KeyboardDeviceModel> Devices = GetAvailableKeyboards();
+
     private bool _disposed;
 
     private Win32.WNDPROC? _wndProcDelegate;
@@ -54,9 +57,9 @@ public class KeyboardInputManager : IDisposable
 
 
 
-    public static IReadOnlyList<KeyboardInfo> GetAvailableKeyboards()
+    public static List<KeyboardDeviceModel> GetAvailableKeyboards()
     {
-        var results = new List<KeyboardInfo>();
+        var results = new List<KeyboardDeviceModel>();
         var seen = new HashSet<(int, int)>();
 
         foreach (RawInputDevice? device in RawInputDevice.GetDevices())
@@ -66,7 +69,7 @@ public class KeyboardInputManager : IDisposable
             if (device.DevicePath.Contains("&Col")) continue;
             if (!seen.Add((device.VendorId, device.ProductId))) continue;
             
-            results.Add(new KeyboardInfo(
+            results.Add(new KeyboardDeviceModel(
                 DevicePath: device.DevicePath,
                 ManufacturerName: device.ManufacturerName ?? "Unknown",
                 ProductName: device.ProductName ?? "Unknown",

@@ -2,23 +2,27 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
+using StreamAssist.Components.Main;
 using StreamAssist.Components.StreamAction;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-// TODO it should make a slot if there are zero slots (constructor? something else?)
-public class KeyboardListModel
+public class KeyboardListModel : IJsonOnDeserialized
 {
-    public const string NoneDevice = "None";
     public const string NoneConfig = "None";
+    public const string NoneDevice = "None";
 
     [JsonPropertyName("configs")]
-    public List<KeyboardConfigModel> Configs { get; set; } = [];
+    public List<KeyboardConfigModel> Configs { get; set; }
 
     [JsonPropertyName("slots")]
-    public List<KeyboardSlotModel> Slots { get; set; } = [];
+    public List<KeyboardSlotModel> Slots { get; set; }
+
+    [JsonIgnore]
+    public IReadOnlyList<KeyboardDeviceModel> Devices { get; set; }
 
 
 
@@ -29,7 +33,45 @@ public class KeyboardListModel
     public event Action<KeyboardSlotModel>? SlotAdded;
     public event Action<KeyboardSlotModel>? SlotRemoved;
     public event Action? ConfigListUpdated;
-    public event Action<string>? ConfigBindingsChanged;
+    public event Action? DeviceListUpdated;
+    public event Action<string>? ConfigBindingChanged;
+
+
+
+    // constructor
+
+
+
+    public KeyboardListModel()
+    {
+        Configs = [];
+        Slots = [];
+        Devices = [];
+    }
+
+
+
+    // deserialized callback
+
+
+
+    void IJsonOnDeserialized.OnDeserialized()
+    {
+        foreach (var slot in Slots)
+            slot.AttachOwner(this);
+    }
+
+
+
+    // devices list
+
+
+
+    public void SetDevices(IReadOnlyList<KeyboardDeviceModel> devices)
+    {
+        Devices = devices;
+        DeviceListUpdated?.Invoke();
+    }
 
 
 
@@ -39,20 +81,25 @@ public class KeyboardListModel
 
     public void AddSlot()
     {
-        var slot = new KeyboardSlotModel();
+        var slot = new KeyboardSlotModel(this);
         Slots.Add(slot);
         SlotAdded?.Invoke(slot);
     }
 
 
 
-    public bool RemoveLastSlot()
+    public bool TryRemoveLastSlot()
     {
-        if (Slots.Count <= 1) return false;
+        if (Slots.Count <= 0)
+        {
+            AppLog.WriteError("Could not remove keyboard slot - there are no keyboard slots.");
+            return false;
+        }
 
         var slot = Slots[^1];
         Slots.RemoveAt(Slots.Count - 1);
         SlotRemoved?.Invoke(slot);
+
         return true;
     }
 
@@ -62,56 +109,106 @@ public class KeyboardListModel
 
 
 
-    public KeyboardConfigModel? CreateConfig(string name, Dictionary<ushort, string>? bindings = null)
+    public KeyboardConfigModel? TryCreateConfigByString(string name, Dictionary<ushort, string>? bindings = null)
     {
         var trimmed = name.Trim();
         
-        if (string.IsNullOrWhiteSpace(trimmed)) return null;
-        if (trimmed == NoneConfig) return null;
-        if (Configs.Any(c => c.Name == trimmed)) return null;
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            AppLog.WriteError("Could not create config - name cannot be empty");
+            return null;    
+        }
 
-        var config = new KeyboardConfigModel { Name = trimmed, KeyBindings = bindings ?? [] };
-        Configs.Add(config);
+        if (trimmed == NoneConfig)
+        {
+            AppLog.WriteError($"Could not create config - name cannot be '{NoneConfig}'");
+            return null;
+        }
 
-        ConfigListUpdated?.Invoke();
+        if (Configs.Any(c => c.Name == trimmed))
+        {
+            AppLog.WriteError("Could not create config - name already in use");
+            return null;
+        }
+
+        var config = new KeyboardConfigModel(trimmed, bindings);
+
+        CreateConfig(config);
         return config;
     }
 
 
 
-    public bool DeleteConfig(string name)
+    public void CreateConfig(KeyboardConfigModel config)
     {
-        var config = Configs.FirstOrDefault(c => c.Name == name);
-        if (config is null) return false;
-
-        Configs.Remove(config);
-
-        foreach (var slot in Slots)
-            if (slot.SelectedConfig == name)
-                slot.SetConfig(NoneConfig);
-
+        Configs.Add(config);
         ConfigListUpdated?.Invoke();
+    }
+
+
+
+    public bool TryDeleteConfig(KeyboardConfigModel config)
+    {
+        if (!Configs.Contains(config))
+        {
+            AppLog.WriteError("Could not delete config - config does not exist");
+            return false;
+        }
+
+        DeleteConfig(config);
         return true;
     }
 
 
 
-    public void SetConfigBinding(string configName, ushort vk, string? actionTypeName)
+    public bool TryDeleteConfigByString(string configString)
     {
-        var config = Configs.FirstOrDefault(c => c.Name == configName);
-        if (config is null) return;
+        var config = Configs.FirstOrDefault(c => c.Name == configString);
+        if (config is null)
+        {
+            AppLog.WriteError("Could not delete config - config does not exist");
+            return false;
+        }
 
-        if (actionTypeName is null)
-            config.KeyBindings.Remove(vk);
-        else
-            config.KeyBindings[vk] = actionTypeName;
-
-        ConfigBindingsChanged?.Invoke(configName);
+        DeleteConfig(config);
+        return true;
     }
 
 
 
-    // helper
+    public void DeleteConfig(KeyboardConfigModel config)
+    {
+        foreach (var slot in Slots)
+            if (slot.SelectedConfig == config)
+                slot.SetSelectedConfig(null);
+
+        Configs.Remove(config);
+        ConfigListUpdated?.Invoke();
+    }
+
+
+
+    // TODO MOVE THESE TO KeyboardConfigModel
+
+
+
+
+    public bool ChangeConfigBinding(string configName, ushort vk, string? actionTypeName)
+    {
+        var config = Configs.FirstOrDefault(c => c.Name == configName);
+        if (config is null)
+        {
+            AppLog.WriteError("Could not change config binding - config does not exist");
+            return false;
+        }
+
+        if (actionTypeName is null) config.Keybindings.Remove(vk);
+        else config.Keybindings[vk] = actionTypeName;
+
+        ConfigBindingChanged?.Invoke(configName);
+
+        return true;
+    }
 
 
 
@@ -121,7 +218,7 @@ public class KeyboardListModel
         var config = Configs.FirstOrDefault(c => c.Name == configName);
         if (config is null) return result;
 
-        foreach (var (vk, typeName) in config.KeyBindings)
+        foreach (var (vk, typeName) in config.Keybindings)
         {
             var action = ActionResolver.Resolve(typeName);
             if (action is not null)

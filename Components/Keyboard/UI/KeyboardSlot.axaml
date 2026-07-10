@@ -21,14 +21,20 @@
 
                 <!-- configs dropdown -->
 
-                <ComboBox ItemsSource="{Binding AllConfigs}"
-                          SelectedItem="{Binding MenuConfig}"/>
+                <ComboBox ItemsSource="{Binding ConfigMenuItems}"
+                          SelectedItem="{Binding MenuConfig}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="keyboard:ConfigMenuItem">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
                 <!-- add config button -->
 
                 <Button Classes="Square"
                         Content="＋"
-                        Command="{Binding CreateConfigCommand}"
+                        Command="{Binding CreateConfigRequestedCommand}"
                         ToolTip.Tip="Create a copy of the current config with the name below"/>
 
                 <!-- input config box -->
@@ -41,7 +47,7 @@
 
                 <Button Classes="Square"
                         Content="－"
-                        Command="{Binding DeleteConfigCommand}"
+                        Command="{Binding DeleteConfigRequestedCommand}"
                         ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
 
             </StackPanel>
@@ -54,11 +60,11 @@
 
                 <!-- device dropdown -->
 
-                <ComboBox ItemsSource="{Binding AllDevices}"
+                <ComboBox ItemsSource="{Binding DeviceMenuItems}"
                           SelectedItem="{Binding MenuDevice}">
                     <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="keyboard:KeyboardInfo">
-                            <TextBlock Text="{Binding DisplayLabel}"/>
+                        <DataTemplate x:DataType="keyboard:DeviceMenuItem">
+                            <TextBlock Text="{Binding Label}"/>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
@@ -87,7 +93,7 @@
 
                 <ItemsControl.ItemContainerTheme>
                     <ControlTheme TargetType="ContentPresenter"
-                                x:DataType="keyboard:KeyInfo">
+                                x:DataType="keyboard:DisplayKey">
                         <Setter Property="Canvas.Left" Value="{Binding X}"/>
                         <Setter Property="Canvas.Top" Value="{Binding Y}"/>
                     </ControlTheme>
@@ -96,7 +102,7 @@
                 <!-- per key management -->
 
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="keyboard:KeyInfo">
+                    <DataTemplate x:DataType="keyboard:DisplayKey">
                         <Border Classes="ActionBoundable"
                                 Classes.pressed="{Binding IsPressed}"
                                 Classes.bound="{Binding HasBoundAction}"
