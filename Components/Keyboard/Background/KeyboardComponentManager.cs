@@ -1,8 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using Linearstar.Windows.RawInput;
-using Linearstar.Windows.RawInput.Native;
 using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;

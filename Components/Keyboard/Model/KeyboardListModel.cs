@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
 using StreamAssist.Components.Main;
 using StreamAssist.Components.StreamAction;
 

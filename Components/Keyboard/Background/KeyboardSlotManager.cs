@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using StreamAssist.Components.StreamAction;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
