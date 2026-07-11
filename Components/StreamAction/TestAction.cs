@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.Main;
 
 namespace StreamAssist.Components.StreamAction;
@@ -30,4 +31,22 @@ public class PrintRandomNumberAction : IStreamAction
     public string Name        => "Print Random Number";
     public string Description => "Prints a random number between 1 and 100 to the console.";
     public Task SafeExecuteAsync() { AppLog.WriteLine($"Random: {_rng.Next(1, 101)}"); return Task.CompletedTask; }
+}
+
+
+
+public class ChangeConfigAction : IStreamAction
+{
+    public static KeyboardComponentModel? Model;
+    public string Name        => "Change Config";
+    public string Description => "";
+    public Task SafeExecuteAsync()
+    {
+        if (Model == null) return Task.CompletedTask;
+        if (Model.KeyboardList.Slots.Count == 0) return Task.CompletedTask;
+
+        Model.KeyboardList.Slots[0].TrySetSelectedConfigByString("Changed");
+
+        return Task.CompletedTask;
+    }
 }

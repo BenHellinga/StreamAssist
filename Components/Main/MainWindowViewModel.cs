@@ -6,6 +6,7 @@ using StreamAssist.Components.Core;
 using StreamAssist.Components.Config;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.StreamAction;
 
 namespace StreamAssist.Components.Main;
 
@@ -63,6 +64,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         KeyboardComponentManager = new(KeyboardComponentModel);
 
+
+
+        ChangeConfigAction.Model = KeyboardComponentModel;
 
 
         // load viewmodels
