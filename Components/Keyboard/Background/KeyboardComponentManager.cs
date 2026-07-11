@@ -10,7 +10,7 @@ public class KeyboardComponentManager : IDisposable
     private KeyboardComponentModel _model;
 
     private KeyboardSaveManager _saveManager;
-    public KeyboardInputManager InputManager { get; }
+    private KeyboardInputManager _inputManager;
     private KeyboardListManager _listManager;
 
 
@@ -24,12 +24,29 @@ public class KeyboardComponentManager : IDisposable
         _model = model;
 
         _saveManager = new(_model);
-        InputManager = new();
+        _inputManager = new();
         _model.KeyboardList.AttachDevices(KeyboardInputManager.Devices);
-        _listManager = new(_model.KeyboardList, InputManager);
+        _listManager = new(_model.KeyboardList, _inputManager);
 
         _saveManager.Save();
     }
+
+
+
+    // init
+
+
+
+    public void InitHwnd(IntPtr hwnd) => _inputManager.Initialize(hwnd);
+
+
+
+    // getters
+
+
+
+    public KeyboardInputManager GetInputManager() => _inputManager;
+
 
 
     // disposal
@@ -39,7 +56,7 @@ public class KeyboardComponentManager : IDisposable
     public void Dispose()
     {
         _saveManager.Dispose();
-        InputManager.Dispose();
+        _inputManager.Dispose();
         _listManager.Dispose();
     }
 }

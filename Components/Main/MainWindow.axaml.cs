@@ -21,7 +21,7 @@ public partial class MainWindow : Window
 
         // init keyboard hook from window handle
         nint hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        if (hwnd != IntPtr.Zero) ((MainWindowViewModel)DataContext!).KeyboardComponentManager.InputManager.Initialize(hwnd);
+        if (hwnd != IntPtr.Zero) ((MainWindowViewModel)DataContext!).KeyboardComponentManager.InitHwnd(hwnd);
     }
 
 

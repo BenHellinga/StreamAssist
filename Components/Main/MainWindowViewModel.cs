@@ -66,7 +66,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
         // load viewmodels
-        KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardComponentManager.InputManager, KeyboardComponentModel);
+        KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardComponentManager.GetInputManager(), KeyboardComponentModel);
 
         Tabs.Add(new TabItemViewModel("Keyboard", KeyboardTabViewModel));
         Tabs.Add(new TabItemViewModel("test", OutputConsoleViewModel));
