@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using StreamAssist.Components.Main;
 using StreamAssist.Components.StreamAction;
 using System.Linq;
 
@@ -41,6 +42,12 @@ public partial class KeyboardSlot : UserControl
         if (sender is not Border { DataContext: DisplayKey key } border) return;
 
         border.Classes.Set("dragover", false);
+
+        if (DataContext is not KeyboardSlotViewModel vm || vm.SlotModel.SelectedConfig is null)
+        {
+            AppLog.WriteError("Could not assign keybind - no config selected");
+            return;
+        }
 
         if (e.DataTransfer.TryGetValue(ActionList.ActionDragFormat) is { } action)
             key.BoundAction = action;

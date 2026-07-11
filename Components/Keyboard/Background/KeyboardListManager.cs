@@ -18,7 +18,7 @@ public class KeyboardListManager : IDisposable
 
 
 
-    public KeyboardListManager(KeyboardInputManager inputManager, KeyboardListModel listModel)
+    public KeyboardListManager(KeyboardListModel listModel, KeyboardInputManager inputManager)
     {
         _inputManager = inputManager;
         _listModel = listModel;

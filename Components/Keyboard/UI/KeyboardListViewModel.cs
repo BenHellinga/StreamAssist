@@ -104,7 +104,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         DeviceMenuItems.Clear();
         DeviceMenuItems.Add(new(KeyboardListModel.NoneDevice, null));
-        foreach (var device in _listModel.Devices)
+        foreach (var device in _listModel.Devices ?? [])
             DeviceMenuItems.Add(new(device.DisplayLabel, device));
     }
 

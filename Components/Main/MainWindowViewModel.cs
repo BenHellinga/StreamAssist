@@ -17,17 +17,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
 
-    public KeyboardListModel KeyboardListModel { get; }
+    public KeyboardComponentModel KeyboardComponentModel { get; }
 
 
 
-    // background
+    // managers
 
 
 
-    // keyboard
-    public KeyboardInputManager KeyboardInputManager { get; }
-    public KeyboardListManager KeyboardListManager { get; }
+    public KeyboardComponentManager KeyboardComponentManager { get; }
 
 
 
@@ -51,21 +49,24 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        // load models
-        KeyboardListModel = JsonFileStore.Load<KeyboardListModel>("keyboard");
+        // init models
 
 
 
-        // load managers
-        KeyboardInputManager = new();
-        KeyboardListModel.SetDevices(KeyboardInputManager.Devices);
+        KeyboardComponentModel = JsonFileStore.Load<KeyboardComponentModel>("keyboard");
 
-        KeyboardListManager = new(KeyboardInputManager, KeyboardListModel);
+
+
+        // init managers
+
+
+
+        KeyboardComponentManager = new(KeyboardComponentModel);
 
 
 
         // load viewmodels
-        KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardInputManager, KeyboardListModel);
+        KeyboardTabViewModel = new KeyboardTabViewModel(KeyboardComponentManager.InputManager, KeyboardComponentModel);
 
         Tabs.Add(new TabItemViewModel("Keyboard", KeyboardTabViewModel));
         Tabs.Add(new TabItemViewModel("test", OutputConsoleViewModel));
@@ -77,8 +78,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void Dispose()
     {
-        KeyboardInputManager.Dispose();
-        // TODO add more disposes
+        KeyboardComponentManager.Dispose();
     }
 }
 

@@ -24,8 +24,8 @@ public partial class KeyboardTabViewModel : ViewModelBase
 
 
 
-    public KeyboardTabViewModel(KeyboardInputManager inputManager, KeyboardListModel settings)
+    public KeyboardTabViewModel(KeyboardInputManager inputManager, KeyboardComponentModel model)
     {
-        KeyboardList = new KeyboardListViewModel(inputManager, settings, ActionPanel);
+        KeyboardList = new KeyboardListViewModel(inputManager, model.KeyboardList, ActionPanel);
     }
 }

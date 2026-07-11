@@ -43,6 +43,7 @@ public class KeyboardSlotModel
 
 
 
+    [JsonIgnore]
     public int SlotID => _ownerList?.Slots.IndexOf(this) ?? -1;
 
     [JsonIgnore]
@@ -98,29 +99,55 @@ public class KeyboardSlotModel
 
 
 
-    // post deserialize methods
+    // attach owner
 
 
 
     public void AttachOwner(KeyboardListModel ownerList)
     {
         _ownerList = ownerList;
+        ResolvePendingConfig();
+    }
+
+
+
+    // resolve pending methods
+
+
+
+    public void ResolvePendingConfig()
+    {
+        if (_pendingConfigString == null) return;
+        if (_ownerList == null) return;
+        
+        var config = _ownerList.Configs.FirstOrDefault(c => c.Name == _pendingConfigString);
+        if (config == null)
+        {
+            AppLog.WriteWarning($"The config '{_pendingConfigString}' on keyboard slot {SlotID} could not be found and was deselected");
+            SetSelectedConfig(null);
+        }
+        else SetSelectedConfig(config);
+
+        _pendingConfigString = null;
+    }
+
+
+
+    public void ResolvePendingDevice()
+    {
+        if (_pendingDeviceString == null) return;
+        if (_ownerList == null) return;
+        if (_ownerList.Devices == null) return;
 
         var device = _ownerList.Devices.FirstOrDefault(d => d.DevicePath == _pendingDeviceString);
-        if (device == null && _pendingDeviceString != null)
+        if (device == null)
         {
-            AppLog.WriteWarning($"The device '{_pendingDeviceString}' could not be found and therefore was deselected on keyboard slot {SlotID}");
+            AppLog.WriteWarning($"The device '{_pendingDeviceString}' on keyboard slot {SlotID} could not be found and was deselected");
             TrySetSelectedDevice(null);
         }
         else SetSelectedDevice(device);
 
-        var config = _ownerList.Configs.FirstOrDefault(c => c.Name == _pendingConfigString);
-        if (config == null && _pendingConfigString != null)
-        {
-            AppLog.WriteWarning($"The config '{_pendingConfigString}' could not be found and therefore was deselected on keyboard slot {SlotID}");
-            TrySetSelectedConfig(null);
-        }
-        else SetSelectedConfig(config);
+        _pendingDeviceString = null;
     }
 
 
@@ -135,7 +162,13 @@ public class KeyboardSlotModel
         {
             if (_ownerList == null)
             {
-                AppLog.WriteError($"Could not select device '{device.DevicePath}' - no ownerList to confirm validity");
+                AppLog.WriteError($"Could not select device '{device.DevicePath}' - no owner KeyboardListModel to confirm validity");
+                return false;
+            }
+
+            if (_ownerList.Devices == null)
+            {
+                AppLog.WriteError($"Could not select device '{device.DevicePath}' - no KeyboardDeviceModel list to confirm validity");
                 return false;
             }
 
@@ -154,22 +187,29 @@ public class KeyboardSlotModel
 
     public bool TrySetSelectedDeviceByString(string? deviceString)
     {
-        KeyboardDeviceModel? device = null;
-
-        if (deviceString != null)
+        if (deviceString == null)
         {
-            if (_ownerList == null)
-            {
-                AppLog.WriteError($"Could not select device '{deviceString}' - no ownerList to confirm validity");
-                return false;
-            }
+            SetSelectedDevice(null);
+            return true;
+        }
 
-            device = _ownerList.Devices.FirstOrDefault(d => d.DevicePath == deviceString);
-            if (device == null)
-            {
-                AppLog.WriteError($"Could not select device '{deviceString}' - device not found in list");
-                return false;
-            }
+        if (_ownerList == null)
+        {
+            AppLog.WriteError($"Could not select device '{deviceString}' by string - no ownerList to confirm validity");
+            return false;
+        }
+
+        if (_ownerList.Devices == null)
+        {
+            AppLog.WriteError($"Could not select device '{deviceString}' by string - no KeyboardDeviceModel list to confirm validity");
+            return false;
+        }
+
+        var device = _ownerList.Devices.FirstOrDefault(d => d.DevicePath == deviceString);
+        if (device == null)
+        {
+            AppLog.WriteError($"Could not select device '{deviceString}' by string - device not found in list");
+            return false;
         }
 
         SetSelectedDevice(device);

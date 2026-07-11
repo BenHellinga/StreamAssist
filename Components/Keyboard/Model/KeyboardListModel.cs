@@ -22,7 +22,7 @@ public class KeyboardListModel : IJsonOnDeserialized
     public List<KeyboardSlotModel> Slots { get; set; }
 
     [JsonIgnore]
-    public IReadOnlyList<KeyboardDeviceModel> Devices { get; set; }
+    public IReadOnlyList<KeyboardDeviceModel>? Devices { get; set; }
 
 
 
@@ -46,7 +46,7 @@ public class KeyboardListModel : IJsonOnDeserialized
     {
         Configs = [];
         Slots = [];
-        Devices = [];
+        Devices = null;
     }
 
 
@@ -63,14 +63,17 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    // devices list
+    // attach devices
 
 
 
-    public void SetDevices(IReadOnlyList<KeyboardDeviceModel> devices)
+    public void AttachDevices(IReadOnlyList<KeyboardDeviceModel>? devices)
     {
         Devices = devices;
         DeviceListUpdated?.Invoke();
+
+        foreach (var slot in Slots)
+            slot.ResolvePendingDevice();
     }
 
 
