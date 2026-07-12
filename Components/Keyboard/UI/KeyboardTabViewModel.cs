@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.AppAction;
+using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 

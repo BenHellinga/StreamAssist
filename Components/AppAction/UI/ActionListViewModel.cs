@@ -4,7 +4,7 @@ using System.Linq;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.AppAction.Model;
 
-namespace StreamAssist.Components.AppAction;
+namespace StreamAssist.Components.AppAction.UI;
 
 
 

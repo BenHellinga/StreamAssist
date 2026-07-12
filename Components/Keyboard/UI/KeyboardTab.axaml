@@ -4,7 +4,8 @@
              x:DataType="keyboard:KeyboardTabViewModel"
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
-             xmlns:action="using:StreamAssist.Components.AppAction">
+             xmlns:action="using:StreamAssist.Components.AppAction.UI"
+             xmlns:temp="using:StreamAssist.Components.AppAction">
 
     <!-- keyboard tab -->
 
@@ -36,7 +37,7 @@
 
                 <!-- action panel -->
 
-                <action:ActionPanel Grid.Row="2" DataContext="{Binding ActionPanel}"/>
+                <temp:ActionPanel Grid.Row="2" DataContext="{Binding ActionPanel}"/>
             </Grid>
 
             <GridSplitter Grid.Column="1" Classes="ColumnSplitter" Margin="0,0,5,0"/>

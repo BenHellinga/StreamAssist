@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="StreamAssist.Components.AppAction.ActionList"
-             x:DataType="temp:ActionListViewModel"
+             x:Class="StreamAssist.Components.AppAction.UI.ActionList"
+             x:DataType="ui:ActionListViewModel"
 
-             xmlns:temp="using:StreamAssist.Components.AppAction"
-             xmlns:action="using:StreamAssist.Components.AppAction.Model">
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI"
+             xmlns:model="using:StreamAssist.Components.AppAction.Model">
 
     <!-- action list -->
 
@@ -27,7 +27,7 @@
                 </ItemsControl.ItemsPanel>
 
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="action:IAppAction">
+                    <DataTemplate x:DataType="model:IAppAction">
 
                         <!-- each action card -->
 

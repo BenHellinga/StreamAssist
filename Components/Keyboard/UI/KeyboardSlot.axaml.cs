@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using StreamAssist.Components.Main;
-using StreamAssist.Components.AppAction;
+using StreamAssist.Components.AppAction.UI;
 using System.Linq;
 
 namespace StreamAssist.Components.Keyboard.UI;

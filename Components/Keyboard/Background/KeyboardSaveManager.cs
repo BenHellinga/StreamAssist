@@ -108,6 +108,8 @@ public class KeyboardSaveManager : IDisposable
         bindingModel.OnPressed.ActionRemoved += OnActionRemoved;
         bindingModel.OnReleased.ActionAdded += OnActionAdded;
         bindingModel.OnReleased.ActionRemoved += OnActionRemoved;
+        bindingModel.OnRepeated.ActionAdded += OnActionAdded;
+        bindingModel.OnRepeated.ActionRemoved += OnActionRemoved;
     }
 
 
@@ -118,6 +120,8 @@ public class KeyboardSaveManager : IDisposable
         bindingModel.OnPressed.ActionRemoved -= OnActionRemoved;
         bindingModel.OnReleased.ActionAdded -= OnActionAdded;
         bindingModel.OnReleased.ActionRemoved -= OnActionRemoved;
+        bindingModel.OnRepeated.ActionAdded -= OnActionAdded;
+        bindingModel.OnRepeated.ActionRemoved -= OnActionRemoved;
     }
 
 
