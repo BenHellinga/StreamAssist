@@ -7,10 +7,11 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Core;
-using StreamAssist.Components.StreamAction;
+using StreamAssist.Components.AppAction;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.Main;
+using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -19,23 +20,25 @@ namespace StreamAssist.Components.Keyboard.UI;
 public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 {
     // dependencies
+    private readonly KeyboardListViewModel _ownerList;
     private readonly KeyboardInputManager _inputManager;
     private readonly ActionPanelViewModel _actionPanel;
-    public KeyboardSlotModel SlotModel { get; }
-    private readonly CallbackBlocker _callbackBlocker;
+    private readonly KeyboardSlotModel _slotModel;
+    private readonly KeyboardListModel _listModel;
 
-    private readonly KeyboardListModel _listModel; // TODO remove when config and bindings overhauled
-
-    // menu
-    public ObservableCollection<DeviceMenuItem> DeviceMenuItems { get; }
-    public ObservableCollection<ConfigMenuItem> ConfigMenuItems { get; }
+    // private storage fields
     [ObservableProperty] private DeviceMenuItem _menuDevice;
     [ObservableProperty] private ConfigMenuItem _menuConfig;
     [ObservableProperty] private string _inputConfig;
+    private ObservableCollection<DisplayKey> _keys;
+    private Dictionary<ushort, DisplayKey> _keyMap;
+    private CallbackBlocker _callbackBlocker;
 
-    // keys // TODO check dictionary?
-    public ObservableCollection<DisplayKey> Keys { get; }
-    private readonly Dictionary<ushort, DisplayKey> _keyMap;
+    // public getter properties
+    public KeyboardSlotModel SlotModel => _slotModel;
+    public ObservableCollection<DeviceMenuItem> DeviceMenuItems => _ownerList.DeviceMenuItems;
+    public ObservableCollection<ConfigMenuItem> ConfigMenuItems => _ownerList.ConfigMenuItems;
+    public ObservableCollection<DisplayKey> Keys => _keys;
 
 
 
@@ -43,34 +46,34 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardInputManager inputManager, KeyboardListModel listData, ActionPanelViewModel actionPanel, KeyboardSlotModel slotModel)
+    public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardInputManager inputManager, KeyboardListModel listModel, ActionPanelViewModel actionPanel, KeyboardSlotModel slotModel)
     {
+        _ownerList = ownerList;
         _inputManager = inputManager;
-        _listModel = listData;
+        _listModel = listModel;
         _actionPanel = actionPanel;
-        SlotModel = slotModel;
+        _slotModel = slotModel;
 
         _callbackBlocker = new();
-        DeviceMenuItems = ownerList.DeviceMenuItems;
-        ConfigMenuItems = ownerList.ConfigMenuItems;
 
         _callbackBlocker.Block();
 
         _menuDevice = new("null", null);
         _menuConfig = new("null", null);
         _inputConfig = "";
-        Keys = [];
+        _keys = [];
         _keyMap = [];
 
         InitKeys();
 
-        SetMenuDevice(SlotModel.SelectedDevice);
-        SetMenuConfig(SlotModel.SelectedConfig);
-        RefreshBindings();
+        SetMenuDevice(_slotModel.SelectedDevice);
+        SetMenuConfig(_slotModel.SelectedConfig);
+        SetKeybinds(_slotModel.SelectedConfig?.Keybinds);
 
-        SlotModel.SelectedDeviceChanged += OnSelectedDeviceChanged;
-        SlotModel.SelectedConfigChanged += OnSelectedConfigChanged;
-        _listModel.ConfigBindingChanged += OnConfigBindingChanged;
+        _slotModel.SelectedDeviceChanged += OnSelectedDeviceChanged;
+        _slotModel.SelectedConfigChanged += OnSelectedConfigChanged;
+        _slotModel.SelectedConfig?.KeyBound += OnKeyBound;
+        _slotModel.SelectedConfig?.KeyUnbound += OnKeyUnbound;
 
         _inputManager.KeyPressed += OnKeyPressed;
         _inputManager.KeyReleased += OnKeyReleased;
@@ -87,7 +90,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     partial void OnMenuDeviceChanged(DeviceMenuItem value)
     {
         if (_callbackBlocker.IsBlocked()) return;
-        SlotModel.TrySetSelectedDevice(value.Model);
+        _slotModel.TrySetSelectedDevice(value.Model);
     }
 
 
@@ -95,7 +98,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     partial void OnMenuConfigChanged(ConfigMenuItem value)
     {
         if (_callbackBlocker.IsBlocked()) return;
-        SlotModel.TrySetSelectedConfig(value.Model);
+        _slotModel.TrySetSelectedConfig(value.Model);
     }
 
 
@@ -105,15 +108,13 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     {
         if (_callbackBlocker.IsBlocked()) return;
 
-        var bindings = new Dictionary<ushort, string>();
-        foreach (var key in Keys)
-            if (key.BoundAction is not null)
-                bindings[key.VK] = ActionResolver.GetKey(key.BoundAction);
+        // TODO copy current config bindings
+        var bindings = new Dictionary<ushort, KeyboardBindingModel>();
 
-        var config = _listModel.TryCreateConfigByString(InputConfig, bindings);
+        var config = _listModel.TryAddConfig(InputConfig, bindings);
         if (config is null) return;
 
-        SlotModel.TrySetSelectedConfig(config);
+        _slotModel.TrySetSelectedConfig(config);
         InputConfig = "";
     }
 
@@ -124,28 +125,42 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     {
         if (_callbackBlocker.IsBlocked()) return;
 
-        if (SlotModel.SelectedConfig == null)
+        if (_slotModel.SelectedConfig == null)
         {
             AppLog.WriteError($"Could not delete config - no config selected");
             return;
         }
 
-        _listModel.TryDeleteConfig(SlotModel.SelectedConfig);
+        _listModel.TryRemoveConfig(_slotModel.SelectedConfig);
     }
 
 
 
-    private void OnKeyBindingChanged(object? sender, PropertyChangedEventArgs e)
+    public void OnActionDroppedOnKey(DisplayKey key, IAppAction action)
     {
         if (_callbackBlocker.IsBlocked()) return;
 
-        if (e.PropertyName != nameof(DisplayKey.BoundAction)) return;
-        if (sender is not DisplayKey key) return;
-        if (SlotModel.SelectedConfig == null) return;
+        if (_slotModel.SelectedConfig == null)
+        {
+            AppLog.WriteError("Could not bind action to key - no config selected");
+            return;
+        }
 
-        var typeName = key.BoundAction is null ? null : ActionResolver.GetKey(key.BoundAction);
-        _listModel.ChangeConfigBinding(SlotModel.SelectedConfig.Name, key.VK, typeName);
+        _slotModel.SelectedConfig.BindActionToKey(key.VK, action);
     }
+
+
+
+    public void OnKeyRightClicked(DisplayKey key)
+    {
+        if (_callbackBlocker.IsBlocked()) return;
+        if (!key.IsBound) return;
+        _slotModel.SelectedConfig!.TryUnbindKey(key.VK);
+    }
+
+
+
+    internal void OnKeyLeftClicked(DisplayKey key) => _actionPanel.ShowKey(key);
 
 
 
@@ -153,23 +168,28 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnSelectedDeviceChanged(KeyboardDeviceModel? device) => SetMenuDevice(device);
+    private void OnSelectedDeviceChanged(KeyboardDeviceModel? _, KeyboardDeviceModel? newDevice) => SetMenuDevice(newDevice);
 
 
 
-    private void OnSelectedConfigChanged(KeyboardConfigModel? model)
+    private void OnSelectedConfigChanged(KeyboardConfigModel? oldConfig, KeyboardConfigModel? newConfig)
     {
-        SetMenuConfig(model);
-        RefreshBindings();   
+        oldConfig?.KeyBound -= OnKeyBound;
+        oldConfig?.KeyUnbound -= OnKeyUnbound;
+        newConfig?.KeyBound += OnKeyBound;
+        newConfig?.KeyUnbound += OnKeyUnbound;
+
+        SetMenuConfig(newConfig);
+        SetKeybinds(newConfig?.Keybinds);   
     }
 
 
 
-    private void OnConfigBindingChanged(string configName)
-    {
-        if (SlotModel.SelectedConfig?.Name != configName) return;
-        RefreshBindings();
-    }
+    private void OnKeyBound(ushort vk, KeyboardBindingModel _) => _keyMap[vk].IsBound = true;
+
+
+
+    private void OnKeyUnbound(ushort vk, KeyboardBindingModel _) => _keyMap[vk].IsBound = false;
 
 
 
@@ -180,7 +200,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     private void SetMenuDevice(KeyboardDeviceModel? device)
     {
         _callbackBlocker.Block();
-        MenuDevice = DeviceMenuItems.FirstOrDefault(d => d.Model == device) ?? DeviceMenuItems[0];
+        MenuDevice = _ownerList.DeviceMenuItems.FirstOrDefault(d => d.Model == device) ?? _ownerList.DeviceMenuItems[0];
         _callbackBlocker.Unblock();
     }
 
@@ -189,23 +209,22 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     private void SetMenuConfig(KeyboardConfigModel? config)
     {
         _callbackBlocker.Block();
-        MenuConfig = ConfigMenuItems.FirstOrDefault(c => c.Model == config) ?? ConfigMenuItems[0];
+        MenuConfig = _ownerList.ConfigMenuItems.FirstOrDefault(c => c.Model == config) ?? _ownerList.ConfigMenuItems[0];
         _callbackBlocker.Unblock();
     }
 
 
 
-    // refresh methods
-
-
-
-    private void RefreshBindings()
+    private void SetKeybinds(IReadOnlyDictionary<ushort, KeyboardBindingModel>? keybinds)
     {
         _callbackBlocker.Block();
 
-        var bindings = _listModel.Configs.FirstOrDefault(c => c.Name == SlotModel.SelectedConfig?.Name)?.Keybindings ?? [];
-        foreach (var key in Keys)
-            key.BoundAction = bindings.TryGetValue(key.VK, out var typeName) ? ActionResolver.Resolve(typeName) : null;
+        if (keybinds == null)
+            foreach (var key in _keys)
+                key.IsBound = false;
+        else
+            foreach (var key in _keys)
+                key.IsBound = keybinds.ContainsKey(key.VK);
 
         _callbackBlocker.Unblock();
     }
@@ -218,7 +237,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
     private void OnKeyPressed(string devicePath, ushort vk)
     {
-        if (devicePath != SlotModel.SelectedDevice?.DevicePath) return;
+        if (devicePath != _slotModel.SelectedDevice?.DevicePath) return;
         Dispatcher.UIThread.Post(() => SetKeyVisualState(vk, true));
     }
 
@@ -226,7 +245,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
     private void OnKeyReleased(string devicePath, ushort vk)
     {
-        if (devicePath != SlotModel.SelectedDevice?.DevicePath) return;
+        if (devicePath != _slotModel.SelectedDevice?.DevicePath) return;
         Dispatcher.UIThread.Post(() => SetKeyVisualState(vk, false));
     }
 
@@ -240,12 +259,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    internal void OnKeySelected(DisplayKey key) => _actionPanel.ShowKey(key);
-
-
-
     // keyboard display
-
 
 
 
@@ -390,8 +404,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
             if (!(_INCLUDE_UNUSEABLE || useable)) continue;
 
             var key = new DisplayKey(label, vk, x, y, w, h);
-            key.PropertyChanged += OnKeyBindingChanged;
-            Keys.Add(key);
+            _keys.Add(key);
             _keyMap.TryAdd(vk, key);
         }
     }
@@ -404,14 +417,12 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
-        SlotModel.SelectedDeviceChanged -= OnSelectedDeviceChanged;
-        SlotModel.SelectedConfigChanged -= OnSelectedConfigChanged;
-        _listModel.ConfigBindingChanged -= OnConfigBindingChanged;
+        _slotModel.SelectedDeviceChanged -= OnSelectedDeviceChanged;
+        _slotModel.SelectedConfigChanged -= OnSelectedConfigChanged;
+        _slotModel.SelectedConfig?.KeyBound += OnKeyBound;
+        _slotModel.SelectedConfig?.KeyUnbound += OnKeyUnbound;
 
         _inputManager.KeyPressed -= OnKeyPressed;
         _inputManager.KeyReleased -= OnKeyReleased;
-
-        foreach (var key in Keys)
-            key.PropertyChanged -= OnKeyBindingChanged;
     }
 }

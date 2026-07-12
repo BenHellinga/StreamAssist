@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace StreamAssist.Components.StreamAction;
+namespace StreamAssist.Components.AppAction;
 
 
 

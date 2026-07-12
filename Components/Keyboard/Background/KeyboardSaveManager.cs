@@ -1,4 +1,5 @@
 using System;
+using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Config;
 using StreamAssist.Components.Keyboard.Model;
 
@@ -20,16 +21,103 @@ public class KeyboardSaveManager : IDisposable
     public KeyboardSaveManager(KeyboardComponentModel model)
     {
         _model = model;
-        _listModel = _model.KeyboardList;
+        _listModel = _model.ListModel;
 
-        foreach (var slot in _listModel.Slots)
+        SubscribeToList(_listModel);
+    }
+
+
+
+    // subscription helpers
+
+
+
+    private void SubscribeToList(KeyboardListModel list)
+    {
+        list.SlotAdded += OnSlotAdded;
+        list.SlotRemoved += OnSlotRemoved;
+        list.ConfigCreated += OnConfigCreated;
+        list.ConfigDeleted += OnConfigDeleted;
+
+        foreach (var slot in list.Slots)
             SubscribeToSlot(slot);
 
-        _listModel.SlotAdded += OnSlotAdded;
-        _listModel.SlotRemoved += OnSlotRemoved;
-        _listModel.ConfigCreated += OnConfigCreated;
-        _listModel.ConfigDeleted += OnConfigDeleted;
-        _listModel.ConfigBindingChanged += OnConfigBindingChanged;
+        foreach (var config in list.Configs)
+            SubscribeToConfig(config);
+    }
+
+
+
+    private void UnsubscribeFromList(KeyboardListModel list)
+    {
+        list.SlotAdded -= OnSlotAdded;
+        list.SlotRemoved -= OnSlotRemoved;
+        list.ConfigCreated -= OnConfigCreated;
+        list.ConfigDeleted -= OnConfigDeleted;
+
+        foreach (var slot in list.Slots)
+            UnsubscribeFromSlot(slot);
+
+        foreach (var config in list.Configs)
+            UnsubscribeFromConfig(config);
+    }
+
+
+
+    private void SubscribeToSlot(KeyboardSlotModel slot)
+    {
+        slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
+        slot.SelectedConfigChanged += OnSelectedConfigChanged;
+    }
+
+
+
+    private void UnsubscribeFromSlot(KeyboardSlotModel slot)
+    {
+        slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
+        slot.SelectedConfigChanged -= OnSelectedConfigChanged;
+    }
+
+
+
+    private void SubscribeToConfig(KeyboardConfigModel config)
+    {
+        config.KeyBound += OnKeyBound;
+        config.KeyUnbound += OnKeyUnbound;
+
+        foreach (var bindingModel in config.Keybinds.Values)
+            SubscribeToBindingModel(bindingModel);
+    }
+
+
+
+    private void UnsubscribeFromConfig(KeyboardConfigModel config)
+    {
+        config.KeyBound -= OnKeyBound;
+        config.KeyUnbound -= OnKeyUnbound;
+
+        foreach (var bindingModel in config.Keybinds.Values)
+            UnsubscribeFromBindingModel(bindingModel);
+    }
+
+
+
+    private void SubscribeToBindingModel(KeyboardBindingModel bindingModel)
+    {
+        bindingModel.OnPressed.ActionAdded += OnActionAdded;
+        bindingModel.OnPressed.ActionRemoved += OnActionRemoved;
+        bindingModel.OnReleased.ActionAdded += OnActionAdded;
+        bindingModel.OnReleased.ActionRemoved += OnActionRemoved;
+    }
+
+
+
+    private void UnsubscribeFromBindingModel(KeyboardBindingModel bindingModel)
+    {
+        bindingModel.OnPressed.ActionAdded -= OnActionAdded;
+        bindingModel.OnPressed.ActionRemoved -= OnActionRemoved;
+        bindingModel.OnReleased.ActionAdded -= OnActionAdded;
+        bindingModel.OnReleased.ActionRemoved -= OnActionRemoved;
     }
 
 
@@ -54,41 +142,51 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnConfigBindingChanged(string _) => Save();
-
-
-
-    private void OnConfigCreated(KeyboardConfigModel _) => Save();
-
-
-
-    private void OnConfigDeleted(KeyboardConfigModel _) => Save();
-
-
-
-    private void OnSelectedDeviceChanged(KeyboardDeviceModel? _) => Save();
-
-
-
-    private void OnSelectedConfigChanged(KeyboardConfigModel? _) => Save();
-
-
-
-    // subscription helpers
-
-
-
-    private void SubscribeToSlot(KeyboardSlotModel slot)
+    private void OnConfigCreated(KeyboardConfigModel config)
     {
-        slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
-        slot.SelectedConfigChanged += OnSelectedConfigChanged;
+        SubscribeToConfig(config);
+        Save();
     }
 
-    private void UnsubscribeFromSlot(KeyboardSlotModel slot)
+
+
+    private void OnConfigDeleted(KeyboardConfigModel config)
     {
-        slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
-        slot.SelectedConfigChanged -= OnSelectedConfigChanged;
+        UnsubscribeFromConfig(config);
+        Save();
     }
+
+
+
+    private void OnKeyBound(ushort _, KeyboardBindingModel bindingModel)
+    {
+        SubscribeToBindingModel(bindingModel);
+        Save();
+    }
+
+
+
+    private void OnKeyUnbound(ushort _, KeyboardBindingModel bindingModel)
+    {
+        UnsubscribeFromBindingModel(bindingModel);
+        Save();
+    }
+
+
+
+    private void OnSelectedDeviceChanged(KeyboardDeviceModel? _, KeyboardDeviceModel? __) => Save();
+
+
+
+    private void OnSelectedConfigChanged(KeyboardConfigModel? _, KeyboardConfigModel? __) => Save();
+
+
+
+    private void OnActionAdded(IAppAction _) => Save();
+
+
+
+    private void OnActionRemoved(IAppAction _) => Save();
 
 
 
@@ -106,13 +204,6 @@ public class KeyboardSaveManager : IDisposable
 
     public void Dispose()
     {
-        _listModel.SlotAdded -= OnSlotAdded;
-        _listModel.SlotRemoved -= OnSlotRemoved;
-        _listModel.ConfigCreated -= OnConfigCreated;
-        _listModel.ConfigDeleted -= OnConfigDeleted;
-        _listModel.ConfigBindingChanged -= OnConfigBindingChanged;
-
-        foreach (var slot in _listModel.Slots)
-            UnsubscribeFromSlot(slot);
+        UnsubscribeFromList(_listModel);
     }
 }

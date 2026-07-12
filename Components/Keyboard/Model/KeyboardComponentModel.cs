@@ -6,16 +6,33 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 public class KeyboardComponentModel
 {
-    [JsonPropertyName("keyboardList")]
-    public KeyboardListModel KeyboardList { get; set; } = new();
+    // private storage fields
+    private KeyboardListModel _listModel;
+
+    // public getter properties
+    [JsonIgnore] public KeyboardListModel ListModel => _listModel;
 
 
 
-    [JsonPropertyName("actionListWidth")]
-    public int actionListWidth = 100; // dont do anything yet
+    // json
 
 
 
-    [JsonPropertyName("actionPanelHeight")]
-    public int actionListHeight = 100; // dont do anything yet
+    [JsonInclude] [JsonPropertyName("keyboardList")]
+    private KeyboardListModel JsonListModel
+    {
+        get => _listModel;
+        set => _listModel = value;
+    }
+
+
+
+    // constructor
+
+
+
+    public KeyboardComponentModel()
+    {
+        _listModel = new();
+    }
 }

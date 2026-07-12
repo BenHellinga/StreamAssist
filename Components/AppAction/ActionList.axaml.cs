@@ -1,14 +1,15 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using StreamAssist.Components.AppAction.Model;
 
-namespace StreamAssist.Components.StreamAction;
+namespace StreamAssist.Components.AppAction;
 
 
 
 public partial class ActionList : UserControl
 {
-    public static readonly DataFormat<IStreamAction> ActionDragFormat =
-        DataFormat.CreateInProcessFormat<IStreamAction>("StreamAssist.FeatureAction");
+    public static readonly DataFormat<IAppAction> ActionDragFormat =
+        DataFormat.CreateInProcessFormat<IAppAction>("StreamAssist.FeatureAction");
 
 
 
@@ -21,7 +22,7 @@ public partial class ActionList : UserControl
 
     private async void OnActionPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Border { Tag: IStreamAction action } border) return;
+        if (sender is not Border { Tag: IAppAction action } border) return;
         if (!e.GetCurrentPoint(border).Properties.IsLeftButtonPressed) return;
 
         var item = new DataTransferItem();

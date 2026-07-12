@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.StreamAction;
+using StreamAssist.Components.AppAction;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -19,10 +19,15 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     private readonly KeyboardListModel _listModel;
     private readonly ActionPanelViewModel _actionPanel;
 
-    // display collections
-    public ObservableCollection<DeviceMenuItem> DeviceMenuItems { get; }
-    public ObservableCollection<ConfigMenuItem> ConfigMenuItems { get; }
-    public ObservableCollection<KeyboardSlotViewModel> Slots { get; }
+    // private storage fields
+    private ObservableCollection<DeviceMenuItem> _deviceMenuItems;
+    private ObservableCollection<ConfigMenuItem> _configMenuItems;
+    private ObservableCollection<KeyboardSlotViewModel> _slots;
+
+    // public getter properties
+    public ObservableCollection<DeviceMenuItem> DeviceMenuItems => _deviceMenuItems;
+    public ObservableCollection<ConfigMenuItem> ConfigMenuItems => _configMenuItems;
+    public ObservableCollection<KeyboardSlotViewModel> Slots => _slots;
 
 
 
@@ -36,15 +41,15 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         _listModel = listModel;
         _actionPanel = actionPanel;
 
-        DeviceMenuItems = [];
-        ConfigMenuItems = [];
-        Slots = [];
+        _deviceMenuItems = [];
+        _configMenuItems = [];
+        _slots = [];
 
         RefreshDevices();
         RefreshConfigs();
 
         foreach (var slot in _listModel.Slots)
-            Slots.Add(new KeyboardSlotViewModel(this, _inputManager, _listModel, _actionPanel, slot));
+            _slots.Add(new KeyboardSlotViewModel(this, _inputManager, _listModel, _actionPanel, slot));
 
         _listModel.SlotAdded += OnSlotAdded;
         _listModel.SlotRemoved += OnSlotRemoved;
@@ -59,13 +64,11 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    [RelayCommand]
-    private void OnAddSlotRequested() => _listModel.TryAddSlot();
+    [RelayCommand] private void OnAddSlotRequested() => _listModel.AddSlot();
 
 
 
-    [RelayCommand]
-    private void OnRemoveSlotRequested() => _listModel.TryRemoveLastSlot();
+    [RelayCommand] private void OnRemoveSlotRequested() => _listModel.TryRemoveLastSlot();
 
 
 
@@ -73,30 +76,29 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnSlotAdded(KeyboardSlotModel slot) => Slots.Add(new KeyboardSlotViewModel(this, _inputManager, _listModel, _actionPanel, slot));
+    private void OnSlotAdded(KeyboardSlotModel slot) => _slots.Add(new KeyboardSlotViewModel(this, _inputManager, _listModel, _actionPanel, slot));
 
 
 
     private void OnSlotRemoved(KeyboardSlotModel slotModel)
     {
-        var slot = Slots.FirstOrDefault(s => s.SlotModel == slotModel);
+        var slot = _slots.FirstOrDefault(s => s.SlotModel == slotModel);
         if (slot is null) return;
-
-        Slots.Remove(slot);
+        _slots.Remove(slot);
         slot.Dispose();
     }
 
 
 
-    private void OnConfigCreated(KeyboardConfigModel config) => ConfigMenuItems.Add(new(config.Name, config));
+    private void OnConfigCreated(KeyboardConfigModel config) => _configMenuItems.Add(new(config.Name, config));
 
 
 
     private void OnConfigDeleted(KeyboardConfigModel config)
     {
-        var menuItem = ConfigMenuItems.FirstOrDefault(c => c.Model == config);
+        var menuItem = _configMenuItems.FirstOrDefault(c => c.Model == config);
         if (menuItem == null) return;
-        ConfigMenuItems.Remove(menuItem);
+        _configMenuItems.Remove(menuItem);
     }
 
 
@@ -111,26 +113,26 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
     private void RefreshDevices()
     {
-        DeviceMenuItems.Clear();
-        DeviceMenuItems.Add(new(KeyboardListModel.NoneDevice, null));
+        _deviceMenuItems.Clear();
+        _deviceMenuItems.Add(new(KeyboardListModel.NoneDevice, null));
         foreach (var device in _listModel.Devices ?? [])
-            DeviceMenuItems.Add(new(device.DisplayLabel, device));
+            _deviceMenuItems.Add(new(device.DisplayLabel, device));
     }
 
 
 
-    private void RefreshConfigs()
+    private void RefreshConfigs() // TODO probably not required??
     {
         var desired = new List<ConfigMenuItem> { new(KeyboardListModel.NoneConfig, null) };
         desired.AddRange(_listModel.Configs.Select(c => new ConfigMenuItem(c.Name, c)));
 
-        for (int i = ConfigMenuItems.Count - 1; i >= 0; i--)
-            if (!desired.Any(d => d.Model == ConfigMenuItems[i].Model))
-                ConfigMenuItems.RemoveAt(i);
+        for (int i = _configMenuItems.Count - 1; i >= 0; i--)
+            if (!desired.Any(d => d.Model == _configMenuItems[i].Model))
+                _configMenuItems.RemoveAt(i);
 
         foreach (var item in desired)
-            if (!ConfigMenuItems.Any(c => c.Model == item.Model))
-                ConfigMenuItems.Add(item);
+            if (!_configMenuItems.Any(c => c.Model == item.Model))
+                _configMenuItems.Add(item);
     }
 
 
@@ -147,7 +149,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         _listModel.ConfigDeleted -= OnConfigDeleted;
         _listModel.DeviceListUpdated -= OnDeviceListUpdated;
 
-        foreach (var slot in Slots)
+        foreach (var slot in _slots)
             slot.Dispose();
     }
 }

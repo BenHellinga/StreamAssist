@@ -2,14 +2,15 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using StreamAssist.Components.Core;
+using StreamAssist.Components.AppAction.Model;
 
-namespace StreamAssist.Components.StreamAction;
+namespace StreamAssist.Components.AppAction;
 
 
 
 public partial class ActionListViewModel : ViewModelBase
 {
-    public ObservableCollection<IStreamAction> Actions { get; } = [];
+    public ObservableCollection<IAppAction> Actions { get; } = [];
 
 
 

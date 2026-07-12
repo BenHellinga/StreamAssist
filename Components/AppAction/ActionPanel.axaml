@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="StreamAssist.Components.StreamAction.ActionPanel"
+             x:Class="StreamAssist.Components.AppAction.ActionPanel"
              x:DataType="action:ActionPanelViewModel"
 
-             xmlns:action="using:StreamAssist.Components.StreamAction">
+             xmlns:action="using:StreamAssist.Components.AppAction">
 
     <!-- action panel -->
 

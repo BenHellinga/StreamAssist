@@ -7,11 +7,11 @@ namespace StreamAssist.Components.Keyboard.Background;
 
 public class KeyboardComponentManager : IDisposable
 {
-    private KeyboardComponentModel _model;
+    private readonly KeyboardComponentModel _model;
 
-    private KeyboardSaveManager _saveManager;
-    private KeyboardInputManager _inputManager;
-    private KeyboardListManager _listManager;
+    private readonly KeyboardSaveManager _saveManager;
+    private readonly KeyboardInputManager _inputManager;
+    private readonly KeyboardListManager _listManager;
 
 
 
@@ -25,8 +25,8 @@ public class KeyboardComponentManager : IDisposable
 
         _saveManager = new(_model);
         _inputManager = new();
-        _model.KeyboardList.AttachDevices(KeyboardInputManager.Devices);
-        _listManager = new(_model.KeyboardList, _inputManager);
+        _model.ListModel.AttachDevices(KeyboardInputManager.Devices);
+        _listManager = new(_model.ListModel, _inputManager);
 
         _saveManager.Save();
     }
@@ -55,8 +55,8 @@ public class KeyboardComponentManager : IDisposable
 
     public void Dispose()
     {
-        _saveManager.Dispose();
-        _inputManager.Dispose();
         _listManager.Dispose();
+        _inputManager.Dispose();
+        _saveManager.Dispose();
     }
 }

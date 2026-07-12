@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using StreamAssist.Components.StreamAction;
+using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;
@@ -10,11 +10,11 @@ namespace StreamAssist.Components.Keyboard.Background;
 public class KeyboardSlotManager : IDisposable
 {
     private readonly KeyboardInputManager _inputManager;
-    private readonly KeyboardListModel _listModel; // TODO should be removed when actions and configs are finished
+    // private readonly KeyboardListModel _listModel; // TODO should be removed when actions and configs are finished
     private readonly KeyboardSlotModel _slotModel;
 
     private string? _device;
-    private Dictionary<ushort, IStreamAction> _keybinds;
+    private IReadOnlyDictionary<ushort, KeyboardBindingModel>? _keybinds;
 
 
 
@@ -22,18 +22,18 @@ public class KeyboardSlotManager : IDisposable
 
 
 
+    // TODO the current method of checking devices/keys could be improved with centralized dictionaries, for example Dictionary<device, [Dictionary<key, KeyboardBindingModel>]>
+    // it would not be recommended to share a dictionary accross an entire config, as stateful actions could trigger multiple times with two slots on the same config and device, so they need different instances, hence different dictionaries
     public KeyboardSlotManager(KeyboardInputManager inputManager, KeyboardListModel listModel, KeyboardSlotModel slotModel)
     {
         _inputManager = inputManager;
-        _listModel = listModel;
         _slotModel = slotModel;
 
         _device = _slotModel.SelectedDevice?.DevicePath;
-        _keybinds = _listModel.GetConfigBindings(_slotModel.SelectedConfig?.Name ?? "");
+        _keybinds = _slotModel.SelectedConfig?.Keybinds;
 
         _slotModel.SelectedDeviceChanged += OnSelectedDeviceChanged;
         _slotModel.SelectedConfigChanged += OnSelectedConfigChanged;
-        _listModel.ConfigBindingChanged += OnConfigBindingChanged;
 
         _inputManager.KeyPressed += OnKeyPressed;
         _inputManager.KeyReleased += OnKeyReleased;
@@ -45,19 +45,12 @@ public class KeyboardSlotManager : IDisposable
 
 
 
-    private void OnSelectedDeviceChanged(KeyboardDeviceModel? device) => _device = device?.DevicePath;
+    private void OnSelectedDeviceChanged(KeyboardDeviceModel? _, KeyboardDeviceModel? newDevice) => _device = newDevice?.DevicePath;
 
 
 
-    private void OnSelectedConfigChanged(KeyboardConfigModel? configName) => _keybinds = _listModel.GetConfigBindings(configName?.Name ?? "");
+    private void OnSelectedConfigChanged(KeyboardConfigModel? _, KeyboardConfigModel? newConfig) => _keybinds = newConfig?.Keybinds;
 
-
-
-    private void OnConfigBindingChanged(string configName)
-    {
-        if (configName != _slotModel.SelectedConfig?.Name) return;
-        _keybinds = _listModel.GetConfigBindings(configName);
-    }
 
 
     // key events
@@ -67,9 +60,10 @@ public class KeyboardSlotManager : IDisposable
     private void OnKeyPressed(string device, ushort vk)
     {
         if (device != _device) return;
-        if (!_keybinds.TryGetValue(vk, out var action)) return;
+        if (_keybinds == null) return;
+        if (!_keybinds.TryGetValue(vk, out var bindingModel)) return;
 
-        _ = action.SafeExecuteAsync();
+        bindingModel.OnPressed.SafeExecuteAllAsync();
     }
 
 
@@ -77,9 +71,10 @@ public class KeyboardSlotManager : IDisposable
     private void OnKeyReleased(string device, ushort vk)
     {
         if (device != _device) return;
-        if (!_keybinds.TryGetValue(vk, out var action)) return;
+        if (_keybinds == null) return;
+        if (!_keybinds.TryGetValue(vk, out var bindingModel)) return;
 
-        // action needs onrelease trigger
+        bindingModel.OnReleased.SafeExecuteAllAsync();
     }
 
 
@@ -92,7 +87,6 @@ public class KeyboardSlotManager : IDisposable
     {
         _slotModel.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         _slotModel.SelectedConfigChanged -= OnSelectedConfigChanged;
-        _listModel.ConfigBindingChanged -= OnConfigBindingChanged;
 
         _inputManager.KeyPressed -= OnKeyPressed;
         _inputManager.KeyReleased -= OnKeyReleased;

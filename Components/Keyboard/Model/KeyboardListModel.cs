@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Main;
-using StreamAssist.Components.StreamAction;
+using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
@@ -11,17 +11,41 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 public class KeyboardListModel : IJsonOnDeserialized
 {
+    // constants
     public const string NoneConfig = "None";
     public const string NoneDevice = "None";
 
-    [JsonPropertyName("configs")]
-    public List<KeyboardConfigModel> Configs { get; set; }
+    // dependencies
+    private IReadOnlyList<KeyboardDeviceModel>? _devices;
 
-    [JsonPropertyName("slots")]
-    public List<KeyboardSlotModel> Slots { get; set; }
+    // private storage fields
+    private List<KeyboardConfigModel> _configs;
+    private List<KeyboardSlotModel> _slots;
 
-    [JsonIgnore]
-    public IReadOnlyList<KeyboardDeviceModel>? Devices { get; set; }
+    // public getter properties
+    [JsonIgnore] public IReadOnlyList<KeyboardConfigModel> Configs => _configs;
+    [JsonIgnore] public IReadOnlyList<KeyboardSlotModel> Slots => _slots;
+    [JsonIgnore] public IReadOnlyList<KeyboardDeviceModel>? Devices => _devices;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("configs")]
+    private List<KeyboardConfigModel> JsonConfigs
+    {
+        get => _configs;
+        set => _configs = value;
+    }
+
+    [JsonInclude] [JsonPropertyName("slots")]
+    private List<KeyboardSlotModel> JsonSlots
+    {
+        get => _slots;
+        set => _slots = value;
+    }
 
 
 
@@ -34,7 +58,6 @@ public class KeyboardListModel : IJsonOnDeserialized
     public event Action<KeyboardConfigModel>? ConfigCreated;
     public event Action<KeyboardConfigModel>? ConfigDeleted;
     public event Action? DeviceListUpdated;
-    public event Action<string>? ConfigBindingChanged;
 
 
 
@@ -44,9 +67,9 @@ public class KeyboardListModel : IJsonOnDeserialized
 
     public KeyboardListModel()
     {
-        Configs = [];
-        Slots = [];
-        Devices = null;
+        _configs = [];
+        _slots = [];
+        _devices = null;
     }
 
 
@@ -57,7 +80,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
     void IJsonOnDeserialized.OnDeserialized()
     {
-        foreach (var slot in Slots)
+        foreach (var slot in _slots)
             slot.AttachOwner(this);
     }
 
@@ -68,13 +91,13 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
     // TODO should add AddDevice/RemoveDevice methods with device plugged/unplugged callbacks from KeyboardInputManager? 
-    public void AttachDevices(IReadOnlyList<KeyboardDeviceModel>? devices)
+    public void AttachDevices(IReadOnlyList<KeyboardDeviceModel> devices)
     {
-        Devices = devices;
+        _devices = devices;
         DeviceListUpdated?.Invoke();
 
-        foreach (var slot in Slots)
-            slot.ResolvePendingDevice();
+        foreach (var slot in _slots)
+            slot.ValidatePendingDevice();
     }
 
 
@@ -83,36 +106,35 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    public bool TryAddSlot()
-    {
-        AddSlot();
-        return true;
-    }
-
-
-
-    public void AddSlot()
+    public KeyboardSlotModel AddSlot()
     {
         var slot = new KeyboardSlotModel(this);
-        Slots.Add(slot);
+        _slots.Add(slot);
         SlotAdded?.Invoke(slot);
+        return slot;
     }
 
 
 
     public bool TryRemoveLastSlot()
     {
-        if (Slots.Count <= 0)
+        if (_slots.Count <= 0)
         {
             AppLog.WriteError("Could not remove keyboard slot - there are no keyboard slots.");
             return false;
         }
 
-        var slot = Slots[^1];
-        Slots.RemoveAt(Slots.Count - 1);
-        SlotRemoved?.Invoke(slot);
-
+        RemoveLastSlot();
         return true;
+    }
+
+
+
+    private void RemoveLastSlot()
+    {
+        var slot = _slots[^1];
+        _slots.RemoveAt(_slots.Count - 1);
+        SlotRemoved?.Invoke(slot);
     }
 
 
@@ -121,7 +143,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    public KeyboardConfigModel? TryCreateConfigByString(string name, Dictionary<ushort, string>? bindings = null)
+    public KeyboardConfigModel? TryAddConfig(string name, Dictionary<ushort, KeyboardBindingModel>? keybinds = null)
     {
         var trimmed = name.Trim();
         
@@ -137,106 +159,64 @@ public class KeyboardListModel : IJsonOnDeserialized
             return null;
         }
 
-        if (Configs.Any(c => c.Name == trimmed))
+        if (_configs.Any(c => c.Name == trimmed))
         {
             AppLog.WriteError("Could not create config - name already in use");
             return null;
         }
 
-        var config = new KeyboardConfigModel(trimmed, bindings);
-
-        CreateConfig(config);
+        var config = AddConfig(trimmed, keybinds);
         return config;
     }
 
 
 
-    public void CreateConfig(KeyboardConfigModel config)
+    private KeyboardConfigModel AddConfig(string name, Dictionary<ushort, KeyboardBindingModel>? keybinds = null)
     {
-        Configs.Add(config);
+        var config = new KeyboardConfigModel(name, keybinds);
+        _configs.Add(config);
         ConfigCreated?.Invoke(config);
+        return config;
     }
 
 
 
-    public bool TryDeleteConfig(KeyboardConfigModel config)
+    public bool TryRemoveConfig(KeyboardConfigModel config)
     {
-        if (!Configs.Contains(config))
+        if (!_configs.Contains(config))
         {
             AppLog.WriteError("Could not delete config - config does not exist");
             return false;
         }
 
-        DeleteConfig(config);
+        RemoveConfig(config);
         return true;
     }
 
 
 
-    public bool TryDeleteConfigByString(string configString)
+    public bool TryRemoveConfigByString(string configString)
     {
-        var config = Configs.FirstOrDefault(c => c.Name == configString);
+        var config = _configs.FirstOrDefault(c => c.Name == configString);
         if (config is null)
         {
             AppLog.WriteError("Could not delete config - config does not exist");
             return false;
         }
 
-        DeleteConfig(config);
+        RemoveConfig(config);
         return true;
     }
 
 
 
-    public void DeleteConfig(KeyboardConfigModel config)
+    private void RemoveConfig(KeyboardConfigModel config)
     {
-        foreach (var slot in Slots)
+        foreach (var slot in _slots)
             if (slot.SelectedConfig == config)
-                slot.SetSelectedConfig(null);
+                slot.DeselectConfig();
 
-        Configs.Remove(config);
+        _configs.Remove(config);
         ConfigDeleted?.Invoke(config);
-    }
-
-
-
-    // TODO MOVE THESE TO KeyboardConfigModel
-
-
-
-
-    public bool ChangeConfigBinding(string configName, ushort vk, string? actionTypeName)
-    {
-        var config = Configs.FirstOrDefault(c => c.Name == configName);
-        if (config is null)
-        {
-            AppLog.WriteError("Could not change config binding - config does not exist");
-            return false;
-        }
-
-        if (actionTypeName is null) config.Keybindings.Remove(vk);
-        else config.Keybindings[vk] = actionTypeName;
-
-        ConfigBindingChanged?.Invoke(configName);
-
-        return true;
-    }
-
-
-
-    public Dictionary<ushort, IStreamAction> GetConfigBindings(string configName)
-    {
-        var result = new Dictionary<ushort, IStreamAction>();
-        var config = Configs.FirstOrDefault(c => c.Name == configName);
-        if (config is null) return result;
-
-        foreach (var (vk, typeName) in config.Keybindings)
-        {
-            var action = ActionResolver.Resolve(typeName);
-            if (action is not null)
-                result[vk] = action;
-        }
-
-        return result;
     }
 }

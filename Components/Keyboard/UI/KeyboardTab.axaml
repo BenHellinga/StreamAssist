@@ -4,7 +4,7 @@
              x:DataType="keyboard:KeyboardTabViewModel"
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
-             xmlns:action="using:StreamAssist.Components.StreamAction">
+             xmlns:action="using:StreamAssist.Components.AppAction">
 
     <!-- keyboard tab -->
 

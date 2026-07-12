@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using StreamAssist.Components.Main;
-using StreamAssist.Components.StreamAction;
+using StreamAssist.Components.AppAction;
 using System.Linq;
 
 namespace StreamAssist.Components.Keyboard.UI;
@@ -43,14 +43,10 @@ public partial class KeyboardSlot : UserControl
 
         border.Classes.Set("dragover", false);
 
-        if (DataContext is not KeyboardSlotViewModel vm || vm.SlotModel.SelectedConfig is null)
-        {
-            AppLog.WriteError("Could not assign keybind - no config selected");
-            return;
-        }
+        if (DataContext is not KeyboardSlotViewModel vm) return;
 
         if (e.DataTransfer.TryGetValue(ActionList.ActionDragFormat) is { } action)
-            key.BoundAction = action;
+            vm.OnActionDroppedOnKey(key, action);
     }
 
 
@@ -61,16 +57,16 @@ public partial class KeyboardSlot : UserControl
 
         var props = e.GetCurrentPoint(border).Properties;
 
+        if (DataContext is not KeyboardSlotViewModel vm) return;
+
         if (props.IsRightButtonPressed)
         {
-            if (key.BoundAction is { } bound)
-                key.BoundAction = null;
-
+            vm.OnKeyRightClicked(key);
             e.Handled = true;
             return;
         }
 
-        if (props.IsLeftButtonPressed && DataContext is KeyboardSlotViewModel vm)
-            vm.OnKeySelected(key);
+        if (props.IsLeftButtonPressed)
+            vm.OnKeyLeftClicked(key);
     }
 }

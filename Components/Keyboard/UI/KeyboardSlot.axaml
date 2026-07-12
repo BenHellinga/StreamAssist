@@ -105,7 +105,7 @@
                     <DataTemplate x:DataType="keyboard:DisplayKey">
                         <Border Classes="ActionBoundable"
                                 Classes.pressed="{Binding IsPressed}"
-                                Classes.bound="{Binding HasBoundAction}"
+                                Classes.bound="{Binding IsBound}"
                                 Width="{Binding W}"
                                 Height="{Binding H}"
                                 DragDrop.AllowDrop="True"
@@ -118,13 +118,6 @@
 
                             <StackPanel VerticalAlignment="Center" Spacing="2" Margin="3">
                                 <TextBlock Text="{Binding Label}"/>
-                                <TextBlock Text="{Binding BoundActionName}"
-                                           IsVisible="{Binding HasBoundAction}"
-                                           FontSize="8"
-                                           Foreground="{DynamicResource BoundAction}"
-                                           TextAlignment="Center"
-                                           TextWrapping="Wrap"/>
-
                             </StackPanel>
                         </Border>
                     </DataTemplate>
