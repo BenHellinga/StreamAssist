@@ -27,7 +27,8 @@ public class KeyboardSaveManager : IDisposable
 
         _listModel.SlotAdded += OnSlotAdded;
         _listModel.SlotRemoved += OnSlotRemoved;
-        _listModel.ConfigListUpdated += OnConfigListUpdated;
+        _listModel.ConfigCreated += OnConfigCreated;
+        _listModel.ConfigDeleted += OnConfigDeleted;
         _listModel.ConfigBindingChanged += OnConfigBindingChanged;
     }
 
@@ -57,7 +58,11 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnConfigListUpdated() => Save();
+    private void OnConfigCreated(KeyboardConfigModel _) => Save();
+
+
+
+    private void OnConfigDeleted(KeyboardConfigModel _) => Save();
 
 
 
@@ -103,7 +108,8 @@ public class KeyboardSaveManager : IDisposable
     {
         _listModel.SlotAdded -= OnSlotAdded;
         _listModel.SlotRemoved -= OnSlotRemoved;
-        _listModel.ConfigListUpdated -= OnConfigListUpdated;
+        _listModel.ConfigCreated -= OnConfigCreated;
+        _listModel.ConfigDeleted -= OnConfigDeleted;
         _listModel.ConfigBindingChanged -= OnConfigBindingChanged;
 
         foreach (var slot in _listModel.Slots)

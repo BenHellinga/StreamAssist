@@ -48,7 +48,8 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
         _listModel.SlotAdded += OnSlotAdded;
         _listModel.SlotRemoved += OnSlotRemoved;
-        _listModel.ConfigListUpdated += OnConfigListUpdated;
+        _listModel.ConfigCreated += OnConfigCreated;
+        _listModel.ConfigDeleted += OnConfigDeleted;
         _listModel.DeviceListUpdated += OnDeviceListUpdated;
     }
 
@@ -59,7 +60,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
     [RelayCommand]
-    private void OnAddSlotRequested() => _listModel.AddSlot();
+    private void OnAddSlotRequested() => _listModel.TryAddSlot();
 
 
 
@@ -87,11 +88,20 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnConfigListUpdated() => RefreshConfigs();
+    private void OnConfigCreated(KeyboardConfigModel config) => ConfigMenuItems.Add(new(config.Name, config));
 
 
 
-    private void OnDeviceListUpdated() => RefreshDevices();
+    private void OnConfigDeleted(KeyboardConfigModel config)
+    {
+        var menuItem = ConfigMenuItems.FirstOrDefault(c => c.Model == config);
+        if (menuItem == null) return;
+        ConfigMenuItems.Remove(menuItem);
+    }
+
+
+
+    private void OnDeviceListUpdated() => RefreshDevices(); // TODO fix - will reset all selected devices
 
 
 
@@ -133,7 +143,8 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         _listModel.SlotAdded -= OnSlotAdded;
         _listModel.SlotRemoved -= OnSlotRemoved;
-        _listModel.ConfigListUpdated -= OnConfigListUpdated;
+        _listModel.ConfigCreated -= OnConfigCreated;
+        _listModel.ConfigDeleted -= OnConfigDeleted;
         _listModel.DeviceListUpdated -= OnDeviceListUpdated;
 
         foreach (var slot in Slots)

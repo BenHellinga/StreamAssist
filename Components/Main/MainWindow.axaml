@@ -16,7 +16,7 @@
             <keyboard:KeyboardTab DataContext="{Binding}"/>
         </DataTemplate>
         <DataTemplate DataType="main:OutputConsoleViewModel">
-            <keyboard:KeyboardTab DataContext="{Binding}"/>
+            <main:OutputConsole DataContext="{Binding}"/>
         </DataTemplate>
     </Window.DataTemplates>
 

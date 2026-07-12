@@ -19,7 +19,6 @@ namespace StreamAssist.Components.Keyboard.UI;
 public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 {
     // dependencies
-    private readonly KeyboardListViewModel _ownerList;
     private readonly KeyboardInputManager _inputManager;
     private readonly ActionPanelViewModel _actionPanel;
     public KeyboardSlotModel SlotModel { get; }
@@ -44,10 +43,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    // TODO cleanup
     public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardInputManager inputManager, KeyboardListModel listData, ActionPanelViewModel actionPanel, KeyboardSlotModel slotModel)
     {
-        _ownerList = ownerList;
         _inputManager = inputManager;
         _listModel = listData;
         _actionPanel = actionPanel;

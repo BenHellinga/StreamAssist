@@ -31,7 +31,8 @@ public class KeyboardListModel : IJsonOnDeserialized
 
     public event Action<KeyboardSlotModel>? SlotAdded;
     public event Action<KeyboardSlotModel>? SlotRemoved;
-    public event Action? ConfigListUpdated;
+    public event Action<KeyboardConfigModel>? ConfigCreated;
+    public event Action<KeyboardConfigModel>? ConfigDeleted;
     public event Action? DeviceListUpdated;
     public event Action<string>? ConfigBindingChanged;
 
@@ -66,6 +67,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
+    // TODO should add AddDevice/RemoveDevice methods with device plugged/unplugged callbacks from KeyboardInputManager? 
     public void AttachDevices(IReadOnlyList<KeyboardDeviceModel>? devices)
     {
         Devices = devices;
@@ -78,6 +80,14 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
     // slot management
+
+
+
+    public bool TryAddSlot()
+    {
+        AddSlot();
+        return true;
+    }
 
 
 
@@ -144,7 +154,7 @@ public class KeyboardListModel : IJsonOnDeserialized
     public void CreateConfig(KeyboardConfigModel config)
     {
         Configs.Add(config);
-        ConfigListUpdated?.Invoke();
+        ConfigCreated?.Invoke(config);
     }
 
 
@@ -185,7 +195,7 @@ public class KeyboardListModel : IJsonOnDeserialized
                 slot.SetSelectedConfig(null);
 
         Configs.Remove(config);
-        ConfigListUpdated?.Invoke();
+        ConfigDeleted?.Invoke(config);
     }
 
 
