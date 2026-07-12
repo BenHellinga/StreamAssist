@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Main;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
@@ -37,6 +38,7 @@ public class KeyboardSlotManager : IDisposable
 
         _inputManager.KeyPressed += OnKeyPressed;
         _inputManager.KeyReleased += OnKeyReleased;
+        _inputManager.KeyRepeated += OnKeyRepeated;
     }
 
 
@@ -57,24 +59,35 @@ public class KeyboardSlotManager : IDisposable
 
 
 
-    private void OnKeyPressed(string device, ushort vk)
+    private void OnKeyPressed(string device, ushort key)
     {
         if (device != _device) return;
         if (_keybinds == null) return;
-        if (!_keybinds.TryGetValue(vk, out var bindingModel)) return;
+        if (!_keybinds.TryGetValue(key, out var bindingModel)) return;
 
         bindingModel.OnPressed.SafeExecuteAllAsync();
     }
 
 
 
-    private void OnKeyReleased(string device, ushort vk)
+    private void OnKeyReleased(string device, ushort key)
     {
         if (device != _device) return;
         if (_keybinds == null) return;
-        if (!_keybinds.TryGetValue(vk, out var bindingModel)) return;
+        if (!_keybinds.TryGetValue(key, out var bindingModel)) return;
 
         bindingModel.OnReleased.SafeExecuteAllAsync();
+    }
+
+
+
+    private void OnKeyRepeated(string device, ushort key)
+    {
+        if (device != _device) return;
+        if (_keybinds == null) return;
+        if (!_keybinds.TryGetValue(key, out var bindingModel)) return;
+
+        bindingModel.OnRepeated.SafeExecuteAllAsync();
     }
 
 
@@ -90,5 +103,6 @@ public class KeyboardSlotManager : IDisposable
 
         _inputManager.KeyPressed -= OnKeyPressed;
         _inputManager.KeyReleased -= OnKeyReleased;
+        _inputManager.KeyRepeated -= OnKeyRepeated;
     }
 }
