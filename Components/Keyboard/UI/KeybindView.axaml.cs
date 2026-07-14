@@ -4,9 +4,9 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public partial class KeyConfiguratorView : UserControl
+public partial class KeybindView : UserControl
 {
-    public KeyConfiguratorView()
+    public KeybindView()
     {
         InitializeComponent();
     }

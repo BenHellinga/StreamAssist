@@ -26,8 +26,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private PanelViewModel _sidePanelViewModel;
 
     // tabs
-    private ObservableCollection<ComponentTabItem> _tabs;
-    [ObservableProperty] private ComponentTabItem _selectedTab;
+    private ObservableCollection<ViewModelTabItem> _tabs;
+    [ObservableProperty] private ViewModelTabItem _selectedTab;
     [ObservableProperty] private IDisposable _activeContent;
 
     // public getter properties
@@ -36,7 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public PanelViewModel OutputConsolePanel => _outputConsolePanelViewModel;
     public PanelViewModel SidePanel => _sidePanelViewModel;
     public PanelViewModel BottomPanel => _bottomPanelViewModel;
-    public ObservableCollection<ComponentTabItem> Tabs => _tabs;
+    public ObservableCollection<ViewModelTabItem> Tabs => _tabs;
 
 
 
@@ -66,7 +66,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ];
 
         SelectedTab = _tabs[0];
-        ActiveContent = SelectedTab.Activate();
+        ActiveContent = SelectedTab.CreateTabViewModel();
 
         AppLog.WriteLine("StreamAssist started");
     }
@@ -77,10 +77,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
 
-    partial void OnSelectedTabChanged(ComponentTabItem value)
+    partial void OnSelectedTabChanged(ViewModelTabItem value)
     {
         IDisposable oldContent = ActiveContent;
-        ActiveContent = value.Activate();
+        ActiveContent = value.CreateTabViewModel();
         oldContent?.Dispose();
     }
 

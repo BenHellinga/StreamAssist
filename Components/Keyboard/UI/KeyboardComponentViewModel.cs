@@ -38,7 +38,7 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
     public KeyboardComponentViewModel(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel keyConfiguratorPanel)
     {
-        var keyConfigurator = new KeyConfiguratorViewModel();
+        var keyConfigurator = new KeybindViewModel();
         keyConfiguratorPanel.SetContent(keyConfigurator);
 
         _keyboardList = new KeyboardListViewModel(model.ListModel, keyConfigurator, manager.GetInputManager());

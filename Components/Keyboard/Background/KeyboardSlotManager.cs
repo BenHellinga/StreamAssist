@@ -14,7 +14,7 @@ public class KeyboardSlotManager : IDisposable
     private readonly KeyboardSlotModel _slotModel;
 
     private string? _device;
-    private IReadOnlyDictionary<ushort, KeyboardBindingModel>? _keybinds;
+    private IReadOnlyDictionary<ushort, KeybindModel>? _keybinds;
 
 
 
@@ -50,7 +50,7 @@ public class KeyboardSlotManager : IDisposable
 
 
 
-    private void OnSelectedConfigChanged(KeyboardConfigModel? _, KeyboardConfigModel? newConfig) => _keybinds = newConfig?.Keybinds;
+    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? newConfig) => _keybinds = newConfig?.Keybinds;
 
 
 

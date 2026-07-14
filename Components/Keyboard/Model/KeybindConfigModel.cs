@@ -8,15 +8,15 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeyboardConfigModel
+public class KeybindConfigModel
 {
     // private storage fields
     private string _name;
-    private Dictionary<ushort, KeyboardBindingModel> _keybinds;
+    private Dictionary<ushort, KeybindModel> _keybinds;
 
     // public getter properties
     [JsonIgnore] public string Name => _name;
-    [JsonIgnore] public IReadOnlyDictionary<ushort, KeyboardBindingModel> Keybinds => _keybinds;
+    [JsonIgnore] public IReadOnlyDictionary<ushort, KeybindModel> Keybinds => _keybinds;
 
 
 
@@ -32,7 +32,7 @@ public class KeyboardConfigModel
     }
 
     [JsonInclude] [JsonPropertyName("keyBindings")]
-    private Dictionary<ushort, KeyboardBindingModel> JsonKeybinds
+    private Dictionary<ushort, KeybindModel> JsonKeybinds
     {
         get => _keybinds;
         set => _keybinds = value;
@@ -44,8 +44,8 @@ public class KeyboardConfigModel
 
 
 
-    public event Action<ushort, KeyboardBindingModel>? KeyBound;
-    public event Action<ushort, KeyboardBindingModel>? KeyUnbound;
+    public event Action<ushort, KeybindModel>? KeyBound;
+    public event Action<ushort, KeybindModel>? KeyUnbound;
 
 
 
@@ -53,7 +53,7 @@ public class KeyboardConfigModel
 
 
 
-    public KeyboardConfigModel()
+    public KeybindConfigModel()
     {
         _name = "null";
         _keybinds = [];
@@ -61,7 +61,7 @@ public class KeyboardConfigModel
 
 
 
-    public KeyboardConfigModel(string name, Dictionary<ushort, KeyboardBindingModel>? keybinds = null)
+    public KeybindConfigModel(string name, Dictionary<ushort, KeybindModel>? keybinds = null)
     {
         _name = name;
         _keybinds = keybinds ?? [];

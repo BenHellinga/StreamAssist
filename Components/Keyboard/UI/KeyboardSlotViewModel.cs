@@ -22,7 +22,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     private readonly KeyboardListViewModel _ownerList;
     private readonly KeyboardListModel _listModel;
     private readonly KeyboardSlotModel _slotModel;
-    private readonly KeyConfiguratorViewModel _keyConfigurator;
+    private readonly KeybindViewModel _keyConfigurator;
     private readonly KeyboardInputManager _inputManager;
 
     // private storage fields
@@ -45,7 +45,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardListModel listModel, KeyboardSlotModel slotModel, KeyConfiguratorViewModel keyConfigurator, KeyboardInputManager inputManager)
+    public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardListModel listModel, KeyboardSlotModel slotModel, KeybindViewModel keyConfigurator, KeyboardInputManager inputManager)
     {
         _ownerList = ownerList;
         _listModel = listModel;
@@ -107,7 +107,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         if (_callbackBlocker.IsBlocked()) return;
 
         // TODO copy current config bindings
-        var bindings = new Dictionary<ushort, KeyboardBindingModel>();
+        var bindings = new Dictionary<ushort, KeybindModel>();
 
         var config = _listModel.TryAddConfig(InputConfig, bindings);
         if (config is null) return;
@@ -177,7 +177,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    private void OnSelectedConfigChanged(KeyboardConfigModel? oldConfig, KeyboardConfigModel? newConfig)
+    private void OnSelectedConfigChanged(KeybindConfigModel? oldConfig, KeybindConfigModel? newConfig)
     {
         oldConfig?.KeyBound -= OnKeyBound;
         oldConfig?.KeyUnbound -= OnKeyUnbound;
@@ -190,11 +190,11 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    private void OnKeyBound(ushort vk, KeyboardBindingModel _) => _keyMap[vk].IsBound = true;
+    private void OnKeyBound(ushort vk, KeybindModel _) => _keyMap[vk].IsBound = true;
 
 
 
-    private void OnKeyUnbound(ushort vk, KeyboardBindingModel _) => _keyMap[vk].IsBound = false;
+    private void OnKeyUnbound(ushort vk, KeybindModel _) => _keyMap[vk].IsBound = false;
 
 
 
@@ -211,7 +211,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    private void SetMenuConfig(KeyboardConfigModel? config)
+    private void SetMenuConfig(KeybindConfigModel? config)
     {
         _callbackBlocker.Block();
         MenuConfig = _ownerList.ConfigMenuItems.FirstOrDefault(c => c.Model == config)!;
@@ -220,7 +220,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    private void SetKeybinds(IReadOnlyDictionary<ushort, KeyboardBindingModel>? keybinds)
+    private void SetKeybinds(IReadOnlyDictionary<ushort, KeybindModel>? keybinds)
     {
         _callbackBlocker.Block();
 

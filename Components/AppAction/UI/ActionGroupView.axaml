@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.AppAction.UI.ActionGroupView"
+             x:DataType="appAction:ActionGroupViewModel"
+
+             xmlns:appAction="using:StreamAssist.Components.AppAction.UI">
+
+    <!-- action group -->
+
+    <StackPanel>
+
+        <TextBlock Classes="Label" Text="{Binding Title}" Margin="0,0,0,5"/>
+        <TextBlock Classes="Description" Text="{Binding Description}" Margin="0,0,0,5"/>
+
+        <Border Classes="Divider"/>
+
+    </StackPanel>
+
+</UserControl>

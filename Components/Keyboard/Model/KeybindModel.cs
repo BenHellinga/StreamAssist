@@ -6,7 +6,7 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeyboardBindingModel
+public class KeybindModel
 {
     // private storage fields
     private ActionGroupModel _onPressed;
@@ -51,7 +51,7 @@ public class KeyboardBindingModel
 
 
 
-    public KeyboardBindingModel()
+    public KeybindModel()
     {
         _onPressed = new();
         _onReleased = new();
@@ -60,7 +60,7 @@ public class KeyboardBindingModel
 
 
 
-    public KeyboardBindingModel(ActionGroupModel? onPressed = null, ActionGroupModel? onReleased = null, ActionGroupModel? onRepeated = null)
+    public KeybindModel(ActionGroupModel? onPressed = null, ActionGroupModel? onReleased = null, ActionGroupModel? onRepeated = null)
     {
         _onPressed = onPressed ?? new();
         _onReleased = onReleased ?? new();

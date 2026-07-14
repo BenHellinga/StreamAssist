@@ -80,7 +80,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void SubscribeToConfig(KeyboardConfigModel config)
+    private void SubscribeToConfig(KeybindConfigModel config)
     {
         config.KeyBound += OnKeyBound;
         config.KeyUnbound += OnKeyUnbound;
@@ -91,7 +91,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void UnsubscribeFromConfig(KeyboardConfigModel config)
+    private void UnsubscribeFromConfig(KeybindConfigModel config)
     {
         config.KeyBound -= OnKeyBound;
         config.KeyUnbound -= OnKeyUnbound;
@@ -102,7 +102,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void SubscribeToBindingModel(KeyboardBindingModel bindingModel)
+    private void SubscribeToBindingModel(KeybindModel bindingModel)
     {
         bindingModel.OnPressed.ActionAdded += OnActionAdded;
         bindingModel.OnPressed.ActionRemoved += OnActionRemoved;
@@ -114,7 +114,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void UnsubscribeFromBindingModel(KeyboardBindingModel bindingModel)
+    private void UnsubscribeFromBindingModel(KeybindModel bindingModel)
     {
         bindingModel.OnPressed.ActionAdded -= OnActionAdded;
         bindingModel.OnPressed.ActionRemoved -= OnActionRemoved;
@@ -146,7 +146,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnConfigCreated(KeyboardConfigModel config)
+    private void OnConfigCreated(KeybindConfigModel config)
     {
         SubscribeToConfig(config);
         Save();
@@ -154,7 +154,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnConfigDeleted(KeyboardConfigModel config)
+    private void OnConfigDeleted(KeybindConfigModel config)
     {
         UnsubscribeFromConfig(config);
         Save();
@@ -162,7 +162,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnKeyBound(ushort _, KeyboardBindingModel bindingModel)
+    private void OnKeyBound(ushort _, KeybindModel bindingModel)
     {
         SubscribeToBindingModel(bindingModel);
         Save();
@@ -170,7 +170,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnKeyUnbound(ushort _, KeyboardBindingModel bindingModel)
+    private void OnKeyUnbound(ushort _, KeybindModel bindingModel)
     {
         UnsubscribeFromBindingModel(bindingModel);
         Save();
@@ -182,7 +182,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnSelectedConfigChanged(KeyboardConfigModel? _, KeyboardConfigModel? __) => Save();
+    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? __) => Save();
 
 
 

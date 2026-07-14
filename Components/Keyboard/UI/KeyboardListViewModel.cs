@@ -16,7 +16,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 {
     // dependencies
     private readonly KeyboardListModel _listModel;
-    private readonly KeyConfiguratorViewModel _keyConfigurator;
+    private readonly KeybindViewModel _keyConfigurator;
     private readonly KeyboardInputManager _inputManager;
 
     // private storage fields
@@ -35,7 +35,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    public KeyboardListViewModel(KeyboardListModel listModel, KeyConfiguratorViewModel keyConfigurator, KeyboardInputManager inputManager)
+    public KeyboardListViewModel(KeyboardListModel listModel, KeybindViewModel keyConfigurator, KeyboardInputManager inputManager)
     {
         _listModel = listModel;
         _keyConfigurator = keyConfigurator;
@@ -90,11 +90,11 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnConfigCreated(KeyboardConfigModel config) => _configMenuItems.Add(new(config.Name, config));
+    private void OnConfigCreated(KeybindConfigModel config) => _configMenuItems.Add(new(config.Name, config));
 
 
 
-    private void OnConfigDeleted(KeyboardConfigModel config)
+    private void OnConfigDeleted(KeybindConfigModel config)
     {
         var menuItem = _configMenuItems.FirstOrDefault(c => c.Model == config);
         if (menuItem == null) return;

@@ -18,11 +18,11 @@ public class KeyboardListModel : IJsonOnDeserialized
     private IReadOnlyList<KeyboardDeviceModel>? _devices;
 
     // private storage fields
-    private List<KeyboardConfigModel> _configs;
+    private List<KeybindConfigModel> _configs;
     private List<KeyboardSlotModel> _slots;
 
     // public getter properties
-    [JsonIgnore] public IReadOnlyList<KeyboardConfigModel> Configs => _configs;
+    [JsonIgnore] public IReadOnlyList<KeybindConfigModel> Configs => _configs;
     [JsonIgnore] public IReadOnlyList<KeyboardSlotModel> Slots => _slots;
     [JsonIgnore] public IReadOnlyList<KeyboardDeviceModel>? Devices => _devices;
 
@@ -33,7 +33,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
     [JsonInclude] [JsonPropertyName("configs")]
-    private List<KeyboardConfigModel> JsonConfigs
+    private List<KeybindConfigModel> JsonConfigs
     {
         get => _configs;
         set => _configs = value;
@@ -54,8 +54,8 @@ public class KeyboardListModel : IJsonOnDeserialized
 
     public event Action<KeyboardSlotModel>? SlotAdded;
     public event Action<KeyboardSlotModel>? SlotRemoved;
-    public event Action<KeyboardConfigModel>? ConfigCreated;
-    public event Action<KeyboardConfigModel>? ConfigDeleted;
+    public event Action<KeybindConfigModel>? ConfigCreated;
+    public event Action<KeybindConfigModel>? ConfigDeleted;
     public event Action? DeviceListUpdated;
 
 
@@ -142,7 +142,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    public KeyboardConfigModel? TryAddConfig(string name, Dictionary<ushort, KeyboardBindingModel>? keybinds = null)
+    public KeybindConfigModel? TryAddConfig(string name, Dictionary<ushort, KeybindModel>? keybinds = null)
     {
         var trimmed = name.Trim();
         
@@ -170,9 +170,9 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    private KeyboardConfigModel AddConfig(string name, Dictionary<ushort, KeyboardBindingModel>? keybinds = null)
+    private KeybindConfigModel AddConfig(string name, Dictionary<ushort, KeybindModel>? keybinds = null)
     {
-        var config = new KeyboardConfigModel(name, keybinds);
+        var config = new KeybindConfigModel(name, keybinds);
         _configs.Add(config);
         ConfigCreated?.Invoke(config);
         return config;
@@ -180,7 +180,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    public bool TryRemoveConfig(KeyboardConfigModel config)
+    public bool TryRemoveConfig(KeybindConfigModel config)
     {
         if (!_configs.Contains(config))
         {
@@ -209,7 +209,7 @@ public class KeyboardListModel : IJsonOnDeserialized
 
 
 
-    private void RemoveConfig(KeyboardConfigModel config)
+    private void RemoveConfig(KeybindConfigModel config)
     {
         foreach (var slot in _slots)
             if (slot.SelectedConfig == config)

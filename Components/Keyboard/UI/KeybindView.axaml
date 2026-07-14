@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Keyboard.UI.KeybindView"
+             x:DataType="keyboard:KeybindViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
+             xmlns:core="using:StreamAssist.Components.Core"
+             xmlns:action="using:StreamAssist.Components.AppAction.UI">
+
+    <!-- content datatemplates -->
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="action:ActionGroupViewModel">
+            <action:ActionGroupView DataContext="{Binding}"/>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <!-- key configurator -->
+
+    <Grid>
+
+        <!-- no key selected -->
+
+        <TextBlock Text="No key selected"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsVisible="{Binding !IsKeySelected}"/>
+
+        <!-- tab strip | content -->
+
+        <Grid IsVisible="{Binding IsKeySelected}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <ListBox Grid.Row="0" Margin="0,0,0,5"
+                     Classes="TopTabStrip"
+                     ItemsSource="{Binding Tabs}"
+                     SelectedItem="{Binding SelectedTab}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="core:ViewModelTabItem">
+                        <TextBlock Text="{Binding Label}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ContentControl Grid.Row="1" Content="{Binding ActiveContent}"/>
+
+        </Grid>
+
+    </Grid>
+
+</UserControl>

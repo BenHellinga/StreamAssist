@@ -14,11 +14,11 @@ public class KeyboardSlotModel
 
     // private storage fields
     private KeyboardDeviceModel? _selectedDevice;
-    private KeyboardConfigModel? _selectedConfig;
+    private KeybindConfigModel? _selectedConfig;
     
     // public getter properties
     [JsonIgnore] public KeyboardDeviceModel? SelectedDevice => _selectedDevice;
-    [JsonIgnore] public KeyboardConfigModel? SelectedConfig => _selectedConfig;
+    [JsonIgnore] public KeybindConfigModel? SelectedConfig => _selectedConfig;
     [JsonIgnore] public int SlotID => _ownerList?.Slots.IndexOf(this) ?? -1;
 
 
@@ -53,7 +53,7 @@ public class KeyboardSlotModel
 
 
     public event Action<KeyboardDeviceModel?, KeyboardDeviceModel?>? SelectedDeviceChanged;
-    public event Action<KeyboardConfigModel?, KeyboardConfigModel?>? SelectedConfigChanged;
+    public event Action<KeybindConfigModel?, KeybindConfigModel?>? SelectedConfigChanged;
 
 
 
@@ -231,7 +231,7 @@ public class KeyboardSlotModel
 
 
 
-    public bool TrySetSelectedConfig(KeyboardConfigModel? config)
+    public bool TrySetSelectedConfig(KeybindConfigModel? config)
     {
         if (config == null)
         {
@@ -257,7 +257,7 @@ public class KeyboardSlotModel
 
 
 
-    public KeyboardConfigModel? TrySetSelectedConfigByString(string? configString)
+    public KeybindConfigModel? TrySetSelectedConfigByString(string? configString)
     {
         if (configString == null)
         {
@@ -284,7 +284,7 @@ public class KeyboardSlotModel
 
 
 
-    private void SetSelectedConfig(KeyboardConfigModel? newConfig)
+    private void SetSelectedConfig(KeybindConfigModel? newConfig)
     {
         if (_selectedConfig == newConfig) return;
 
