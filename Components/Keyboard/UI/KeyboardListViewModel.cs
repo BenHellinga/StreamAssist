@@ -6,7 +6,6 @@ using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.AppAction;
 
 namespace StreamAssist.Components.Keyboard.UI;
 

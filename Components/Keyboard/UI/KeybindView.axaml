@@ -26,26 +26,49 @@
                    VerticalAlignment="Center"
                    IsVisible="{Binding !IsKeySelected}"/>
 
-        <!-- tab strip | content -->
+        <!-- * | content -->
 
         <Grid IsVisible="{Binding IsKeySelected}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <ListBox Grid.Row="0" Margin="0,0,0,5"
-                     Classes="TopTabStrip"
-                     ItemsSource="{Binding Tabs}"
-                     SelectedItem="{Binding SelectedTab}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="core:ViewModelTabItem">
-                        <TextBlock Text="{Binding Label}"/>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <!-- tab strip | label -->
 
-            <ContentControl Grid.Row="1" Content="{Binding ActiveContent}"/>
+            <Grid Grid.Row="0" Margin="5,5,5,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- tab strip -->
+
+                <ListBox Grid.Column="0"
+                         Classes="TopTabStrip"
+                         ItemsSource="{Binding Tabs}"
+                         SelectedItem="{Binding SelectedTab}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="core:ViewModelTabItem">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- label -->
+
+                <TextBlock Grid.Column="1"
+                           Classes="Label"
+                           Text="{Binding Label}"/>
+
+            </Grid>
+
+            <Border Grid.Row="1" Margin="0,0,0,5" Classes="Divider"/>
+
+            <!-- content -->
+
+            <ContentControl Grid.Row="2" Content="{Binding ActiveContent}"/>
 
         </Grid>
 

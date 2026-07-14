@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Main;
 
 namespace StreamAssist.Components.Keyboard.Model;
 

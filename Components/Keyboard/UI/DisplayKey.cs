@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 

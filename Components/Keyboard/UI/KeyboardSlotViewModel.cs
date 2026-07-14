@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -6,7 +5,6 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Core;
-using StreamAssist.Components.AppAction;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.Main.Model;
@@ -22,7 +20,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     private readonly KeyboardListViewModel _ownerList;
     private readonly KeyboardListModel _listModel;
     private readonly KeyboardSlotModel _slotModel;
-    private readonly KeybindViewModel _keyConfigurator;
+    private readonly KeybindViewModel _keybindViewModel;
     private readonly KeyboardInputManager _inputManager;
 
     // private storage fields
@@ -50,7 +48,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         _ownerList = ownerList;
         _listModel = listModel;
         _slotModel = slotModel;
-        _keyConfigurator = keyConfigurator;
+        _keybindViewModel = keyConfigurator;
         _inputManager = inputManager;
 
         _callbackBlocker = new();
@@ -160,11 +158,14 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     internal void OnKeyLeftClicked(DisplayKey key)
     {
-        if (_slotModel.SelectedConfig == null) return;
+        if (_slotModel.SelectedConfig == null)
+        {
+            AppLog.WriteError("Could not select key - no config selected");
+            _keybindViewModel.DeselectKey();
+            return;
+        }
 
-        var vk = key.VK;
-        var bindingModel = _slotModel.SelectedConfig.Keybinds.GetValueOrDefault(vk);
-        _keyConfigurator.SetBindingModel(bindingModel);
+        _keybindViewModel.SetSelectedKey(key, _slotModel, _listModel);
     }
 
 

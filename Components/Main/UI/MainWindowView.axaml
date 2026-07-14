@@ -41,12 +41,13 @@
         <Grid Grid.Column="2">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*" MinHeight="100"/>
             </Grid.RowDefinitions>
 
             <!-- tab strip -->
 
-            <ListBox Grid.Row="0" Margin="0,0,0,5"
+            <ListBox Grid.Row="0" Margin="5,5,5,10"
                      Classes="TopTabStrip"
                      ItemsSource="{Binding Tabs}"
                      SelectedItem="{Binding SelectedTab}">
@@ -57,9 +58,11 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
+            <Border Grid.Row="1" Margin="0,0,0,5" Classes="Divider"/>
+
             <!-- * | side panel -->
 
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MinWidth="100"/>
                     <ColumnDefinition Width="{Binding SidePanel.SplitterLength}"/>

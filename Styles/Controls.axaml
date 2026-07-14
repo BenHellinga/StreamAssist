@@ -220,9 +220,6 @@
     <Style Selector="ListBox.TopTabStrip">
         <Setter Property="DockPanel.Dock" Value="Top"/>
         <Setter Property="Background" Value="{DynamicResource MainBackground}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
-        <Setter Property="BorderThickness" Value="0,0,0,1"/>
-        <Setter Property="Padding" Value="5,5,5,10"/>
 
         <Setter Property="ItemsPanel">
             <ItemsPanelTemplate>

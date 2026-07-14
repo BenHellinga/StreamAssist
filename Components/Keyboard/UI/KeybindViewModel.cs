@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main.UI;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -13,7 +13,11 @@ namespace StreamAssist.Components.Keyboard.UI;
 public partial class KeybindViewModel : ViewModelBase
 {
     // private storage fields
+    private KeyboardListModel? _listModel;
+    private KeyboardSlotModel? _slotModel;
     private KeybindModel? _keybindModel;
+    private DisplayKey? _key;
+    [ObservableProperty] private string _label;
     [ObservableProperty] private ViewModelTabItem _selectedTab;
     [ObservableProperty] private IDisposable? _activeContent;
     [ObservableProperty] private bool _isKeySelected;
@@ -30,7 +34,11 @@ public partial class KeybindViewModel : ViewModelBase
 
     public KeybindViewModel()
     {
+        _listModel = null;
+        _slotModel = null;
         _keybindModel = null;
+        _key = null;
+        _label = "null";
 
         _tabs = [
             new("On Pressed", () => new ActionGroupViewModel("On Pressed", "Runs all actions when the key is pressed.", _keybindModel!.OnPressed)),
@@ -56,24 +64,36 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    // setter
+    // setters
 
 
 
-    public void SetBindingModel(KeybindModel? keybindModel)
+    public void SetSelectedKey(DisplayKey key, KeyboardSlotModel slotModel, KeyboardListModel listModel)
     {
-        if (keybindModel == null)
+        if (_key == key)
         {
-            IsKeySelected = false;
-            _keybindModel = null;
-            ActiveContent?.Dispose();
+            DeselectKey();
+            return;
         }
-        else
-        {
-            _keybindModel = keybindModel;
-            ActiveContent = SelectedTab.CreateTabViewModel();
-            IsKeySelected = true;
-        }
+
+        _key = key;
+        _slotModel = slotModel;
+        _listModel = listModel;
+        _keybindModel = slotModel.SelectedConfig!.Keybinds.GetValueOrDefault(key.VK) ?? new();
+
+        ActiveContent = SelectedTab.CreateTabViewModel();
+        Label = $"{key.VK} - slot {_slotModel.SlotID}";
+        IsKeySelected = true;
+    }
+
+
+
+    public void DeselectKey()
+    {
+        IsKeySelected = false;
+        _key = null;
+        _keybindModel = null;
+        ActiveContent?.Dispose();
     }
 
 
