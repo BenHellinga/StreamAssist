@@ -1,3 +1,4 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace StreamAssist.Components.Core;
@@ -6,6 +7,7 @@ namespace StreamAssist.Components.Core;
 /// Base class for all ViewModels. ViewLocator uses this to identify
 /// which objects are ViewModels it should try to resolve a View for.
 /// </summary>
-public abstract class ViewModelBase : ObservableObject
+public abstract class ViewModelBase : ObservableObject, IDisposable
 {
+    public virtual void Dispose() {}
 }

@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Keyboard.UI.KeyboardComponentView"
+             x:DataType="keyboard:KeyboardComponentViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
+
+    <!-- keybaord main panel -->
+
+    <keyboard:KeyboardListView DataContext="{Binding KeyboardList}"/>
+
+</UserControl>

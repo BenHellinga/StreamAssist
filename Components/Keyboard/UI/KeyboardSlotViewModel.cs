@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,21 +9,21 @@ using StreamAssist.Components.Core;
 using StreamAssist.Components.AppAction;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main;
+using StreamAssist.Components.Main.Model;
 using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
+public partial class KeyboardSlotViewModel : ViewModelBase
 {
     // dependencies
     private readonly KeyboardListViewModel _ownerList;
-    private readonly KeyboardInputManager _inputManager;
-    private readonly ActionPanelViewModel _actionPanel;
-    private readonly KeyboardSlotModel _slotModel;
     private readonly KeyboardListModel _listModel;
+    private readonly KeyboardSlotModel _slotModel;
+    private readonly KeyConfiguratorViewModel _keyConfigurator;
+    private readonly KeyboardInputManager _inputManager;
 
     // private storage fields
     [ObservableProperty] private DeviceMenuItem _menuDevice;
@@ -46,16 +45,15 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardInputManager inputManager, KeyboardListModel listModel, ActionPanelViewModel actionPanel, KeyboardSlotModel slotModel)
+    public KeyboardSlotViewModel(KeyboardListViewModel ownerList, KeyboardListModel listModel, KeyboardSlotModel slotModel, KeyConfiguratorViewModel keyConfigurator, KeyboardInputManager inputManager)
     {
         _ownerList = ownerList;
-        _inputManager = inputManager;
         _listModel = listModel;
-        _actionPanel = actionPanel;
         _slotModel = slotModel;
+        _keyConfigurator = keyConfigurator;
+        _inputManager = inputManager;
 
         _callbackBlocker = new();
-
         _callbackBlocker.Block();
 
         _menuDevice = new("null", null);
@@ -160,7 +158,14 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    internal void OnKeyLeftClicked(DisplayKey key) => _actionPanel.ShowKey(key);
+    internal void OnKeyLeftClicked(DisplayKey key)
+    {
+        if (_slotModel.SelectedConfig == null) return;
+
+        var vk = key.VK;
+        var bindingModel = _slotModel.SelectedConfig.Keybinds.GetValueOrDefault(vk);
+        _keyConfigurator.SetBindingModel(bindingModel);
+    }
 
 
 
@@ -200,7 +205,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     private void SetMenuDevice(KeyboardDeviceModel? device)
     {
         _callbackBlocker.Block();
-        MenuDevice = _ownerList.DeviceMenuItems.FirstOrDefault(d => d.Model == device) ?? _ownerList.DeviceMenuItems[0];
+        MenuDevice = _ownerList.DeviceMenuItems.FirstOrDefault(d => d.Model == device)!;
         _callbackBlocker.Unblock();
     }
 
@@ -209,7 +214,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
     private void SetMenuConfig(KeyboardConfigModel? config)
     {
         _callbackBlocker.Block();
-        MenuConfig = _ownerList.ConfigMenuItems.FirstOrDefault(c => c.Model == config) ?? _ownerList.ConfigMenuItems[0];
+        MenuConfig = _ownerList.ConfigMenuItems.FirstOrDefault(c => c.Model == config)!;
         _callbackBlocker.Unblock();
     }
 
@@ -415,7 +420,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IDisposable
 
 
 
-    public void Dispose()
+    public override void Dispose()
     {
         _slotModel.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         _slotModel.SelectedConfigChanged -= OnSelectedConfigChanged;

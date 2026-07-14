@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Keyboard.UI.KeyboardSlotView"
+             x:DataType="keyboard:KeyboardSlotViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
+
+    <!-- keyboard slot -->
+
+    <StackPanel Spacing="10">
+
+        <!-- menu -->
+
+        <StackPanel Orientation="Horizontal" Spacing="20">
+
+            <!-- config related -->
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+
+                <TextBlock Classes="Label" Text="Config"/>
+
+                <!-- configs dropdown -->
+
+                <ComboBox ItemsSource="{Binding ConfigMenuItems}"
+                          SelectedItem="{Binding MenuConfig}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="keyboard:ConfigMenuItem">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- add config button -->
+
+                <Button Classes="Square"
+                        Content="＋"
+                        Command="{Binding CreateConfigRequestedCommand}"
+                        ToolTip.Tip="Create a copy of the current config with the name below"/>
+
+                <!-- input config box -->
+
+                <TextBox Text="{Binding InputConfig}"
+                         PlaceholderText="Config name…"
+                         Width="150"/>
+
+                <!-- delete config button -->
+
+                <Button Classes="Square"
+                        Content="－"
+                        Command="{Binding DeleteConfigRequestedCommand}"
+                        ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
+
+            </StackPanel>
+
+            <!-- device related -->
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+
+                <TextBlock Classes="label" Text="Device"/>
+
+                <!-- device dropdown -->
+
+                <ComboBox ItemsSource="{Binding DeviceMenuItems}"
+                          SelectedItem="{Binding MenuDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="keyboard:DeviceMenuItem">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+            </StackPanel>
+        </StackPanel>
+
+        <!-- keyboard -->
+
+        <Viewbox Stretch="Uniform"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top">
+            <ItemsControl ItemsSource="{Binding Keys}"
+                        Width="{Binding CanvasWidth}"
+                        Height="{Binding CanvasHeight}">
+
+                <!-- canvas -->
+
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <!-- position each key -->
+
+                <ItemsControl.ItemContainerTheme>
+                    <ControlTheme TargetType="ContentPresenter"
+                                x:DataType="keyboard:DisplayKey">
+                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                    </ControlTheme>
+                </ItemsControl.ItemContainerTheme>
+
+                <!-- per key management -->
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="keyboard:DisplayKey">
+                        <Border Classes="ActionBoundable"
+                                Classes.pressed="{Binding IsPressed}"
+                                Classes.bound="{Binding IsBound}"
+                                Width="{Binding W}"
+                                Height="{Binding H}"
+                                DragDrop.AllowDrop="True"
+                                DragDrop.DragOver="OnKeyDragOver"
+                                DragDrop.DragLeave="OnKeyDragLeave"
+                                DragDrop.Drop="OnKeyDrop"
+                                PointerPressed="OnKeyPointerPressed">
+
+                            <!-- key labels -->
+
+                            <StackPanel VerticalAlignment="Center" Spacing="2" Margin="3">
+                                <TextBlock Text="{Binding Label}"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+
+            </ItemsControl>
+        </Viewbox>
+
+    </StackPanel>
+</UserControl>

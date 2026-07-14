@@ -1,0 +1,62 @@
+using System;
+using System.Reflection;
+using CommunityToolkit.Mvvm.ComponentModel;
+using StreamAssist.Components.AppAction.Model;
+
+namespace StreamAssist.Components.Core.Configurator;
+
+
+
+public partial class ConfigurableParameterViewModel : ObservableObject
+{
+    // private storage fields
+    private readonly IAppAction _target;
+    private readonly PropertyInfo _property;
+    private readonly string _label;
+    private readonly ConfiguratorType _configurator;
+
+    // public getter properties
+    public string Label => _label;
+    public ConfiguratorType Configurator => _configurator;
+    public Type Type => _property.PropertyType;
+
+
+
+    // constructor
+
+
+
+    public ConfigurableParameterViewModel(IAppAction target, PropertyInfo property, ConfigurableParameterAttribute attribute)
+    {
+        _target = target;
+        _property = property;
+        _label = attribute.Label;
+        _configurator = ResolveConfigurator(attribute.Editor, property.PropertyType);
+    }
+
+
+
+    private static ConfiguratorType ResolveConfigurator(ConfiguratorType requested, Type propertyType)
+    {
+        if (requested != ConfiguratorType.Auto) return requested;
+
+        if (propertyType == typeof(bool)) return ConfiguratorType.Boolean;
+        if (propertyType == typeof(int)) return ConfiguratorType.Number;
+        if (propertyType == typeof(float)) return ConfiguratorType.Number;
+        if (propertyType == typeof(double)) return ConfiguratorType.Number;
+
+        return ConfiguratorType.Text;
+    }
+
+
+
+    public object? Value
+    {
+        get => _property.GetValue(_target);
+        set
+        {
+            _property.SetValue(_target, value);
+            OnPropertyChanged();
+        }
+    }
+}

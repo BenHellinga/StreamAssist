@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Main;
+using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 

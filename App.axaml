@@ -3,6 +3,7 @@
              x:Class="StreamAssist.App"
 
              xmlns:local="using:StreamAssist"
+             xmlns:configurator="using:StreamAssist.Components.Core.Configurator"
 
              RequestedThemeVariant="Default">
 
@@ -27,6 +28,7 @@
     <Application.Styles>
         <FluentTheme/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Configurator.axaml"/>
     </Application.Styles>
 
 </Application>

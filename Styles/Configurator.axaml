@@ -1,0 +1,34 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:configurator="using:StreamAssist.Components.Core.Configurator">
+
+    <Styles.Resources>
+        <configurator:ConfiguratorTemplateSelector x:Key="ConfiguratorTemplateSelector"/>
+
+        <DataTemplate x:Key="TextConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="label" Text="{Binding Label}"/>
+                <TextBox Text="{Binding Value}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="NumberConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="label" Text="{Binding Label}"/>
+                <NumericUpDown Value="{Binding Value}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="BoolConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+            <CheckBox Content="{Binding Label}" IsChecked="{Binding Value}"/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FilePathConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="label" Text="{Binding Label}"/>
+                <TextBox Text="{Binding Value}" PlaceholderText="No file selected…" IsReadOnly="True"/>
+            </StackPanel>
+        </DataTemplate>
+    </Styles.Resources>
+
+</Styles>

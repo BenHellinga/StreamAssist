@@ -11,7 +11,6 @@ namespace StreamAssist.Components.Keyboard.Background;
 public class KeyboardSlotManager : IDisposable
 {
     private readonly KeyboardInputManager _inputManager;
-    // private readonly KeyboardListModel _listModel; // TODO should be removed when actions and configs are finished
     private readonly KeyboardSlotModel _slotModel;
 
     private string? _device;

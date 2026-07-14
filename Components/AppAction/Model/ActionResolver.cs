@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using StreamAssist.Components.Main;
+using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.AppAction.Model;
 

@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using StreamAssist.Components.Main;
+using StreamAssist.Components.Main.UI;
 
 namespace StreamAssist;
 
@@ -16,7 +16,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            desktop.MainWindow = new MainWindowView();
         }
 
         base.OnFrameworkInitializationCompleted();

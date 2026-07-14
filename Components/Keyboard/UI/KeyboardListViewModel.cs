@@ -15,9 +15,9 @@ namespace StreamAssist.Components.Keyboard.UI;
 public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 {
     // dependencies
-    private readonly KeyboardInputManager _inputManager;
     private readonly KeyboardListModel _listModel;
-    private readonly ActionPanelViewModel _actionPanel;
+    private readonly KeyConfiguratorViewModel _keyConfigurator;
+    private readonly KeyboardInputManager _inputManager;
 
     // private storage fields
     private ObservableCollection<DeviceMenuItem> _deviceMenuItems;
@@ -35,11 +35,11 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    public KeyboardListViewModel(KeyboardInputManager inputManager, KeyboardListModel listModel, ActionPanelViewModel actionPanel)
+    public KeyboardListViewModel(KeyboardListModel listModel, KeyConfiguratorViewModel keyConfigurator, KeyboardInputManager inputManager)
     {
-        _inputManager = inputManager;
         _listModel = listModel;
-        _actionPanel = actionPanel;
+        _keyConfigurator = keyConfigurator;
+        _inputManager = inputManager;
 
         _deviceMenuItems = [];
         _configMenuItems = [];
@@ -49,7 +49,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         RefreshConfigs();
 
         foreach (var slot in _listModel.Slots)
-            _slots.Add(new KeyboardSlotViewModel(this, _inputManager, _listModel, _actionPanel, slot));
+            _slots.Add(new KeyboardSlotViewModel(this, _listModel, slot, _keyConfigurator, _inputManager));
 
         _listModel.SlotAdded += OnSlotAdded;
         _listModel.SlotRemoved += OnSlotRemoved;
@@ -76,7 +76,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnSlotAdded(KeyboardSlotModel slot) => _slots.Add(new KeyboardSlotViewModel(this, _inputManager, _listModel, _actionPanel, slot));
+    private void OnSlotAdded(KeyboardSlotModel slot) => _slots.Add(new KeyboardSlotViewModel(this, _listModel, slot, _keyConfigurator, _inputManager));
 
 
 
@@ -141,7 +141,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    public void Dispose()
+    public override void Dispose()
     {
         _listModel.SlotAdded -= OnSlotAdded;
         _listModel.SlotRemoved -= OnSlotRemoved;

@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StreamAssist.Components.Main.UI.MainWindowView"
+        x:DataType="main:MainWindowViewModel"
+
+        xmlns:main="using:StreamAssist.Components.Main.UI"
+        xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
+
+        Title="StreamAssist"
+        Background="{DynamicResource MainBackground}">
+
+    <!-- tab content datatemplates -->
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="keyboard:KeyboardComponentViewModel">
+            <keyboard:KeyboardComponentView DataContext="{Binding}"/>
+        </DataTemplate>
+        <DataTemplate DataType="main:OutputConsoleViewModel">
+            <main:OutputConsoleView DataContext="{Binding}"/>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <!-- output console | * -->
+
+    <Grid Margin="5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding OutputConsolePanel.Width, Mode=TwoWay}" MinWidth="100"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="*" MinWidth="100"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- output console panel -->
+
+        <main:PanelView Grid.Column="0" Margin="0,0,5,0" DataContext="{Binding OutputConsolePanel}"/>
+
+        <GridSplitter Grid.Column="1" Margin="0,0,5,0" Classes="ColumnSplitter"/>
+
+        <!-- tab strip | * -->
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="100"/>
+            </Grid.RowDefinitions>
+
+            <!-- tab strip -->
+
+            <ListBox Grid.Row="0" Margin="0,0,0,5"
+                     Classes="TopTabStrip"
+                     ItemsSource="{Binding Tabs}"
+                     SelectedItem="{Binding SelectedTab}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="main:ComponentTabItem">
+                        <TextBlock Text="{Binding Label}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- * | side panel -->
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="100"/>
+                    <ColumnDefinition Width="{Binding SidePanel.SplitterSize}"/>
+                    <ColumnDefinition Width="{Binding SidePanel.Width, Mode=TwoWay}"
+                                      MinWidth="{Binding SidePanel.MinWidth}"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- main content | bottom panel -->
+
+                <Grid Grid.Column="0" Margin="0,0,5,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="100"/>
+                        <RowDefinition Height="{Binding BottomPanel.SplitterSize}"/>
+                        <RowDefinition Height="{Binding BottomPanel.Height, Mode=TwoWay}"
+                                       MinHeight="{Binding BottomPanel.MinHeight}"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- main content -->
+
+                    <ContentControl Grid.Row="0" Margin="0,0,0,5" Content="{Binding ActiveContent}"/>
+
+                    <GridSplitter Grid.Row="1" Margin="0,0,0,5" Classes="RowSplitter"/>
+
+                    <!-- bottom panel -->
+
+                    <main:PanelView Grid.Row="2" DataContext="{Binding BottomPanel}"/>
+                </Grid>
+
+                <GridSplitter Grid.Column="1" Classes="ColumnSplitter" Margin="0,0,5,0"/>
+
+                <!-- side panel -->
+
+                <main:PanelView Grid.Column="2" DataContext="{Binding SidePanel}"/>
+
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

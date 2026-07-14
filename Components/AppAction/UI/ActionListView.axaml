@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.AppAction.UI.ActionListView"
+             x:DataType="ui:ActionListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI"
+             xmlns:model="using:StreamAssist.Components.AppAction.Model">
+
+    <!-- action list -->
+
+    <DockPanel>
+
+        <TextBlock DockPanel.Dock="Top"
+                   Classes="Label"
+                   Text="Actions"
+                   Margin="0,0,0,5"/>
+
+        <!-- list of actions -->
+
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Actions}">
+
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="5"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="model:IAppAction">
+
+                        <!-- each action card -->
+
+                        <Border Classes="ActionCard"
+                                Tag="{Binding}"
+                                PointerPressed="OnActionPointerPressed">
+                            <StackPanel Spacing="2">
+                                <TextBlock Classes="Label" Text="{Binding Name}"/>
+                                <TextBlock Classes="Description"
+                                           Text="{Binding Description}"
+                                           MaxLines="2"/>
+                            </StackPanel>
+                        </Border>
+
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

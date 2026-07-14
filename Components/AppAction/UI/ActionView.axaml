@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.AppAction.UI.ActionView"
+             x:DataType="ui:ActionViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI"
+             xmlns:configurator="using:StreamAssist.Components.Core.Configurator">
+
+    <!-- single action -->
+
+    <StackPanel Spacing="5">
+
+        <TextBlock Classes="title" Text="{Binding Name}"/>
+        <TextBlock Classes="description" Text="{Binding Description}"/>
+
+        <Border Classes="divider"/>
+
+        <ItemsControl ItemsSource="{Binding Configurators}">
+
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="5"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+
+        </ItemsControl>
+
+    </StackPanel>
+
+</UserControl>
