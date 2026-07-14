@@ -8,15 +8,13 @@ namespace StreamAssist.Components.Main.UI;
 
 public partial class PanelViewModel : ViewModelBase
 {
-    private GridLength _oldWidth;
-    private GridLength _oldHeight;
+    private GridLength _oldLength;
     private bool _isVisible;
 
-    [ObservableProperty] private GridLength _width;
-    [ObservableProperty] private GridLength _height; 
-    [ObservableProperty] private double _minWidth;
-    [ObservableProperty] private double _minHeight; 
-    [ObservableProperty] private GridLength _splitterSize;
+    [ObservableProperty] private GridLength _length;
+    [ObservableProperty] private double _minLength;
+    [ObservableProperty] private GridLength _splitterLength;
+    [ObservableProperty] private double _splitterMinLength;
 
     [ObservableProperty] private ViewModelBase? _content;
 
@@ -26,17 +24,15 @@ public partial class PanelViewModel : ViewModelBase
 
 
 
-    public PanelViewModel(int width = 200, int height = 200)
+    public PanelViewModel(int length = 200)
     {
-        _oldWidth = new(width);
-        _oldHeight = new(height);
+        _oldLength = new(length);
         _isVisible = false;
 
-        _width = new(0);
-        _height = new(0);
-        _minWidth = 0;
-        _minHeight = 0;
-        _splitterSize = new(0);
+        _length = new(0);
+        _minLength = 0;
+        _splitterLength = new(0);
+        _splitterMinLength = 0;
 
         _content = null;
     }
@@ -65,22 +61,19 @@ public partial class PanelViewModel : ViewModelBase
 
         if (isVisible)
         {
-            Width = _oldWidth;
-            Height = _oldHeight;
-            MinWidth = 100;
-            MinHeight = 100;
-            SplitterSize = new(10);
+            Length = _oldLength;
+            MinLength = 100;
+            SplitterLength = new(10);
+            SplitterMinLength = 5;
         }
         else
         {
-            _oldWidth = Width;
-            _oldHeight = Height;
+            _oldLength = Length;
 
-            Width = new(0);
-            Height = new(0);
-            MinWidth = 0;
-            MinHeight = 0;
-            SplitterSize = new(0);
+            Length = new(0);
+            MinLength = 0;
+            SplitterLength = new(0);
+            SplitterMinLength = 0;
         }
     }
 
