@@ -10,10 +10,18 @@ namespace StreamAssist.Components.AppAction.Model;
 
 public class ActionGroupModel
 {
-    // private storage fields
+    // private
+
+
+
     private List<IAppAction> _actions;
 
-    // public getter properties
+
+
+    // public
+
+
+    
     [JsonIgnore] public IReadOnlyList<IAppAction> Actions => _actions; 
 
 

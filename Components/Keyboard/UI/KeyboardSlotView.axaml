@@ -117,7 +117,8 @@
                             <!-- key labels -->
 
                             <StackPanel VerticalAlignment="Center" Spacing="2" Margin="3">
-                                <TextBlock Text="{Binding Label}"/>
+                                <TextBlock Text="{Binding Label}"
+                                           TextAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

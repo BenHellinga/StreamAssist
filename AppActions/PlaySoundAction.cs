@@ -18,7 +18,7 @@ public class PlaySoundAction : AppActionBase
     private string? _filepath;
 
     // public getter properties
-    [ConfigurableParameter("Sound File", ConfiguratorType.FilePath)] [JsonPropertyName("filepath")]
+    [ConfigurableParameter("Sound File", ConfiguratorType.Filepath)] [JsonPropertyName("filepath")]
     public string? Filepath
     {
         get => _filepath;

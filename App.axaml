@@ -19,6 +19,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://StreamAssist/Styles/Brushes.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Styles/Configurator.axaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
@@ -28,7 +29,6 @@
     <Application.Styles>
         <FluentTheme/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls.axaml"/>
-        <StyleInclude Source="avares://StreamAssist/Styles/Configurator.axaml"/>
     </Application.Styles>
 
 </Application>

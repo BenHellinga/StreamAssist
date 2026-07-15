@@ -11,7 +11,11 @@
         <Setter Property="FontFamily" Value="Cascadia Code,Consolas,Monospace"/>
         <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <Style Selector="TextBlock.Title">
+        <Setter Property="FontSize" Value="18"/>
     </Style>
 
     <Style Selector="TextBlock.Label">
@@ -19,7 +23,7 @@
 
     <Style Selector="TextBlock.Description">
         <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 

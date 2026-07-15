@@ -108,7 +108,7 @@ public partial class KeybindViewModel : ViewModelBase
         _configModel = configModel;
 
         SetContent(SelectedTab.CreateTabViewModel());
-        Label = $"Key: {key.VK}   Config: {_configModel.Name}   Slot: {slotID}";
+        Label = $"Key: {key.Label.Replace('\n', '-')}   Config: {_configModel.Name}   Slot: {slotID}";
         IsKeySelected = true;
     }
 

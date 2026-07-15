@@ -55,7 +55,11 @@ public partial class ConfigurableParameterViewModel : ObservableObject
         get => _property.GetValue(_target);
         set
         {
-            _property.SetValue(_target, value);
+            var converted = value is not null
+                ? Convert.ChangeType(value, Nullable.GetUnderlyingType(_property.PropertyType) ?? _property.PropertyType)
+                : value;
+
+            _property.SetValue(_target, converted);
             OnPropertyChanged();
         }
     }

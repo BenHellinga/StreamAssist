@@ -7,10 +7,20 @@
 
     <!-- action group -->
 
-    <StackPanel>
+    <ItemsControl ItemsSource="{Binding Actions}">
 
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Spacing="5"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
 
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="appAction:ActionViewModel">
+                <appAction:ActionView DataContext="{Binding}"/>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
 
-    </StackPanel>
+    </ItemsControl>
 
 </UserControl>

@@ -8,30 +8,34 @@
 
     <!-- single action -->
 
-    <StackPanel Spacing="5">
+    <Border>
 
-        <TextBlock Classes="title" Text="{Binding Name}"/>
-        <TextBlock Classes="description" Text="{Binding Description}"/>
+        <StackPanel Spacing="5" Margin="5">
 
-        <Border Classes="divider"/>
+            <TextBlock Classes="Title" Text="{Binding Name}" Margin="5,5,5,0"/>
+            <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
 
-        <ItemsControl ItemsSource="{Binding Configurators}">
+            <Border Classes="Divider"/>
 
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Spacing="5"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
+            <ItemsControl ItemsSource="{Binding Configurators}">
 
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
-                    <ContentControl Content="{Binding}"
-                                    ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="5"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-        </ItemsControl>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
+                        <ContentControl Content="{Binding}"
+                                        ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
 
-    </StackPanel>
+            </ItemsControl>
+
+        </StackPanel>
+
+    </Border>
 
 </UserControl>

@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml.Templates;
 
@@ -16,11 +17,13 @@ public class ConfiguratorTemplateSelector : IValueConverter
         {
             ConfiguratorType.Boolean  => "BoolConfigurator",
             ConfiguratorType.Number   => "NumberConfigurator",
-            ConfiguratorType.FilePath => "FilePathConfigurator",
+            ConfiguratorType.Filepath => "FilepathConfigurator",
             _                          => "TextConfigurator",
         };
 
-        return Application.Current!.Resources[key] as DataTemplate;
+    return Application.Current!.TryFindResource(key, out var resource)
+        ? resource as DataTemplate
+        : null;
     }
 
 

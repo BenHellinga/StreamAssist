@@ -1,14 +1,8 @@
 - start with chatbot
 - start with obs integration
-- allow parameters in actions
 - obs overlay?
 
-- redo keyboard tab to dispose view model when switching tabs without breaking keybind functionality
-
-
-
-
-
-TEST
-normal functionality
-keyboards defaulting when not found on boot up
+- redo how devices are loaded/changed
+- make dispalykey a IBindable
+- add color themes for IBindable
+- add different display types

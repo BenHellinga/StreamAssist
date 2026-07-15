@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Threading;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
 
@@ -11,7 +13,16 @@ public class ActionGroupViewModel : ViewModelBase
 
 
 
-    private ActionGroupModel _groupModel;
+    private ActionGroupModel _model;
+    private ObservableCollection<ActionViewModel> _actions;
+
+
+
+    // public
+
+
+
+    public ObservableCollection<ActionViewModel> Actions => _actions;
 
 
 
@@ -19,8 +30,12 @@ public class ActionGroupViewModel : ViewModelBase
 
 
 
-    public ActionGroupViewModel(ActionGroupModel groupModel)
+    public ActionGroupViewModel(ActionGroupModel model)
     {
-        _groupModel = groupModel;
+        _model = model;
+
+        _actions = [];
+        foreach (var action in _model.Actions)
+            _actions.Add(new ActionViewModel(action));
     }
 }
