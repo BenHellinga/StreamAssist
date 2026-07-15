@@ -12,19 +12,35 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 public partial class KeybindViewModel : ViewModelBase
 {
-    // private storage fields
-    private KeyboardListModel? _listModel;
-    private KeyboardSlotModel? _slotModel;
-    private KeybindModel? _keybindModel;
+    // private
+
+
+
+    [ObservableProperty] private bool _isKeySelected;
     private DisplayKey? _key;
+    private KeybindModel? _keybindModel;
+    private KeybindConfigModel? _configModel;
+
     [ObservableProperty] private string _label;
+    private ObservableCollection<ViewModelTabItem> _tabs;
     [ObservableProperty] private ViewModelTabItem _selectedTab;
     [ObservableProperty] private IDisposable? _activeContent;
-    [ObservableProperty] private bool _isKeySelected;
-    private ObservableCollection<ViewModelTabItem> _tabs;
 
-    // public getter properties
+
+
+    // public
+
+
+
     public ObservableCollection<ViewModelTabItem> Tabs => _tabs;
+
+
+
+    // events
+
+
+
+    // anevent
 
 
 
@@ -34,16 +50,16 @@ public partial class KeybindViewModel : ViewModelBase
 
     public KeybindViewModel()
     {
-        _listModel = null;
-        _slotModel = null;
-        _keybindModel = null;
+        _isKeySelected = false;
         _key = null;
-        _label = "null";
+        _keybindModel = null;
+        _configModel = null;
 
+        _label = "null";
         _tabs = [
-            new("On Pressed", () => new ActionGroupViewModel("On Pressed", "Runs all actions when the key is pressed.", _keybindModel!.OnPressed)),
-            new("On Released", () => new ActionGroupViewModel("On Released", "Runs all actions when the key is released.", _keybindModel!.OnReleased)),
-            new("On Repeated", () => new ActionGroupViewModel("On Repeated", "Runs all actions when the key repeats while held.", _keybindModel!.OnRepeated)),
+            new("On Pressed", () => new ActionGroupViewModel(_keybindModel!.OnPressed)),
+            new("On Released", () => new ActionGroupViewModel(_keybindModel!.OnReleased)),
+            new("On Repeated", () => new ActionGroupViewModel(_keybindModel!.OnRepeated)),
         ];
         _selectedTab = _tabs[0];
         _activeContent = null;
@@ -51,16 +67,27 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    // callbacks
+    // model calls
 
 
 
-    partial void OnSelectedTabChanged(ViewModelTabItem value)
-    {
-        IDisposable? oldContent = ActiveContent;
-        ActiveContent = value.CreateTabViewModel();
-        oldContent?.Dispose();
-    }
+
+
+
+
+    // model callbacks
+
+
+
+
+
+
+
+    // other callbacks
+
+
+
+    partial void OnSelectedTabChanged(ViewModelTabItem value) => SetContent(value.CreateTabViewModel());
 
 
 
@@ -68,32 +95,41 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    public void SetSelectedKey(DisplayKey key, KeyboardSlotModel slotModel, KeyboardListModel listModel)
+    public void SetKeySelected(DisplayKey key, KeybindConfigModel configModel, int slotID)
     {
         if (_key == key)
         {
-            DeselectKey();
+            DeselectKeys(null);
             return;
         }
 
         _key = key;
-        _slotModel = slotModel;
-        _listModel = listModel;
-        _keybindModel = slotModel.SelectedConfig!.Keybinds.GetValueOrDefault(key.VK) ?? new();
+        _keybindModel = configModel.Keybinds.GetValueOrDefault(key.VK) ?? new();
+        _configModel = configModel;
 
-        ActiveContent = SelectedTab.CreateTabViewModel();
-        Label = $"{key.VK} - slot {_slotModel.SlotID}";
+        SetContent(SelectedTab.CreateTabViewModel());
+        Label = $"Key: {key.VK}   Config: {_configModel.Name}   Slot: {slotID}";
         IsKeySelected = true;
     }
 
 
 
-    public void DeselectKey()
+    public void DeselectKeys(IReadOnlyList<DisplayKey>? keys)
     {
         IsKeySelected = false;
         _key = null;
         _keybindModel = null;
-        ActiveContent?.Dispose();
+        _configModel = null;
+        SetContent(null);
+    }
+
+
+
+    private void SetContent(IDisposable? content)
+    {
+        IDisposable? oldContent = ActiveContent;
+        ActiveContent = content;
+        oldContent?.Dispose();
     }
 
 

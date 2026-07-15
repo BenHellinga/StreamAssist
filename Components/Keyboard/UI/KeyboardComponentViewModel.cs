@@ -10,10 +10,18 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 public partial class KeyboardComponentViewModel : ViewModelBase
 {
-    // private storage fields
+    // private
+
+
+
     private KeyboardListViewModel _keyboardList;
 
-    // public getter properties
+
+
+    // public
+
+
+
     public KeyboardListViewModel KeyboardList => _keyboardList;
 
 
@@ -38,10 +46,12 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
     public KeyboardComponentViewModel(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel keyConfiguratorPanel)
     {
-        var keyConfigurator = new KeybindViewModel();
-        keyConfiguratorPanel.SetContent(keyConfigurator);
+        var keybindViewModel = new KeybindViewModel();
+        keyConfiguratorPanel.SetContent(keybindViewModel);
 
-        _keyboardList = new KeyboardListViewModel(model.ListModel, keyConfigurator, manager.GetInputManager());
+        _keyboardList = new KeyboardListViewModel(model.ListModel, manager.GetInputManager());
+        _keyboardList.KeySelected += keybindViewModel.SetKeySelected;
+        _keyboardList.KeysDeselected += keybindViewModel.DeselectKeys;
     }
 
 

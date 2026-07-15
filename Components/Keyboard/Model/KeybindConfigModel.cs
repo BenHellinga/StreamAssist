@@ -31,7 +31,7 @@ public class KeybindConfigModel
         set => _name = value;
     }
 
-    [JsonInclude] [JsonPropertyName("keyBindings")]
+    [JsonInclude] [JsonPropertyName("keybinds")]
     private Dictionary<ushort, KeybindModel> JsonKeybinds
     {
         get => _keybinds;

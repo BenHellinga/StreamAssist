@@ -9,10 +9,7 @@
 
     <StackPanel>
 
-        <TextBlock Classes="Label" Text="{Binding Title}" Margin="5"/>
-        <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,10"/>
 
-        <Border Classes="Divider"/>
 
     </StackPanel>
 

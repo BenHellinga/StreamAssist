@@ -7,14 +7,11 @@ namespace StreamAssist.Components.AppAction.UI;
 
 public class ActionGroupViewModel : ViewModelBase
 {
-    // private storage fields
-    private string _title;
-    private string _description;
-    private ActionGroupModel _groupModel;
+    // private
 
-    // public getter properties
-    public string Title => _title;
-    public string Description => _description;
+
+
+    private ActionGroupModel _groupModel;
 
 
 
@@ -22,10 +19,8 @@ public class ActionGroupViewModel : ViewModelBase
 
 
 
-    public ActionGroupViewModel(string title, string description, ActionGroupModel groupModel)
+    public ActionGroupViewModel(ActionGroupModel groupModel)
     {
-        _title = title;
-        _description = description;
         _groupModel = groupModel;
     }
 }
