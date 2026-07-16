@@ -9,33 +9,42 @@
     <!-- single action -->
 
     <Border>
+        <Grid>
 
-        <StackPanel Spacing="5" Margin="5">
+            <StackPanel Spacing="5" Margin="5">
 
-            <TextBlock Classes="Title" Text="{Binding Name}" Margin="5,5,5,0"/>
-            <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
+                <TextBlock Classes="Title" Text="{Binding Name}" Margin="5,5,5,0"/>
+                <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
 
-            <Border Classes="Divider"/>
+                <Border Classes="Divider"/>
 
-            <ItemsControl ItemsSource="{Binding Configurators}">
+                <ItemsControl ItemsSource="{Binding Configurators}">
 
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Spacing="5"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="5"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
 
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
-                        <ContentControl Content="{Binding}"
-                                        ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
+                            <ContentControl Content="{Binding}"
+                                            ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
 
-            </ItemsControl>
+                </ItemsControl>
 
-        </StackPanel>
+            </StackPanel>
 
+            <Border Classes="DragHandle Draggable"
+                    Width="16" Height="16" Margin="4"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Cursor="SizeAll">
+                <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+        </Grid>
     </Border>
 
 </UserControl>

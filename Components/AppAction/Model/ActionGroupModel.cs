@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using Avalonia.Utilities;
 using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.AppAction.Model;
@@ -51,7 +52,7 @@ public class ActionGroupModel
 
 
 
-    public event Action<IAppAction>? ActionAdded;
+    public event Action<IAppAction, int>? ActionAdded;
     public event Action<IAppAction>? ActionRemoved;
 
 
@@ -74,7 +75,35 @@ public class ActionGroupModel
     public void AddAction(IAppAction action)
     {
         _actions.Add(action);
-        ActionAdded?.Invoke(action);
+        ActionAdded?.Invoke(action, _actions.Count - 1);
+    }
+
+
+
+    public bool TryInsertAction(IAppAction action, int index)
+    {
+        if (_actions.Count < index)
+        {
+            AppLog.WriteError("Could not insert action - index too high");
+            return false;
+        }
+
+        if (index < 0)
+        {
+            AppLog.WriteError("Could not insert action - index too low");
+            return false;
+        }
+
+        InsertAction(action, index);
+        return true;
+    }
+
+
+
+    private void InsertAction(IAppAction action, int index)
+    {
+        _actions.Insert(index, action);
+        ActionAdded?.Invoke(action, index);
     }
 
 

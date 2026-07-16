@@ -10,13 +10,37 @@ namespace StreamAssist.Components.AppAction.UI;
 
 public partial class ActionListViewModel : ViewModelBase
 {
-    public ObservableCollection<IAppAction> Actions { get; } = [];
+    // private
+
+
+    private ObservableCollection<ActionCardViewModel> _actions;
+
+
+
+    // public
+
+
+
+    public ObservableCollection<ActionCardViewModel> Actions => _actions;
+
+
+
+    // constructor
 
 
 
     public ActionListViewModel()
     {
+        _actions = [];
         foreach (var action in ActionResolver.DiscoverAll().OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
-            Actions.Add(action);
+            _actions.Add(new(action));
     }
+
+
+
+    // disposal
+
+
+
+    public override void Dispose() {}
 }

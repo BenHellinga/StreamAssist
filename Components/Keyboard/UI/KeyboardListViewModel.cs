@@ -115,7 +115,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    // model calls
+    // ui events
 
 
 
@@ -127,20 +127,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnAddConfigRequested(string name, Dictionary<ushort, KeybindModel>? bindings, Action<KeybindConfigModel>? callback)
-    {
-        var configModel = _listModel.TryAddConfig(name, bindings);
-        if (configModel == null) return;
-        callback?.Invoke(configModel);
-    }
-
-
-
-    private void OnRemoveConfigRequested(KeybindConfigModel model) => _listModel.TryRemoveConfig(model);
-
-
-
-    // model callbacks
+    // model events
 
 
 
@@ -169,7 +156,20 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    // other callbacks
+    // other events
+
+
+
+    private void OnAddConfigRequested(string name, Dictionary<ushort, KeybindModel>? bindings, Action<KeybindConfigModel>? callback)
+    {
+        var configModel = _listModel.TryAddConfig(name, bindings);
+        if (configModel == null) return;
+        callback?.Invoke(configModel);
+    }
+
+
+
+    private void OnRemoveConfigRequested(KeybindConfigModel model) => _listModel.TryRemoveConfig(model);
 
 
 
@@ -196,7 +196,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
     private void RemoveSlot(KeyboardSlotModel model)
     {
-        var slot = _slots.FirstOrDefault(s => s.Model == model);
+        var slot = _slots.FirstOrDefault(s => s.RepresentsModel(model));
         if (slot is null) return;
 
         UnsubscribeFromKeyboardSlotViewModel(slot);

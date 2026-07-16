@@ -2,25 +2,36 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="StreamAssist.Components.AppAction.UI.ActionGroupView"
              x:DataType="appAction:ActionGroupViewModel"
-
              xmlns:appAction="using:StreamAssist.Components.AppAction.UI">
 
-    <!-- action group -->
+    <StackPanel>
 
-    <ItemsControl ItemsSource="{Binding Actions}">
+        <ItemsControl ItemsSource="{Binding Actions}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
 
-        <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate>
-                <StackPanel Spacing="5"/>
-            </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="appAction:ActionViewModel">
+                    <StackPanel>
+                        <!-- drop zone: "insert before this action" -->
+                        <Border Classes="Dropzone"
+                                DragDrop.AllowDrop="True"
+                                Width="150" Height="30"/>
 
-        <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="appAction:ActionViewModel">
-                <appAction:ActionView DataContext="{Binding}"/>
-            </DataTemplate>
-        </ItemsControl.ItemTemplate>
+                        <appAction:ActionView DataContext="{Binding}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
-    </ItemsControl>
+        <!-- drop zone: "insert at the end" -->
+        <Border Classes="Dropzone"
+                DragDrop.AllowDrop="True"
+                Width="150" Height="30"/>
+
+    </StackPanel>
 
 </UserControl>

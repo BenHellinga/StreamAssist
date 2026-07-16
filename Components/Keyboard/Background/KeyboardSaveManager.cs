@@ -186,7 +186,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnActionAdded(IAppAction _) => Save();
+    private void OnActionAdded(IAppAction _, int __) => Save();
 
 
 

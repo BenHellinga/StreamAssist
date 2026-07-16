@@ -34,7 +34,7 @@
 
                 <Button Classes="Square"
                         Content="＋"
-                        Command="{Binding AddConfigRequestedCommand}"
+                        Command="{Binding AddConfigPressedCommand}"
                         ToolTip.Tip="Create a copy of the current config with the name below"/>
 
                 <!-- input config box -->
@@ -47,7 +47,7 @@
 
                 <Button Classes="Square"
                         Content="－"
-                        Command="{Binding RemoveConfigRequestedCommand}"
+                        Command="{Binding RemoveConfigPressedCommand}"
                         ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
 
             </StackPanel>
@@ -103,9 +103,9 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="keyboard:DisplayKey">
-                        <Border Classes="ActionBoundable"
-                                Classes.pressed="{Binding IsPressed}"
-                                Classes.bound="{Binding IsBound}"
+                        <Border Classes="Droppable"
+                                Classes.Triggered="{Binding IsPressed}"
+                                Classes.Bound="{Binding IsBound}"
                                 Width="{Binding W}"
                                 Height="{Binding H}"
                                 DragDrop.AllowDrop="True"
@@ -114,12 +114,15 @@
                                 DragDrop.Drop="OnKeyDrop"
                                 PointerPressed="OnKeyPointerPressed">
 
-                            <!-- key labels -->
+                            <Grid VerticalAlignment="Center" Margin="3">
+                                <TextBlock Text="{Binding Label}" TextAlignment="Center"/>
 
-                            <StackPanel VerticalAlignment="Center" Spacing="2" Margin="3">
-                                <TextBlock Text="{Binding Label}"
-                                           TextAlignment="Center"/>
-                            </StackPanel>
+                                <!-- example handle, if/when you add one -->
+                                <Border Classes="Draggable"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Width="8" Height="8"
+                                        PointerPressed="OnKeyHandlePointerPressed"/>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

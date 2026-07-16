@@ -9,5 +9,5 @@ namespace StreamAssist.Components.Core;
 /// </summary>
 public abstract class ViewModelBase : ObservableObject, IDisposable
 {
-    public virtual void Dispose() {}
+    public abstract void Dispose();
 }

@@ -126,6 +126,12 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.07"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.07"/>
+            </Transitions>
+        </Setter>
     </Style>
 
 
@@ -138,52 +144,52 @@
 
 
 
-    <Style Selector="Border.ActionBoundable">
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.07"/>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.07"/>
-            </Transitions>
-        </Setter>
+    <Style Selector="Border.Draggable">
+        <Setter Property="Cursor" Value="Hand"/>
     </Style>
-
-    <Style Selector="Border.ActionBoundable.pressed">
-        <Setter Property="Background" Value="{DynamicResource PanelBorderHover}"/>
+    <Style Selector="Border.Draggable:pointerover">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
     </Style>
-
-    <Style Selector="Border.ActionBoundable TextBlock">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="HorizontalAlignment" Value="Center"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
-
-    <Style Selector="Border.ActionBoundable.pressed TextBlock">
+    <Style Selector="Border.Draggable:pointerover TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
-    <Style Selector="Border.ActionBoundable.bound">
-        <Setter Property="BorderBrush" Value="{DynamicResource BoundAction}"/>
-    </Style>
 
-    <Style Selector="Border.ActionBoundable.dragover">
+
+    <Style Selector="Border.Droppable">
+    </Style>
+    <Style Selector="Border.Droppable.Dragover">
         <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BoundAction}"/>
     </Style>
+    <Style Selector="Border.Droppable.Dragover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
 
 
 
-    <Style Selector="Border.ActionCard">
-        <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="3"/>
-        <Setter Property="Padding" Value="8,6"/>
+    <Style Selector="Border.Clickable">
         <Setter Property="Cursor" Value="Hand"/>
     </Style>
-
-    <Style Selector="Border.ActionCard:pointerover">
+    <Style Selector="Border.Clickable:pointerover">
         <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
+    </Style>
+    <Style Selector="Border.Clickable:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+
+
+    <Style Selector="Border.Bound">
+        <Setter Property="BorderBrush" Value="{DynamicResource BoundAction}"/>
+    </Style>
+
+
+
+    <Style Selector="Border.Triggered">
+        <Setter Property="Background" Value="{DynamicResource PanelBorderHover}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
     </Style>
 

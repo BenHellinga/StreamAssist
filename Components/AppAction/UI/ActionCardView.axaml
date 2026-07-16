@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.AppAction.UI.ActionCardView"
+             x:DataType="ui:ActionCardViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI">
+
+    <!-- action card -->
+
+    <Border Classes="Draggable"
+            PointerPressed="OnPointerPressed">
+
+        <StackPanel>
+            <TextBlock Classes="Label" Text="{Binding Name}" Margin="5,5,5,2"/>
+            <TextBlock Classes="Description" Margin="5,0,5,5"
+                       Text="{Binding Description}"
+                       MaxLines="2"/>
+        </StackPanel>
+    </Border>
+
+</UserControl>

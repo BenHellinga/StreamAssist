@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
@@ -36,6 +37,61 @@ public class ActionGroupViewModel : ViewModelBase
 
         _actions = [];
         foreach (var action in _model.Actions)
-            _actions.Add(new ActionViewModel(action));
+            _actions.Add(new(action));
+
+        SubscribeToActionGroupModel(_model);
+    }
+
+
+
+    // ui events
+
+
+
+    // model events
+
+
+
+    private void OnActionAdded(IAppAction action, int index) => _actions.Insert(index, new(action));
+
+
+
+    private void OnActionRemoved(IAppAction action)
+    {
+        var viewModel = _actions.FirstOrDefault(a => a.RepresentsModel(action));
+        if (viewModel == null) return;
+        _actions.Remove(viewModel);
+        viewModel.Dispose();
+    }
+
+
+
+    // helper
+
+
+
+    private void SubscribeToActionGroupModel(ActionGroupModel model)
+    {
+        model.ActionAdded += OnActionAdded;
+        model.ActionRemoved += OnActionRemoved;
+    }
+
+
+
+    private void UnsubscribeFromActionGroupModel(ActionGroupModel model)
+    {
+        model.ActionAdded -= OnActionAdded;
+        model.ActionRemoved -= OnActionRemoved;
+    }
+
+
+
+    // disposal
+
+
+
+    public override void Dispose()
+    {
+        UnsubscribeFromActionGroupModel(_model);
     }
 }

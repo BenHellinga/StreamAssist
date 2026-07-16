@@ -19,29 +19,15 @@
 
         <ScrollViewer>
             <ItemsControl ItemsSource="{Binding Actions}">
-
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="5"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
-
+                
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="model:IAppAction">
-
-                        <!-- each action card -->
-
-                        <Border Classes="ActionCard"
-                                Tag="{Binding}"
-                                PointerPressed="OnActionPointerPressed">
-                            <StackPanel Spacing="2">
-                                <TextBlock Classes="Label" Text="{Binding Name}"/>
-                                <TextBlock Classes="Description"
-                                           Text="{Binding Description}"
-                                           MaxLines="2"/>
-                            </StackPanel>
-                        </Border>
-
+                    <DataTemplate x:DataType="ui:ActionCardViewModel">
+                        <ui:ActionCardView/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

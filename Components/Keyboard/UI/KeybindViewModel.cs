@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Core;
@@ -116,6 +117,8 @@ public partial class KeybindViewModel : ViewModelBase
 
     public void DeselectKeys(IReadOnlyList<DisplayKey>? keys)
     {
+        if (keys != null && !keys.Contains(_key)) return;
+
         IsKeySelected = false;
         _key = null;
         _keybindModel = null;

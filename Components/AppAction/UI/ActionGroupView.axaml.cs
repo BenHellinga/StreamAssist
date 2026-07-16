@@ -1,10 +1,11 @@
-using Avalonia.Controls;
+using StreamAssist.Components.Core;
+using StreamAssist.Components.Core.Dragging;
 
 namespace StreamAssist.Components.AppAction.UI;
 
 
 
-public partial class ActionGroupView : UserControl
+public partial class ActionGroupView : ViewBase
 {
     public ActionGroupView()
     {

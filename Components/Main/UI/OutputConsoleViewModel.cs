@@ -11,4 +11,11 @@ public partial class OutputConsoleViewModel : ViewModelBase
 {
     public static ObservableCollection<string> Lines => AppLog.Lines;
     [RelayCommand] private static void Clear() => AppLog.Clear();
+
+
+
+    public override void Dispose()
+    {
+        
+    }
 }

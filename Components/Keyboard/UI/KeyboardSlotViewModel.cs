@@ -8,16 +8,15 @@ using StreamAssist.Components.Core;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.Main.Model;
-using StreamAssist.Components.AppAction.Model;
 using System;
-using Avalonia.Data;
-using Avalonia.Controls;
+using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public partial class KeyboardSlotViewModel : ViewModelBase
+public partial class KeyboardSlotViewModel : ViewModelBase, IDraggable, IDroppable
 {
     // private
 
@@ -45,7 +44,6 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public KeyboardSlotModel Model => _model;
     public ObservableCollection<DeviceMenuItem> DeviceMenuItems => _deviceMenuItems;
     public ObservableCollection<ConfigMenuItem> ConfigMenuItems => _configMenuItems;
     public ObservableCollection<DisplayKey> Keys => _keys;
@@ -150,7 +148,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    // model calls
+    // ui events
 
 
 
@@ -171,7 +169,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
     [RelayCommand]
-    private void OnAddConfigRequested()
+    private void OnAddConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
         var keybinds = new Dictionary<ushort, KeybindModel>();
@@ -181,7 +179,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
     [RelayCommand]
-    private void OnRemoveConfigRequested()
+    private void OnRemoveConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
 
@@ -192,21 +190,6 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         }
 
         RemoveConfigRequested?.Invoke(_model.SelectedConfig);
-    }
-
-
-
-    public void OnActionDroppedOnKey(DisplayKey key, IAppAction action)
-    {
-        if (_callbackBlocker.IsBlocked()) return;
-
-        if (_model.SelectedConfig == null)
-        {
-            AppLog.WriteError("Could not bind action to key - no config selected");
-            return;
-        }
-
-        _model.SelectedConfig.BindActionToKey(key.VK, action);
     }
 
 
@@ -235,7 +218,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    // model callbacks
+    // model events
 
 
 
@@ -268,6 +251,14 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         foreach (var key in _keyMap[vk])
             key.IsBound = false;
     }
+
+
+
+    // public api
+
+
+
+    public bool RepresentsModel(KeyboardSlotModel model) => _model == model;
 
 
 
@@ -360,6 +351,41 @@ public partial class KeyboardSlotViewModel : ViewModelBase
             }
             else list.Add(key);
         }
+    }
+
+
+
+    // drag drop
+
+
+
+    public bool CanAcceptDropPayload(object payload)
+    {
+        return payload is IAppAction;
+    }
+
+
+
+    public void OnDroppedOn(object payload, object? zoneContext)
+    {
+        if (payload is not IAppAction action) return;
+        if (zoneContext is not DisplayKey key) return;
+        if (_callbackBlocker.IsBlocked()) return;
+
+        if (_model.SelectedConfig == null)
+        {
+            AppLog.WriteError("Could not bind action to key - no config selected");
+            return;
+        }
+
+        _model.SelectedConfig.BindActionToKey(key.VK, action);
+    }
+
+
+
+    public object GetDragPayload()
+    {
+        return "";
     }
 
 

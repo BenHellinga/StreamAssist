@@ -29,4 +29,11 @@ public partial class ActionPanelViewModel : ViewModelBase
         //     HasSelection = false;
         // }
     }
+
+
+
+    public override void Dispose()
+    {
+        
+    }
 }
