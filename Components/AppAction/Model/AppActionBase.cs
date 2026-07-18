@@ -7,7 +7,7 @@ namespace StreamAssist.Components.AppAction.Model;
 
 
 
-public abstract class AppActionBase : IAppAction
+public abstract class AppActionBase : ActionModel
 {
     public abstract string Name { get; }
     public abstract string Description { get; }

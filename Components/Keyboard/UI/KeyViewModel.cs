@@ -77,28 +77,67 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
 
 
 
-    public bool CanAcceptDropPayload(object payload) => payload is ActionDragPayload;
+    public bool CanAcceptDropPayload(object payload) => payload is ActionDragPayload or KeybindDragPayload;
 
 
 
     public void OnDroppedOn(object payload, object? zoneContext)
     {
-        if (payload is not ActionDragPayload dragPayload) return;
+        if (payload is ActionDragPayload actionPayload)
+            OnActionDroppedOn(actionPayload);
 
-        if (_keybind == null)
-        {
-            var keybind = new KeybindModel();
-            keybind.OnPressed.AddAction(dragPayload.Action);
-            _config?.TryBindKey(_vk, keybind);
-        }
-        else _keybind.OnPressed.AddAction(dragPayload.Action);
-
-        dragPayload.RemoveFromSource();
+        else if (payload is KeybindDragPayload keybindPayload)
+            OnKeybindDroppedOn(keybindPayload);
     }
 
 
 
-    public object GetDragPayload() => "";
+    private void OnActionDroppedOn(ActionDragPayload payload)
+    {
+        if (_config == null)
+        {
+            AppLog.WriteError("Could not bind action to key - no config selected");
+            return;
+        }
+
+        payload.TryRemoveFromSource();
+
+        if (_keybind == null)
+        {
+            var keybind = new KeybindModel();
+            keybind.OnPressed.AddAction(payload.Action);
+            _config.TryBindKey(_vk, keybind);
+        }
+        else _keybind.OnPressed.AddAction(payload.Action);
+    }
+
+
+
+    private void OnKeybindDroppedOn(KeybindDragPayload payload)
+    {
+        if (_config == null)
+        {
+            AppLog.WriteError("Could not bind action to key - no config selected");
+            return;
+        }
+
+        if (_keybind != null)
+        {
+            AppLog.WriteError("Could not bind action group to key - key is already bound to an action group");
+            return;
+        }
+
+        payload.RemoveFromSource();
+        _config.TryBindKey(_vk, payload.keybind);
+    }
+
+
+
+    public object? GetDragPayload()
+    {
+        if (_config == null || _keybind == null) return null;
+        return new KeybindDragPayload(_keybind, () => _config.TryUnbindKey(_vk));
+    }
 
 
 
@@ -129,7 +168,16 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
 
 
     [RelayCommand]
-    private void OnToggleEnabledPressed() => _keybind?.TrySetIsEnabled(!IsEnabled);
+    private void OnToggleEnabledPressed()
+    {
+        if (_keybind == null)
+        {
+            AppLog.WriteError("Could not toggle keybind - key not bound");
+            return;    
+        }
+
+        _keybind.TrySetIsEnabled(!IsEnabled);
+    }
 
 
 
@@ -166,10 +214,10 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
 
 
 
-    public void RecomputeSize(double scale)
+    public void RecomputeSize(double scale, double padding)
     {
-        X = _baseX * scale;
-        Y = _baseY * scale;
+        X = _baseX * scale + padding;
+        Y = _baseY * scale + padding;
         W = _baseW * scale;
         H = _baseH * scale;        
     }

@@ -5,7 +5,7 @@ namespace StreamAssist.Components.AppAction.Model;
 
 
 
-public interface IAppAction
+public interface ActionModel
 {
     string Name { get; }
     string Description { get; }

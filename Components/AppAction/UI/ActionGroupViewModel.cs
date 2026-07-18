@@ -4,6 +4,7 @@ using System.Linq;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.AppAction.UI;
 
@@ -63,7 +64,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
         var sourceIndex = _model.Actions.IndexOf(dragPayload.Action);
         var isSameList = sourceIndex >= 0;
 
-        if (!dragPayload.RemoveFromSource()) return;
+        if (!dragPayload.TryRemoveFromSource()) return;
 
         if (isSameList && sourceIndex < index) index--;
         _model.TryInsertAction(dragPayload.Action, index);
@@ -75,7 +76,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
 
 
-    private void OnRemoveActionRequested(IAppAction action) => _model.TryRemoveAction(action);
+    private void OnRemoveActionRequested(ActionModel action) => _model.TryRemoveAction(action);
 
 
 
@@ -83,11 +84,11 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
 
 
-    private void OnActionAdded(IAppAction action, int index) => InsertAction(action, index);
+    private void OnActionAdded(ActionModel action, int index) => InsertAction(action, index);
 
 
 
-    private void OnActionRemoved(IAppAction action)
+    private void OnActionRemoved(ActionModel action)
     {
         var viewModel = _actions.FirstOrDefault(a => a.RepresentsModel(action));
         if (viewModel == null) return;
@@ -103,7 +104,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
 
 
-    private void InsertAction(IAppAction action, int index)
+    private void InsertAction(ActionModel action, int index)
     {
         var viewModel = new ActionViewModel(action, () => _model.TryRemoveAction(action));
         _actions.Insert(index, viewModel);

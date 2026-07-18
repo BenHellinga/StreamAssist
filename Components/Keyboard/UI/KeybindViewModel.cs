@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NAudio.CoreAudioApi;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Core;
@@ -22,6 +23,7 @@ public partial class KeybindViewModel : ViewModelBase
 
     private KeyViewModel? _key;
     private KeybindModel? _keybind;
+    private KeybindModel? _oldKeybind;
     private KeybindConfigModel? _config;
 
     private ObservableCollection<ViewModelTabItem> _tabs;
@@ -49,6 +51,7 @@ public partial class KeybindViewModel : ViewModelBase
     {
         _key = null;
         _keybind = null;
+        _oldKeybind = null;
         _config = null;
 
         _tabs = [
@@ -81,7 +84,9 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (vk != _key?.VK) return;
 
+        UnsubscribeFromAllActionGroupModels(_oldKeybind);
         UnsubscribeFromAllActionGroupModels(_keybind);
+        _oldKeybind = null;
         _keybind = keybind;
         SubscribeToAllActionGroupModels(_keybind);
         SetContent(SelectedTab);
@@ -93,7 +98,7 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (vk != _key?.VK) return;
 
-        UnsubscribeFromAllActionGroupModels(_keybind);
+        _oldKeybind = _keybind;
         _keybind = new();
         SubscribeToAllActionGroupModels(_keybind);
         SetContent(SelectedTab);
@@ -101,22 +106,17 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    private void OnFirstActionAdded(IAppAction _)
+    private void OnFirstActionAdded()
     {
         if (1 == _keybind!.OnPressed.Actions.Count +
                  _keybind!.OnReleased.Actions.Count + 
                  _keybind!.OnRepeated.Actions.Count)
             _config?.TryBindKey(_key!.VK, _keybind);
-    }
 
-
-
-    private void OnLastActionRemoved(IAppAction _)
-    {
-        if (0 == _keybind!.OnPressed.Actions.Count +
-                 _keybind!.OnReleased.Actions.Count + 
-                 _keybind!.OnRepeated.Actions.Count)
-            _config?.TryUnbindKey(_key!.VK);
+        else if (1 == _oldKeybind!.OnPressed.Actions.Count +
+                      _oldKeybind!.OnReleased.Actions.Count + 
+                      _oldKeybind!.OnRepeated.Actions.Count)
+            _config?.TryBindKey(_key!.VK, _oldKeybind);
     }
 
 
@@ -127,6 +127,9 @@ public partial class KeybindViewModel : ViewModelBase
 
     public void SetSelectedKey(KeyViewModel key, KeybindModel? keybind, KeybindConfigModel? configModel)
     {
+        UnsubscribeFromKeybindConfigModel(_config);
+        UnsubscribeFromAllActionGroupModels(_keybind);
+
         _key?.Deselect();
 
         _key = key;
@@ -186,10 +189,6 @@ public partial class KeybindViewModel : ViewModelBase
         keybind?.OnPressed.FirstActionAdded += OnFirstActionAdded;
         keybind?.OnReleased.FirstActionAdded += OnFirstActionAdded;
         keybind?.OnRepeated.FirstActionAdded += OnFirstActionAdded;
-
-        keybind?.OnPressed.LastActionRemoved += OnLastActionRemoved;
-        keybind?.OnReleased.LastActionRemoved += OnLastActionRemoved;
-        keybind?.OnRepeated.LastActionRemoved += OnLastActionRemoved;
     }
 
 
@@ -199,10 +198,6 @@ public partial class KeybindViewModel : ViewModelBase
         keybind?.OnPressed.FirstActionAdded -= OnFirstActionAdded;
         keybind?.OnReleased.FirstActionAdded -= OnFirstActionAdded;
         keybind?.OnRepeated.FirstActionAdded -= OnFirstActionAdded;
-
-        keybind?.OnPressed.LastActionRemoved -= OnLastActionRemoved;
-        keybind?.OnReleased.LastActionRemoved -= OnLastActionRemoved;
-        keybind?.OnRepeated.LastActionRemoved -= OnLastActionRemoved;
     }
 
 

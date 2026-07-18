@@ -1,4 +1,5 @@
 using System;
+using System.Dynamic;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Main.Model;
@@ -82,15 +83,8 @@ public class KeybindModel
         _onPressed = new();
         _onReleased = new();
         _onRepeated = new();
-    }
 
-
-
-    public KeybindModel(ActionGroupModel? onPressed = null, ActionGroupModel? onReleased = null, ActionGroupModel? onRepeated = null)
-    {
-        _onPressed = onPressed ?? new();
-        _onReleased = onReleased ?? new();
-        _onRepeated = onRepeated ?? new();
+        _isEnabled = true;
     }
 
 
@@ -117,5 +111,14 @@ public class KeybindModel
     {
         _isEnabled = isEnabled;
         IsEnabledChanged?.Invoke(_isEnabled);
+    }
+
+
+
+    public void SetSelfUnbindLambda(Action? tryUnbindSelf)
+    {
+        _onPressed.SetUnbindSelfLambda(tryUnbindSelf);
+        _onReleased.SetUnbindSelfLambda(tryUnbindSelf);
+        _onRepeated.SetUnbindSelfLambda(tryUnbindSelf);
     }
 }

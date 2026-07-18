@@ -19,7 +19,7 @@ public static class ActionResolver
     private static Dictionary<string, Type> BuildTypeMap() =>
         AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(SafeGetTypes)
-            .Where(t => typeof(IAppAction).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
+            .Where(t => typeof(ActionModel).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
             .ToDictionary(t => t.Name, t => t);
 
 
@@ -38,7 +38,7 @@ public static class ActionResolver
 
 
 
-    public static IAppAction? Resolve(PendingActionData data)
+    public static ActionModel? Resolve(PendingActionData data)
     {
         if (!_typeMap.TryGetValue(data.TypeName, out var type))
         {
@@ -48,7 +48,7 @@ public static class ActionResolver
 
         try
         {
-            return (IAppAction?)data.Parameters.Deserialize(type);
+            return (ActionModel?)data.Parameters.Deserialize(type);
         }
         catch (Exception ex)
         {
@@ -59,7 +59,7 @@ public static class ActionResolver
 
 
 
-    public static PendingActionData GetKey(IAppAction action)
+    public static PendingActionData GetKey(ActionModel action)
     {
         var type = action.GetType();
         var typeName = _nameMap.TryGetValue(type, out var name) ? name : type.Name;
@@ -73,15 +73,15 @@ public static class ActionResolver
 
 
 
-    public static IReadOnlyList<IAppAction> DiscoverAll()
+    public static IReadOnlyList<ActionModel> DiscoverAll()
     {
-        var result = new List<IAppAction>();
+        var result = new List<ActionModel>();
 
         foreach (var type in _typeMap.Values)
         {
             try
             {
-                if (Activator.CreateInstance(type) is IAppAction action)
+                if (Activator.CreateInstance(type) is ActionModel action)
                     result.Add(action);
                 else
                     AppLog.WriteWarning($"Action type '{type.Name}' could not be instantiated as IAppAction");

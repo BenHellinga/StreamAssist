@@ -163,7 +163,7 @@
     </Style>
     <Style Selector="Border.Droppable.Dragover">
         <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BoundAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>
     </Style>
     <Style Selector="Border.Droppable.Dragover TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
@@ -185,7 +185,13 @@
 
 
     <Style Selector="Border.Bound">
-        <Setter Property="BorderBrush" Value="{DynamicResource BoundAction}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>
+    </Style>
+
+
+
+    <Style Selector="Border.Disabled">
+        <Setter Property="BorderBrush" Value="{DynamicResource Disabled}"/>
     </Style>
 
 

@@ -235,16 +235,16 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void SubscribeToKeyboardInputManager(KeyboardInputManager manager)
     {
-        manager.KeyPressed += OnKeyPressed;
-        manager.KeyReleased += OnKeyReleased;
+        manager.KeyDown += OnKeyPressed;
+        manager.KeyUp += OnKeyReleased;
     }
 
 
 
     private void UnsubscribeFromKeyboardInputManager(KeyboardInputManager manager)
     {
-        manager.KeyPressed -= OnKeyPressed;
-        manager.KeyReleased -= OnKeyReleased;
+        manager.KeyDown -= OnKeyPressed;
+        manager.KeyUp -= OnKeyReleased;
     }
 
 
@@ -286,7 +286,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void InitKeys()
     {
-        (var keyData, _baseWidth, _baseHeight) = DeviceDisplayHelper.InitKeyboardDisplayData(50, 6);
+        (var keyData, _baseWidth, _baseHeight) = DeviceDisplayHelper.InitKeyboardDisplayData(25, 3);
 
         CurrentWidth = _baseWidth;
         CurrentHeight = _baseHeight;
@@ -310,14 +310,17 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void RecomputeDisplaySize()
     {
-        if (_pendingWidth <= 0 || _baseWidth <= 0)return;
-        var scale = _pendingWidth / _baseWidth;
+        if (_pendingWidth <= 10 || _baseWidth <= 0) return;
+
+        var padding = 4;
+        var usableWidth = _pendingWidth - padding * 2;
+        var scale = usableWidth / _baseWidth;
 
         foreach (var key in _keys)
-            key.RecomputeSize(scale);
+            key.RecomputeSize(scale, padding);
 
-        CurrentWidth = _baseWidth * scale + 3;
-        CurrentHeight = _baseHeight * scale + 3;
+        CurrentWidth = _baseWidth * scale + padding * 2;
+        CurrentHeight = _baseHeight * scale + padding * 2;
     }
 
 

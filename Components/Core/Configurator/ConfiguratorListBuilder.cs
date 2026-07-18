@@ -9,7 +9,7 @@ namespace StreamAssist.Components.Core.Configurator;
 
 public static class ConfiguratorBuilder
 {
-    public static ObservableCollection<ConfigurableParameterViewModel> Build(IAppAction action)
+    public static ObservableCollection<ConfigurableParameterViewModel> Build(ActionModel action)
     {
         var result = new ObservableCollection<ConfigurableParameterViewModel>();
 

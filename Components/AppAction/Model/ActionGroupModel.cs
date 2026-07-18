@@ -15,7 +15,8 @@ public class ActionGroupModel
 
 
 
-    private List<IAppAction> _actions;
+    private List<ActionModel> _actions;
+    private Action? _tryUnbindSelf;
 
 
 
@@ -23,7 +24,7 @@ public class ActionGroupModel
 
 
     
-    [JsonIgnore] public IReadOnlyList<IAppAction> Actions => _actions; 
+    [JsonIgnore] public IReadOnlyList<ActionModel> Actions => _actions; 
 
 
 
@@ -52,10 +53,9 @@ public class ActionGroupModel
 
 
 
-    public event Action<IAppAction, int>? ActionAdded;
-    public event Action<IAppAction>? ActionRemoved;
-    public event Action<IAppAction>? FirstActionAdded;
-    public event Action<IAppAction>? LastActionRemoved;
+    public event Action<ActionModel, int>? ActionAdded;
+    public event Action<ActionModel>? ActionRemoved;
+    public event Action? FirstActionAdded;
 
 
 
@@ -74,11 +74,11 @@ public class ActionGroupModel
 
 
     
-    public void AddAction(IAppAction action) => InsertAction(action, _actions.Count);
+    public void AddAction(ActionModel action) => InsertAction(action, _actions.Count);
 
 
 
-    public bool TryInsertAction(IAppAction action, int index)
+    public bool TryInsertAction(ActionModel action, int index)
     {
         if (_actions.Count < index)
         {
@@ -98,17 +98,18 @@ public class ActionGroupModel
 
 
 
-    private void InsertAction(IAppAction action, int index)
+    private void InsertAction(ActionModel action, int index)
     {
         _actions.Insert(index, action);
-        
-        if (_actions.Count == 1 && FirstActionAdded != null) FirstActionAdded.Invoke(action);
-        else ActionAdded?.Invoke(action, _actions.Count - 1);
+
+        ActionAdded?.Invoke(action, index);
+        if (_actions.Count == 1)
+            FirstActionAdded?.Invoke();
     }
 
 
 
-    public bool TryRemoveAction(IAppAction action)
+    public bool TryRemoveAction(ActionModel action)
     {
         if (!_actions.Contains(action))
         {
@@ -122,13 +123,18 @@ public class ActionGroupModel
 
 
 
-    private void RemoveAction(IAppAction action)
+    private void RemoveAction(ActionModel action)
     {
         _actions.Remove(action);
 
-        if (_actions.Count == 0 && LastActionRemoved != null) LastActionRemoved.Invoke(action);
-        else ActionRemoved?.Invoke(action);
+        if (_actions.Count == 0)
+            _tryUnbindSelf?.Invoke();
+        ActionRemoved?.Invoke(action);
     }
+
+
+
+    public void SetUnbindSelfLambda(Action? tryUnbindSelf) => _tryUnbindSelf = tryUnbindSelf;
 
 
 

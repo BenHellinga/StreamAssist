@@ -13,11 +13,6 @@ public class KeyboardInputManager : IDisposable
 {
     // TODO GetAvailableKeyboards should probably be private, then setup callbacks for plugging/unplugging keyboards to update this reference
     public static readonly List<KeyboardDeviceModel> Devices = GetAvailableKeyboards();
-    // public static readonly IReadOnlyDictionary<string, ushort> KeyNameToVK = InitKeyNameToVK();
-
-
-    private bool _disposed;
-    private HashSet<ushort> _keysDown = [];
 
     private Win32.WNDPROC? _wndProcDelegate;
     private IntPtr _originalWndProc;
@@ -31,33 +26,8 @@ public class KeyboardInputManager : IDisposable
 
 
 
-    public event Action<string, ushort>? KeyPressed;
-    public event Action<string, ushort>? KeyReleased;
-    public event Action<string, ushort>? KeyRepeated;
-
-
-
-    // state methods
-
-
-
-    private void KeyDown(string device, ushort key)
-    {
-        if (!_keysDown.Contains(key))
-        {
-            _keysDown.Add(key);
-            KeyPressed?.Invoke(device, key);
-        }
-        else KeyRepeated?.Invoke(device, key);
-    }
-
-
-
-    private void KeyUp(string device, ushort key)
-    {
-        _keysDown.Remove(key);
-        KeyReleased?.Invoke(device, key);
-    }
+    public event Action<string, ushort>? KeyDown;
+    public event Action<string, ushort>? KeyUp;
 
 
 
@@ -96,7 +66,7 @@ public class KeyboardInputManager : IDisposable
             if (device.DeviceType != RawInputDeviceType.Keyboard) continue;
             if (device.DevicePath.Contains("&Col")) continue;
             if (!seen.Add((device.VendorId, device.ProductId))) continue;
-            
+
             results.Add(new KeyboardDeviceModel(
                 DevicePath: device.DevicePath,
                 ManufacturerName: device.ManufacturerName ?? "Unknown",
@@ -125,8 +95,8 @@ public class KeyboardInputManager : IDisposable
                 var vk     = (ushort)kb.Keyboard.VirutalKey;
                 var isDown = !kb.Keyboard.Flags.HasFlag(RawKeyboardFlags.Up);
 
-                if (isDown) KeyDown(path, vk);
-                else        KeyUp(path, vk);
+                if (isDown) KeyDown?.Invoke(path, vk);
+                else        KeyUp?.Invoke(path, vk);
             }
         }
 
@@ -141,9 +111,6 @@ public class KeyboardInputManager : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-
-        _disposed = true;
         if (_hwnd != IntPtr.Zero && _originalWndProc != IntPtr.Zero)
             Win32.SetWindowLongPtr(_hwnd, Win32.GWLP_WNDPROC, _originalWndProc);
     }

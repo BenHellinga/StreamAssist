@@ -20,6 +20,7 @@ public static class DragBehaviorHandler
         if (handle.DataContext is not IDraggable draggable) return;
 
         var payload = draggable.GetDragPayload();
+        if (payload == null) return;
 
         var item = new DataTransferItem();
         item.Set(DragDropPayload.Format, payload);

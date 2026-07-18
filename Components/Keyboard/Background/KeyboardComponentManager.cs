@@ -11,7 +11,7 @@ public class KeyboardComponentManager : IDisposable
 
     private readonly KeyboardSaveManager _saveManager;
     private readonly KeyboardInputManager _inputManager;
-    private readonly KeyboardListManager _listManager;
+    private readonly KeybindManager _keybindManager;
 
 
 
@@ -26,7 +26,7 @@ public class KeyboardComponentManager : IDisposable
         _saveManager = new(_model);
         _inputManager = new();
         _model.ListModel.AttachDevices(KeyboardInputManager.Devices);
-        _listManager = new(_model.ListModel, _inputManager);
+        _keybindManager = new(_model.ListModel, _inputManager);
 
         _saveManager.Save();
     }
@@ -55,7 +55,7 @@ public class KeyboardComponentManager : IDisposable
 
     public void Dispose()
     {
-        _listManager.Dispose();
+        _keybindManager.Dispose();
         _inputManager.Dispose();
         _saveManager.Dispose();
     }

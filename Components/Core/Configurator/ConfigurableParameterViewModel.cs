@@ -13,7 +13,7 @@ public partial class ConfigurableParameterViewModel : ObservableObject
 
 
 
-    private readonly IAppAction _target;
+    private readonly ActionModel _target;
     private readonly PropertyInfo _property;
     private readonly string _label;
     private readonly ConfiguratorType _configurator;
@@ -34,7 +34,7 @@ public partial class ConfigurableParameterViewModel : ObservableObject
 
 
 
-    public ConfigurableParameterViewModel(IAppAction target, PropertyInfo property, ConfigurableParameterAttribute attribute)
+    public ConfigurableParameterViewModel(ActionModel target, PropertyInfo property, ConfigurableParameterAttribute attribute)
     {
         _target = target;
         _property = property;

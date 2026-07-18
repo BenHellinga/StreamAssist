@@ -17,7 +17,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    private readonly IAppAction _action;
+    private readonly ActionModel _action;
     private readonly Func<bool>? _removeFromSource;
     private readonly ObservableCollection<ConfigurableParameterViewModel> _configurators;
 
@@ -29,7 +29,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
     public string Name => _action.Name;
     public string Description => _action.Description;
-    public IAppAction Action => _action;
+    public ActionModel Action => _action;
     public ObservableCollection<ConfigurableParameterViewModel> Configurators => _configurators;
 
 
@@ -38,7 +38,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    public event Action<IAppAction>? RemoveActionRequested;
+    public event Action<ActionModel>? RemoveActionRequested;
 
 
 
@@ -46,7 +46,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    public ActionViewModel(IAppAction action, Func<bool>? removeFromSource = null)
+    public ActionViewModel(ActionModel action, Func<bool>? removeFromSource = null)
     {
         _action = action;
         _removeFromSource = removeFromSource;
@@ -68,7 +68,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    public object GetDragPayload() => new ActionDragPayload(_action, _removeFromSource);
+    public object? GetDragPayload() => new ActionDragPayload(_action, _removeFromSource);
 
 
 
@@ -76,7 +76,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    public bool RepresentsModel(IAppAction action) => action == _action;
+    public bool RepresentsModel(ActionModel action) => action == _action;
 
 
 

@@ -35,7 +35,12 @@ public class KeybindConfigModel
     private Dictionary<ushort, KeybindModel> JsonKeybinds
     {
         get => _keybinds;
-        set => _keybinds = value;
+        set
+        {
+            _keybinds = value;
+            foreach (var (vk, keybind) in _keybinds)
+                keybind.SetSelfUnbindLambda(MakeSelfUnbindLambda(vk, keybind));
+        }
     }
 
 
@@ -88,6 +93,7 @@ public class KeybindConfigModel
 
     private void BindKey(ushort vk, KeybindModel keybind)
     {
+        keybind.SetSelfUnbindLambda(MakeSelfUnbindLambda(vk, keybind));
         _keybinds.Add(vk, keybind);
         KeyBound?.Invoke(vk, keybind);
     }
@@ -112,5 +118,22 @@ public class KeybindConfigModel
     {
         _keybinds.Remove(key, out var bindingModel);
         KeyUnbound?.Invoke(key, bindingModel!);
+    }
+
+
+
+    // helpers
+
+
+
+    private Action MakeSelfUnbindLambda(ushort vk, KeybindModel keybind)
+    {
+        return () =>
+        {
+            if (0 == keybind.OnPressed.Actions.Count +
+                     keybind.OnReleased.Actions.Count +
+                     keybind.OnRepeated.Actions.Count)
+                TryUnbindKey(vk);
+        };
     }
 }

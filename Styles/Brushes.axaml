@@ -29,6 +29,7 @@
 
     <!-- actions -->
 
-    <SolidColorBrush x:Key="BoundAction" Color="#22c55e"/>
+    <SolidColorBrush x:Key="Bound" Color="#22c55e"/>
+    <SolidColorBrush x:Key="Disabled" Color="#ef4444"/>
 
 </ResourceDictionary>

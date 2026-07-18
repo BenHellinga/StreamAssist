@@ -11,7 +11,7 @@ public sealed class ActionDragPayload
 
 
 
-    private readonly IAppAction _action;
+    private readonly ActionModel _action;
     private readonly Func<bool> _removeFromSource;
 
 
@@ -20,7 +20,7 @@ public sealed class ActionDragPayload
 
 
 
-    public IAppAction Action => _action;
+    public ActionModel Action => _action;
 
 
 
@@ -28,7 +28,7 @@ public sealed class ActionDragPayload
 
 
 
-    public ActionDragPayload(IAppAction action, Func<bool>? removeFromSource = null)
+    public ActionDragPayload(ActionModel action, Func<bool>? removeFromSource = null)
     {
         _action = action;
         _removeFromSource = removeFromSource ?? (() => true);
@@ -40,5 +40,5 @@ public sealed class ActionDragPayload
 
 
 
-    public bool RemoveFromSource() => _removeFromSource();
+    public bool TryRemoveFromSource() => _removeFromSource();
 }

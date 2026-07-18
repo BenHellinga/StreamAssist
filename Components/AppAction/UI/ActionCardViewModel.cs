@@ -12,7 +12,7 @@ public sealed class ActionCardViewModel : ViewModelBase, IDraggable
 
 
 
-    private IAppAction _action;
+    private ActionModel _action;
 
 
 
@@ -29,7 +29,7 @@ public sealed class ActionCardViewModel : ViewModelBase, IDraggable
 
 
 
-    public ActionCardViewModel(IAppAction action)
+    public ActionCardViewModel(ActionModel action)
     {
         _action = action;
     }
@@ -40,7 +40,7 @@ public sealed class ActionCardViewModel : ViewModelBase, IDraggable
 
 
 
-    public object GetDragPayload() => new ActionDragPayload(_action);
+    public object? GetDragPayload() => new ActionDragPayload(_action);
 
 
 

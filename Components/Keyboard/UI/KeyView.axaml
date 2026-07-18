@@ -22,7 +22,8 @@
 
         <Grid>
             <TextBlock Text="{Binding Label}"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                       TextAlignment="Center"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
             <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
                         HorizontalAlignment="Right" VerticalAlignment="Top"
