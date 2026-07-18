@@ -4,8 +4,8 @@ namespace StreamAssist.Components.Core;
 
 
 
-public class ViewModelTabItem(string label, Func<IDisposable> tabViewModelFactory)
+public class ViewModelTabItem(string label, Func<ViewModelBase> tabViewModelFactory)
 {
     public string Label { get; } = label;
-    public Func<IDisposable> CreateTabViewModel { get; } = tabViewModelFactory;
+    public Func<ViewModelBase> CreateTabViewModel { get; } = tabViewModelFactory;
 }

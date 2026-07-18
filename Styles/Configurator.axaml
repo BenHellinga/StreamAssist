@@ -5,30 +5,30 @@
     <configurator:ConfiguratorTemplateSelector x:Key="ConfiguratorTemplateSelector"/>
 
     <DataTemplate x:Key="TextConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
             <TextBlock Grid.Column="0" Classes="label" Text="{Binding Label}" VerticalAlignment="Center"/>
-            <TextBox Grid.Column="1" Text="{Binding Value}"/>
+            <TextBox Grid.Column="1" Text="{Binding Value}" MinWidth="150"/>
         </Grid>
     </DataTemplate>
 
     <DataTemplate x:Key="NumberConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
             <TextBlock Grid.Column="0" Classes="label" Text="{Binding Label}" VerticalAlignment="Center"/>
-            <NumericUpDown Grid.Column="1" Value="{Binding Value}"/>
+            <NumericUpDown Grid.Column="1" Value="{Binding Value}" MinWidth="150"/>
         </Grid>
     </DataTemplate>
 
     <DataTemplate x:Key="BoolConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
             <TextBlock Grid.Column="0" Classes="label" Text="{Binding Label}" VerticalAlignment="Center"/>
             <CheckBox Grid.Column="1" IsChecked="{Binding Value}" HorizontalAlignment="Left"/>
         </Grid>
     </DataTemplate>
 
     <DataTemplate x:Key="FilepathConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
             <TextBlock Grid.Column="0" Classes="label" Text="{Binding Label}" VerticalAlignment="Center"/>
-            <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="No file selected…" IsReadOnly="True"/>
+            <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="No file selected…" IsReadOnly="True" MinWidth="150"/>
         </Grid>
     </DataTemplate>
 

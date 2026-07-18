@@ -22,6 +22,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
     private readonly KeyboardListModel _listModel;
     private readonly KeyboardInputManager _inputManager;
+    private readonly KeybindViewModel? _keyConfigurator;
     private ObservableCollection<DeviceMenuItem> _deviceMenuItems;
     private ObservableCollection<ConfigMenuItem> _configMenuItems;
     private ObservableCollection<KeyboardSlotViewModel> _slots;
@@ -36,23 +37,15 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    // events
-
-
-
-    public event Action<DisplayKey, KeybindConfigModel, int>? KeySelected;
-    public event Action<IReadOnlyList<DisplayKey>?>? KeysDeselected;
-
-
-
     // constructor
 
 
 
-    public KeyboardListViewModel(KeyboardListModel listModel, KeyboardInputManager inputManager)
+    public KeyboardListViewModel(KeyboardListModel listModel, KeyboardInputManager inputManager, KeybindViewModel? keyConfigurator = null)
     {
         _listModel = listModel;
         _inputManager = inputManager;
+        _keyConfigurator = keyConfigurator;
 
         _deviceMenuItems = [];
         _configMenuItems = [];
@@ -99,8 +92,6 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         viewModel.AddConfigRequested += OnAddConfigRequested;
         viewModel.RemoveConfigRequested += OnRemoveConfigRequested;
-        viewModel.KeySelected += OnKeySelected;
-        viewModel.KeysDeselected += OnKeysDeselected;
     }
 
 
@@ -109,8 +100,6 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         viewModel.AddConfigRequested -= OnAddConfigRequested;
         viewModel.RemoveConfigRequested -= OnRemoveConfigRequested;
-        viewModel.KeySelected -= OnKeySelected;
-        viewModel.KeysDeselected -= OnKeysDeselected;
     }
 
 
@@ -173,21 +162,13 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnKeySelected(DisplayKey key, KeybindConfigModel configModel, int slotID) => KeySelected?.Invoke(key, configModel, slotID);
-
-
-
-    private void OnKeysDeselected(IReadOnlyList<DisplayKey>? keys) => KeysDeselected?.Invoke(keys);
-
-
-
     // helpers
 
 
 
     private void AddSlot(KeyboardSlotModel model)
     {
-        var viewModel = new KeyboardSlotViewModel(model, _inputManager, _deviceMenuItems, _configMenuItems);
+        var viewModel = new KeyboardSlotViewModel(model, _inputManager, _deviceMenuItems, _configMenuItems, _keyConfigurator);
         _slots.Add(viewModel);
         SubscribeToKeyboardSlotViewModel(viewModel);
     }
@@ -201,7 +182,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
         UnsubscribeFromKeyboardSlotViewModel(slot);
         _slots.Remove(slot);
-        KeysDeselected?.Invoke(slot.Keys);
+        _keyConfigurator?.DeselectKeys(slot.Keys);
         slot.Dispose();
     }
 

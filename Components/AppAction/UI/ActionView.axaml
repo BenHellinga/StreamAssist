@@ -6,29 +6,21 @@
              xmlns:ui="using:StreamAssist.Components.AppAction.UI"
              xmlns:configurator="using:StreamAssist.Components.Core.Configurator">
 
-    <!-- single action -->
+    <!-- action -->
 
-    <Border>
+    <Border HorizontalAlignment="Left">
         <Grid>
 
-            <StackPanel Spacing="5" Margin="5">
+            <StackPanel Margin="5">
 
-                <TextBlock Classes="Title" Text="{Binding Name}" Margin="5,5,5,0"/>
+                <TextBlock Classes="Title" Text="{Binding Name}" Margin="5"/>
                 <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
-
-                <Border Classes="Divider"/>
 
                 <ItemsControl ItemsSource="{Binding Configurators}">
 
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Spacing="5"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
-                            <ContentControl Content="{Binding}"
+                            <ContentControl Content="{Binding}" Margin="5,0,5,5"
                                             ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -37,12 +29,23 @@
 
             </StackPanel>
 
-            <Border Classes="DragHandle Draggable"
-                    Width="16" Height="16" Margin="4"
-                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                    Cursor="SizeAll">
-                <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="4" Margin="4"
+                        HorizontalAlignment="Right" VerticalAlignment="Top">
+
+                <Border Classes="Draggable"
+                        Width="16" Height="16"
+                        PointerPressed="OnHandlePointerPressed">
+                    <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
+                <Button Classes="RemoveAction"
+                        Width="16" Height="16"
+                        Padding="0"
+                        Command="{Binding RemoveActionRequestedCommand}">
+                    <TextBlock Text="X" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
+                </Button>
+
+            </StackPanel>
 
         </Grid>
     </Border>

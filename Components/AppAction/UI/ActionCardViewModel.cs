@@ -40,7 +40,7 @@ public sealed class ActionCardViewModel : ViewModelBase, IDraggable
 
 
 
-    public object GetDragPayload() => _action;
+    public object GetDragPayload() => new ActionDragPayload(_action);
 
 
 

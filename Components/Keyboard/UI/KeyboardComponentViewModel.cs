@@ -35,6 +35,8 @@ public partial class KeyboardComponentViewModel : ViewModelBase
         if (sidePanel.Content is not ActionListViewModel)
             sidePanel.SetContent(new ActionListViewModel());
 
+        bottomPanel.SetContent(null);
+
         return new(model, manager, bottomPanel);
     }
 
@@ -46,12 +48,10 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
     public KeyboardComponentViewModel(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel keyConfiguratorPanel)
     {
-        var keybindViewModel = new KeybindViewModel();
-        keyConfiguratorPanel.SetContent(keybindViewModel);
+        var keybindConfigurator = new KeybindViewModel();
+        keyConfiguratorPanel.SetContent(keybindConfigurator);
 
-        _keyboardList = new KeyboardListViewModel(model.ListModel, manager.GetInputManager());
-        _keyboardList.KeySelected += keybindViewModel.SetKeySelected;
-        _keyboardList.KeysDeselected += keybindViewModel.DeselectKeys;
+        _keyboardList = new KeyboardListViewModel(model.ListModel, manager.GetInputManager(), keybindConfigurator);
     }
 
 

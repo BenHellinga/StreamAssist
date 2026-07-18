@@ -1,14 +1,15 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Threading;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
+using StreamAssist.Components.Core.Dragging;
 
 namespace StreamAssist.Components.AppAction.UI;
 
 
 
-public class ActionGroupViewModel : ViewModelBase
+public class ActionGroupViewModel : ViewModelBase, IDroppable
 {
     // private
 
@@ -37,9 +38,35 @@ public class ActionGroupViewModel : ViewModelBase
 
         _actions = [];
         foreach (var action in _model.Actions)
-            _actions.Add(new(action));
+            InsertAction(action, _actions.Count);
 
         SubscribeToActionGroupModel(_model);
+    }
+
+
+
+    // drag drop
+
+
+
+    public bool CanAcceptDropPayload(object payload) => payload is ActionDragPayload;
+
+
+
+    public void OnDroppedOn(object payload, object? zoneContext)
+    {
+        if (payload is not ActionDragPayload dragPayload) return;
+
+        var index = zoneContext is ActionViewModel beforeItem ? _actions.IndexOf(beforeItem) : _actions.Count;
+        if (index < 0) index = _actions.Count;
+
+        var sourceIndex = _model.Actions.IndexOf(dragPayload.Action);
+        var isSameList = sourceIndex >= 0;
+
+        if (!dragPayload.RemoveFromSource()) return;
+
+        if (isSameList && sourceIndex < index) index--;
+        _model.TryInsertAction(dragPayload.Action, index);
     }
 
 
@@ -48,11 +75,15 @@ public class ActionGroupViewModel : ViewModelBase
 
 
 
+    private void OnRemoveActionRequested(IAppAction action) => _model.TryRemoveAction(action);
+
+
+
     // model events
 
 
 
-    private void OnActionAdded(IAppAction action, int index) => _actions.Insert(index, new(action));
+    private void OnActionAdded(IAppAction action, int index) => InsertAction(action, index);
 
 
 
@@ -60,13 +91,24 @@ public class ActionGroupViewModel : ViewModelBase
     {
         var viewModel = _actions.FirstOrDefault(a => a.RepresentsModel(action));
         if (viewModel == null) return;
+
         _actions.Remove(viewModel);
+        UnsubscribeFromActionViewModel(viewModel);
         viewModel.Dispose();
     }
 
 
 
-    // helper
+    // helpers
+
+
+
+    private void InsertAction(IAppAction action, int index)
+    {
+        var viewModel = new ActionViewModel(action, () => _model.TryRemoveAction(action));
+        _actions.Insert(index, viewModel);
+        SubscribeToActionViewModel(viewModel);
+    }
 
 
 
@@ -86,6 +128,20 @@ public class ActionGroupViewModel : ViewModelBase
 
 
 
+    private void SubscribeToActionViewModel(ActionViewModel viewModel)
+    {
+        viewModel.RemoveActionRequested += OnRemoveActionRequested;
+    }
+
+
+
+    private void UnsubscribeFromActionViewModel(ActionViewModel viewModel)
+    {
+        viewModel.RemoveActionRequested -= OnRemoveActionRequested;
+    }
+
+
+
     // disposal
 
 
@@ -93,5 +149,8 @@ public class ActionGroupViewModel : ViewModelBase
     public override void Dispose()
     {
         UnsubscribeFromActionGroupModel(_model);
+
+        foreach (var action in _actions)
+            UnsubscribeFromActionViewModel(action);
     }
 }

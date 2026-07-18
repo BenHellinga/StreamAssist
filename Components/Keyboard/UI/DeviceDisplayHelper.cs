@@ -11,14 +11,14 @@ public static class DeviceDisplayHelper
 
 
 
-    public static IReadOnlyList<DisplayKey> InitKeyboardDisplayKeys(double keySize, double keyMargin, out double width, out double height)
+    public static (IReadOnlyList<KeyData>, double, double) InitKeyboardDisplayData(double keySize, double keyMargin)
     {
         double keyFull = keySize + keyMargin;
         double arrowSectionOffset = keyFull * 15 + keyMargin;
         double numpadSectionOffset = arrowSectionOffset + keyFull * 3 + keyMargin;
 
-        width = keySize * 22 + keyMargin * 23;
-        height = keySize * 6 + keyMargin * 5;
+        double totalWidth = keySize * 22 + keyMargin * 23;
+        double totalHeight = keySize * 6 + keyMargin * 5;
 
         var keyData = new List<(ushort vk, double x, double y, double w, double h)>
         {
@@ -138,23 +138,23 @@ public static class DeviceDisplayHelper
             (0x6e, numpadSectionOffset + keyFull * 2, keyFull * 5, keySize, keySize),
         };
 
-        var keys = new List<DisplayKey>();
+        var keys = new List<KeyData>();
         foreach (var (vk, x, y, w, h) in keyData)
             keys.Add(new(VKToKeyboardLabel(vk)!, vk, x, y, w, h));
 
-        return keys;
+        return (keys, totalWidth, totalHeight);
     }
 
 
 
-    public static IReadOnlyList<DisplayKey> InitGenericDisplayKeys(double keySize, double keyMargin, out double width, out double height)
+    public static (IReadOnlyList<KeyData>, double, double) InitGenericDisplayKeys(double keySize, double keyMargin)
     {
         double keyFull = keySize + keyMargin;
 
-        width = keySize * 32 + keyMargin * 21;
-        height = keySize * 8 + keyMargin * 7;
+        double totalWidth = keySize * 32 + keyMargin * 21;
+        double totalHeight = keySize * 8 + keyMargin * 7;
 
-        var keys = new List<DisplayKey>();
+        var keys = new List<KeyData>();
 
         for (ushort i = 0; i <= 0xff; ++i)
         {
@@ -164,7 +164,7 @@ public static class DeviceDisplayHelper
             keys.Add(new(label, i, keyFull * (i % 32), keyFull * (i / 32), keySize, keySize));
         }
 
-        return keys;
+        return (keys, totalWidth, totalHeight);
     }
 
 

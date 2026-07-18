@@ -74,12 +74,10 @@
 
         <!-- keyboard -->
 
-        <Viewbox Stretch="Uniform"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Top">
+        <Decorator x:Name="KeyboardHost">
             <ItemsControl ItemsSource="{Binding Keys}"
-                        Width="{Binding CanvasWidth}"
-                        Height="{Binding CanvasHeight}">
+                          Width="{Binding CurrentWidth}"
+                          Height="{Binding CurrentHeight}">
 
                 <!-- canvas -->
 
@@ -93,42 +91,20 @@
 
                 <ItemsControl.ItemContainerTheme>
                     <ControlTheme TargetType="ContentPresenter"
-                                x:DataType="keyboard:DisplayKey">
+                                  x:DataType="keyboard:KeyViewModel">
                         <Setter Property="Canvas.Left" Value="{Binding X}"/>
                         <Setter Property="Canvas.Top" Value="{Binding Y}"/>
                     </ControlTheme>
                 </ItemsControl.ItemContainerTheme>
 
-                <!-- per key management -->
-
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="keyboard:DisplayKey">
-                        <Border Classes="Droppable"
-                                Classes.Triggered="{Binding IsPressed}"
-                                Classes.Bound="{Binding IsBound}"
-                                Width="{Binding W}"
-                                Height="{Binding H}"
-                                DragDrop.AllowDrop="True"
-                                DragDrop.DragOver="OnKeyDragOver"
-                                DragDrop.DragLeave="OnKeyDragLeave"
-                                DragDrop.Drop="OnKeyDrop"
-                                PointerPressed="OnKeyPointerPressed">
-
-                            <Grid VerticalAlignment="Center" Margin="3">
-                                <TextBlock Text="{Binding Label}" TextAlignment="Center"/>
-
-                                <!-- example handle, if/when you add one -->
-                                <Border Classes="Draggable"
-                                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Width="8" Height="8"
-                                        PointerPressed="OnKeyHandlePointerPressed"/>
-                            </Grid>
-                        </Border>
+                    <DataTemplate x:DataType="keyboard:KeyViewModel">
+                        <keyboard:KeyView/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
 
             </ItemsControl>
-        </Viewbox>
+        </Decorator>
 
     </StackPanel>
 </UserControl>

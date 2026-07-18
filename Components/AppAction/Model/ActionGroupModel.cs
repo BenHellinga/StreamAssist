@@ -54,6 +54,8 @@ public class ActionGroupModel
 
     public event Action<IAppAction, int>? ActionAdded;
     public event Action<IAppAction>? ActionRemoved;
+    public event Action<IAppAction>? FirstActionAdded;
+    public event Action<IAppAction>? LastActionRemoved;
 
 
 
@@ -72,11 +74,7 @@ public class ActionGroupModel
 
 
     
-    public void AddAction(IAppAction action)
-    {
-        _actions.Add(action);
-        ActionAdded?.Invoke(action, _actions.Count - 1);
-    }
+    public void AddAction(IAppAction action) => InsertAction(action, _actions.Count);
 
 
 
@@ -103,7 +101,9 @@ public class ActionGroupModel
     private void InsertAction(IAppAction action, int index)
     {
         _actions.Insert(index, action);
-        ActionAdded?.Invoke(action, index);
+        
+        if (_actions.Count == 1 && FirstActionAdded != null) FirstActionAdded.Invoke(action);
+        else ActionAdded?.Invoke(action, _actions.Count - 1);
     }
 
 
@@ -125,7 +125,9 @@ public class ActionGroupModel
     private void RemoveAction(IAppAction action)
     {
         _actions.Remove(action);
-        ActionRemoved?.Invoke(action);
+
+        if (_actions.Count == 0 && LastActionRemoved != null) LastActionRemoved.Invoke(action);
+        else ActionRemoved?.Invoke(action);
     }
 
 

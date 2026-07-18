@@ -1,3 +1,4 @@
+using Avalonia.Input;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Core.Dragging;
 
@@ -11,4 +12,16 @@ public partial class ActionGroupView : ViewBase
     {
         InitializeComponent();
     }
+
+
+
+    private void OnZoneDragOver(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragOver(DataContext, e);
+
+
+
+    private void OnZoneDragLeave(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragLeave(DataContext, e);
+
+
+
+    private void OnZoneDrop(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDrop(DataContext, e);
 }

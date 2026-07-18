@@ -1,12 +1,12 @@
-using Avalonia.Controls;
 using Avalonia.Input;
+using StreamAssist.Components.Core;
 using StreamAssist.Components.Core.Dragging;
 
 namespace StreamAssist.Components.AppAction.UI;
 
 
 
-public partial class ActionCardView : UserControl
+public partial class ActionCardView : ViewBase
 {
     public ActionCardView()
     {

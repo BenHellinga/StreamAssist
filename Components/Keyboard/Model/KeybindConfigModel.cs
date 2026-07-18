@@ -73,16 +73,23 @@ public class KeybindConfigModel
 
 
 
-    public void BindActionToKey(ushort key, IAppAction action)
+    public void TryBindKey(ushort vk, KeybindModel keybind)
     {
-        if (!_keybinds.TryGetValue(key, out var bindingModel))
+        if (_keybinds.ContainsKey(vk))
         {
-            bindingModel = new();
-            _keybinds[key] = bindingModel;
-            KeyBound?.Invoke(key, bindingModel);
+            AppLog.WriteError("Could not bind key - key already bound");
+            return;
         }
 
-        bindingModel.OnPressed.AddAction(action);
+        BindKey(vk, keybind);
+    }
+
+
+
+    private void BindKey(ushort vk, KeybindModel keybind)
+    {
+        _keybinds.Add(vk, keybind);
+        KeyBound?.Invoke(vk, keybind);
     }
 
 

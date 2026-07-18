@@ -1,20 +1,24 @@
+using System;
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Core.Configurator;
+using StreamAssist.Components.Core.Dragging;
 using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.AppAction.UI;
 
 
 
-public partial class ActionViewModel : ViewModelBase
+public partial class ActionViewModel : ViewModelBase, IDraggable
 {
     // private
 
 
 
     private readonly IAppAction _action;
+    private readonly Func<bool>? _removeFromSource;
     private readonly ObservableCollection<ConfigurableParameterViewModel> _configurators;
 
 
@@ -30,15 +34,41 @@ public partial class ActionViewModel : ViewModelBase
 
 
 
+    // events
+
+
+
+    public event Action<IAppAction>? RemoveActionRequested;
+
+
+
     // constructor
 
 
 
-    public ActionViewModel(IAppAction action)
+    public ActionViewModel(IAppAction action, Func<bool>? removeFromSource = null)
     {
         _action = action;
+        _removeFromSource = removeFromSource;
         _configurators = ConfiguratorBuilder.Build(action);
     }
+
+
+
+    // ui events
+
+
+
+    [RelayCommand]
+    private void OnRemoveActionRequested() => RemoveActionRequested?.Invoke(_action);
+
+
+
+    // drag drop
+
+
+
+    public object GetDragPayload() => new ActionDragPayload(_action, _removeFromSource);
 
 
 

@@ -4,22 +4,27 @@
              x:DataType="appAction:ActionGroupViewModel"
              xmlns:appAction="using:StreamAssist.Components.AppAction.UI">
 
-    <StackPanel>
+    <StackPanel Margin="5">
 
-        <ItemsControl ItemsSource="{Binding Actions}">
+        <ItemsControl ItemsSource="{Binding Actions}" Margin="0,0,0,5">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <StackPanel/>
+                    <StackPanel Spacing="5"/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="appAction:ActionViewModel">
-                    <StackPanel>
-                        <!-- drop zone: "insert before this action" -->
-                        <Border Classes="Dropzone"
+                    <StackPanel Spacing="5">
+                        <Border Classes="Droppable"
+                                HorizontalAlignment="Left"
                                 DragDrop.AllowDrop="True"
-                                Width="150" Height="30"/>
+                                DragDrop.DragOver="OnZoneDragOver"
+                                DragDrop.DragLeave="OnZoneDragLeave"
+                                DragDrop.Drop="OnZoneDrop"
+                                Width="100" Height="25">
+                            <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
 
                         <appAction:ActionView DataContext="{Binding}"/>
                     </StackPanel>
@@ -27,10 +32,15 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- drop zone: "insert at the end" -->
-        <Border Classes="Dropzone"
+        <Border Classes="Droppable"
+                HorizontalAlignment="Left"
                 DragDrop.AllowDrop="True"
-                Width="150" Height="30"/>
+                DragDrop.DragOver="OnZoneDragOver"
+                DragDrop.DragLeave="OnZoneDragLeave"
+                DragDrop.Drop="OnZoneDrop"
+                Width="100" Height="25">
+            <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
 
     </StackPanel>
 

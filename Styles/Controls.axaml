@@ -1,5 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+        xmlns:dragging="using:StreamAssist.Components.Core.Dragging">
 
 
 
@@ -246,6 +248,8 @@
         <Setter Property="Padding" Value="5,5"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="DragDrop.AllowDrop" Value="True"/>
+        <Setter Property="dragging:DragHoverTabSwitch.Enable" Value="True"/>
     </Style>
 
     <Style Selector="ListBox.TopTabStrip ListBoxItem:pointerover /template/ ContentPresenter">

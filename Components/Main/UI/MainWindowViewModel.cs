@@ -28,7 +28,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // tabs
     private ObservableCollection<ViewModelTabItem> _tabs;
     [ObservableProperty] private ViewModelTabItem _selectedTab;
-    [ObservableProperty] private IDisposable _activeContent;
+    [ObservableProperty] private ViewModelBase _activeContent;
 
     // public getter properties
     public KeyboardComponentManager KeyboardComponentManager => _keyboardComponentManager;
@@ -79,7 +79,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedTabChanged(ViewModelTabItem value)
     {
-        IDisposable oldContent = ActiveContent;
+        ViewModelBase oldContent = ActiveContent;
         ActiveContent = value.CreateTabViewModel();
         oldContent?.Dispose();
     }
