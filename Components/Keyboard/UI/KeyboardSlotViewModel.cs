@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.Json;
 using Avalonia.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -132,7 +133,10 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     private void OnAddConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
-        var keybinds = new Dictionary<ushort, KeybindModel>();
+
+        var json = JsonSerializer.Serialize(_model.SelectedConfig?.Keybinds);
+        var keybinds = JsonSerializer.Deserialize<Dictionary<ushort, KeybindModel>>(json) ?? [];
+
         AddConfigRequested?.Invoke(InputConfig, keybinds, (configModel) => { InputConfig = ""; _model.TrySetSelectedConfig(configModel); });
     }
 
@@ -312,7 +316,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     {
         if (_pendingWidth <= 10 || _baseWidth <= 0) return;
 
-        var padding = 4;
+        var padding = 1;
         var usableWidth = _pendingWidth - padding * 2;
         var scale = usableWidth / _baseWidth;
 
@@ -333,6 +337,10 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     {
         UnsubscribeFromKeyboardSlotModel(_model);
         UnsubscribeFromKeyboardInputManager(_inputManager);
+
         _pendingResize?.Dispose();
+
+        foreach (var key in _keys)
+            key.Dispose();
     }
 }

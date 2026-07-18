@@ -1,4 +1,3 @@
-using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using StreamAssist.Components.AppAction.Model;
@@ -57,17 +56,17 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
     public void OnDroppedOn(object payload, object? zoneContext)
     {
         if (payload is not ActionDragPayload dragPayload) return;
-
+        
         var index = zoneContext is ActionViewModel beforeItem ? _actions.IndexOf(beforeItem) : _actions.Count;
         if (index < 0) index = _actions.Count;
 
         var sourceIndex = _model.Actions.IndexOf(dragPayload.Action);
         var isSameList = sourceIndex >= 0;
 
-        if (!dragPayload.TryRemoveFromSource()) return;
-
-        if (isSameList && sourceIndex < index) index--;
-        _model.TryInsertAction(dragPayload.Action, index);
+        var copy = ActionModel.DeepCopy(dragPayload.Action);
+        
+        _model.TryInsertAction(copy, index);
+        dragPayload.RemoveFromSource?.Invoke();
     }
 
 

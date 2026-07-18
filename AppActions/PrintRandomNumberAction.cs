@@ -8,7 +8,7 @@ namespace StreamAssist.AppActions;
 
 
 
-public class PrintTimestampAction : AppActionBase
+public class PrintTimestampAction : ActionModel
 {
     [JsonIgnore] public override string Name => "Print Timestamp";
     [JsonIgnore] public override string Description => "Prints the current date and time to the console.";

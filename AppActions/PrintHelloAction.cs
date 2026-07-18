@@ -8,7 +8,7 @@ namespace StreamAssist.AppActions;
 
 
 
-public class PrintRandomNumberAction : AppActionBase
+public class PrintRandomNumberAction : ActionModel
 {
     private static readonly Random _rng = new();
 

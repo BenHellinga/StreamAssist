@@ -5,7 +5,6 @@ using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Core.Configurator;
 using StreamAssist.Components.Core.Dragging;
-using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.AppAction.UI;
 
@@ -18,7 +17,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
     private readonly ActionModel _action;
-    private readonly Func<bool>? _removeFromSource;
+    private readonly Action? _removeFromSource;
     private readonly ObservableCollection<ConfigurableParameterViewModel> _configurators;
 
 
@@ -46,7 +45,7 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    public ActionViewModel(ActionModel action, Func<bool>? removeFromSource = null)
+    public ActionViewModel(ActionModel action, Action? removeFromSource)
     {
         _action = action;
         _removeFromSource = removeFromSource;

@@ -7,7 +7,7 @@ namespace StreamAssist.AppActions;
 
 
 
-public class PrintHelloAction : AppActionBase
+public class PrintHelloAction : ActionModel
 {
     [JsonIgnore] public override string Name => "Print Hello";
     [JsonIgnore] public override string Description => "Prints 'Hello, StreamAssist!' to the console.";

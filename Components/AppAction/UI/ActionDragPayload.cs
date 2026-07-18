@@ -12,7 +12,7 @@ public sealed class ActionDragPayload
 
 
     private readonly ActionModel _action;
-    private readonly Func<bool> _removeFromSource;
+    private readonly Action? _removeFromSource;
 
 
 
@@ -21,6 +21,7 @@ public sealed class ActionDragPayload
 
 
     public ActionModel Action => _action;
+    public Action? RemoveFromSource => _removeFromSource;
 
 
 
@@ -28,17 +29,9 @@ public sealed class ActionDragPayload
 
 
 
-    public ActionDragPayload(ActionModel action, Func<bool>? removeFromSource = null)
+    public ActionDragPayload(ActionModel action, Action? removeFromSource = null)
     {
         _action = action;
-        _removeFromSource = removeFromSource ?? (() => true);
+        _removeFromSource = removeFromSource;
     }
-
-
-
-    // public api
-
-
-
-    public bool TryRemoveFromSource() => _removeFromSource();
 }

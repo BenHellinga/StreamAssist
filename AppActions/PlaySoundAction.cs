@@ -3,23 +3,35 @@ using StreamAssist.Components.Main.Model;
 using StreamAssist.Components.AppAction.Model;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Core.Configurator;
+using NAudio.Wave;
 
 namespace StreamAssist.AppActions;
 
 
 
-public class PlaySoundAction : AppActionBase
+public class PlaySoundAction : ActionModel
 {
-    // action info
+    // info
+
+
+
     [JsonIgnore] public override string Name => "Play Sound";
     [JsonIgnore] public override string Description => "Plays the configured .mp3/.wav file to StreamAssistAudioOut.";
 
-    // private storage field
-    private string? _filepath;
 
-    // public getter properties
-    [ConfigurableParameter("Sound File", ConfiguratorType.Filepath)] [JsonPropertyName("filepath")]
-    public string? Filepath
+
+    // private
+
+
+
+    private string _filepath;
+
+    // public
+
+
+
+    [ConfigurableParameter("Filepath", ConfiguratorType.Filepath)] [JsonPropertyName("filepath")]
+    public string Filepath
     {
         get => _filepath;
         set => SetParameter(ref _filepath, value);
@@ -33,7 +45,7 @@ public class PlaySoundAction : AppActionBase
 
     public PlaySoundAction()
     {
-        _filepath = null;
+        _filepath = "";
     }
 
 
@@ -44,7 +56,20 @@ public class PlaySoundAction : AppActionBase
 
     public override Task SafeExecuteAsync()
     {
-        AppLog.WriteLine($"filepath: '{_filepath}'");
+        if (_filepath == "") return Task.CompletedTask;
+
+        var audioFile = new AudioFileReader(_filepath);
+        var outputDevice = new WaveOutEvent();
+
+        outputDevice.Init(audioFile);
+        outputDevice.Play();
+
+        outputDevice.PlaybackStopped += (_, _) =>
+        {
+            outputDevice.Dispose();
+            audioFile.Dispose();
+        };
+        
         return Task.CompletedTask;
     }
 }

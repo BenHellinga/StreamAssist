@@ -32,7 +32,7 @@
                 <!-- drag handle -->
 
                 <Border Classes="Draggable"
-                        Width="16" Height="16"
+                        Width="15" Height="15"
                         PointerPressed="OnHandlePointerPressed">
                     <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
@@ -40,7 +40,7 @@
                 <!-- toggle disable -->
 
                 <Button Classes="ToggleEnabled"
-                        Width="16" Height="16"
+                        Width="15" Height="15"
                         Padding="0"
                         Command="{Binding ToggleEnabledPressedCommand}"
                         ToolTip.Tip="Enable/disable this binding">
@@ -50,7 +50,7 @@
                 <!-- unbind -->
 
                 <Button Classes="RemoveAction"
-                        Width="16" Height="16"
+                        Width="15" Height="15"
                         Padding="0"
                         Command="{Binding UnbindPressedCommand}"
                         ToolTip.Tip="Unbind this key">

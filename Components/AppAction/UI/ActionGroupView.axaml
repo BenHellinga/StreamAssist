@@ -4,44 +4,53 @@
              x:DataType="appAction:ActionGroupViewModel"
              xmlns:appAction="using:StreamAssist.Components.AppAction.UI">
 
-    <StackPanel Margin="5">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  AllowAutoHide="False"
+                  Margin="0,5">
 
-        <ItemsControl ItemsSource="{Binding Actions}" Margin="0,0,0,5">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Spacing="5"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
+        <StackPanel Margin="5,0,10,200">
 
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="appAction:ActionViewModel">
-                    <StackPanel Spacing="5">
-                        <Border Classes="Droppable"
-                                HorizontalAlignment="Left"
-                                DragDrop.AllowDrop="True"
-                                DragDrop.DragOver="OnZoneDragOver"
-                                DragDrop.DragLeave="OnZoneDragLeave"
-                                DragDrop.Drop="OnZoneDrop"
-                                Width="100" Height="25">
-                            <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
+            <ItemsControl ItemsSource="{Binding Actions}" Margin="0,0,0,5">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="5"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-                        <appAction:ActionView DataContext="{Binding}"/>
-                    </StackPanel>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="appAction:ActionViewModel">
+                        <StackPanel Spacing="5">
 
-        <Border Classes="Droppable"
-                HorizontalAlignment="Left"
-                DragDrop.AllowDrop="True"
-                DragDrop.DragOver="OnZoneDragOver"
-                DragDrop.DragLeave="OnZoneDragLeave"
-                DragDrop.Drop="OnZoneDrop"
-                Width="100" Height="25">
-            <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Border>
+                            <Border Classes="Droppable"
+                                    HorizontalAlignment="Left"
+                                    DragDrop.AllowDrop="True"
+                                    DragDrop.DragOver="OnZoneDragOver"
+                                    DragDrop.DragLeave="OnZoneDragLeave"
+                                    DragDrop.Drop="OnZoneDrop"
+                                    Width="100" Height="25">
+                                <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
 
-    </StackPanel>
+                            <appAction:ActionView DataContext="{Binding}"/>
+                            
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Classes="Droppable"
+                    HorizontalAlignment="Left"
+                    DragDrop.AllowDrop="True"
+                    DragDrop.DragOver="OnZoneDragOver"
+                    DragDrop.DragLeave="OnZoneDragLeave"
+                    DragDrop.Drop="OnZoneDrop"
+                    Width="100" Height="25">
+                <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+        </StackPanel>
+
+    </ScrollViewer>
 
 </UserControl>

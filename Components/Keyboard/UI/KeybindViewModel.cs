@@ -4,12 +4,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
-using NAudio.CoreAudioApi;
-using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -23,7 +20,6 @@ public partial class KeybindViewModel : ViewModelBase
 
     private KeyViewModel? _key;
     private KeybindModel? _keybind;
-    private KeybindModel? _oldKeybind;
     private KeybindConfigModel? _config;
 
     private ObservableCollection<ViewModelTabItem> _tabs;
@@ -51,7 +47,6 @@ public partial class KeybindViewModel : ViewModelBase
     {
         _key = null;
         _keybind = null;
-        _oldKeybind = null;
         _config = null;
 
         _tabs = [
@@ -84,9 +79,7 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (vk != _key?.VK) return;
 
-        UnsubscribeFromAllActionGroupModels(_oldKeybind);
         UnsubscribeFromAllActionGroupModels(_keybind);
-        _oldKeybind = null;
         _keybind = keybind;
         SubscribeToAllActionGroupModels(_keybind);
         SetContent(SelectedTab);
@@ -98,7 +91,7 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (vk != _key?.VK) return;
 
-        _oldKeybind = _keybind;
+        UnsubscribeFromAllActionGroupModels(_keybind);
         _keybind = new();
         SubscribeToAllActionGroupModels(_keybind);
         SetContent(SelectedTab);
@@ -112,11 +105,6 @@ public partial class KeybindViewModel : ViewModelBase
                  _keybind!.OnReleased.Actions.Count + 
                  _keybind!.OnRepeated.Actions.Count)
             _config?.TryBindKey(_key!.VK, _keybind);
-
-        else if (1 == _oldKeybind!.OnPressed.Actions.Count +
-                      _oldKeybind!.OnReleased.Actions.Count + 
-                      _oldKeybind!.OnRepeated.Actions.Count)
-            _config?.TryBindKey(_key!.VK, _oldKeybind);
     }
 
 
@@ -218,6 +206,7 @@ public partial class KeybindViewModel : ViewModelBase
     public override void Dispose()
     {
         UnsubscribeFromKeybindConfigModel(_config);
+        UnsubscribeFromAllActionGroupModels(_keybind);
         
         ActiveContent?.Dispose();
     }

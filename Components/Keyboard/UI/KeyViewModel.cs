@@ -7,6 +7,7 @@ using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Main.Model;
 using System.Collections.Generic;
+using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -67,8 +68,6 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
         _y = -1;
         _w = -1;
         _h = -1;
-
-        SubscribeToKeybindConfigModel(_config);
     }
 
 
@@ -100,15 +99,17 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
             return;
         }
 
-        payload.TryRemoveFromSource();
+        var copy = ActionModel.DeepCopy(payload.Action);
 
         if (_keybind == null)
         {
             var keybind = new KeybindModel();
-            keybind.OnPressed.AddAction(payload.Action);
+            keybind.OnPressed.AddAction(copy);
             _config.TryBindKey(_vk, keybind);
         }
-        else _keybind.OnPressed.AddAction(payload.Action);
+        else _keybind.OnPressed.AddAction(copy);
+
+        payload.RemoveFromSource?.Invoke();
     }
 
 

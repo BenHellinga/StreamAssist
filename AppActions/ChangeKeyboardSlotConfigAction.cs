@@ -8,7 +8,7 @@ namespace StreamAssist.AppActions;
 
 
 // TODO redo with global context
-public class ChangeKeyboardSlotConfigAction : AppActionBase
+public class ChangeKeyboardSlotConfigAction : ActionModel
 {
     public static KeyboardComponentModel? Model;
     [JsonIgnore] public override string Name => "Change Config";
