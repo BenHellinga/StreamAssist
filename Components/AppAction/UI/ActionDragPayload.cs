@@ -21,7 +21,7 @@ public sealed class ActionDragPayload
 
 
     public ActionModel Action => _action;
-    public Action? RemoveFromSource => _removeFromSource;
+    public Action? Callback => _removeFromSource;
 
 
 

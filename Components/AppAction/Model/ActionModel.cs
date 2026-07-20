@@ -8,7 +8,7 @@ namespace StreamAssist.Components.AppAction.Model;
 
 
 
-public abstract class ActionModel
+public abstract class ActionModel : IDisposable
 {
     // private
 
@@ -116,4 +116,12 @@ public abstract class ActionModel
 
 
     protected abstract void Execute();
+
+
+
+    // disposal
+
+
+
+    public virtual void Dispose() {}
 }

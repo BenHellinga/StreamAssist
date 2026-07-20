@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
@@ -110,6 +111,14 @@ public class KeybindModel : ModelBase
         _onPressed.SetUnbindSelf(tryUnbindSelf);
         _onReleased.SetUnbindSelf(tryUnbindSelf);
         _onRepeated.SetUnbindSelf(tryUnbindSelf);
+    }
+
+
+
+    public static KeybindModel DeepCopy(KeybindModel keybind)
+    {
+        var json = JsonSerializer.Serialize(keybind);
+        return JsonSerializer.Deserialize<KeybindModel>(json)!;
     }
 
 

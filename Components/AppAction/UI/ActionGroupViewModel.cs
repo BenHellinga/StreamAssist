@@ -55,18 +55,17 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
     public void OnDroppedOn(object payload, object? zoneContext)
     {
-        if (payload is not ActionDragPayload dragPayload) return;
+        if (payload is not ActionDragPayload actionPayload) return;
         
         var index = zoneContext is ActionViewModel beforeItem ? _actions.IndexOf(beforeItem) : _actions.Count;
         if (index < 0) index = _actions.Count;
 
-        var sourceIndex = _model.Actions.IndexOf(dragPayload.Action);
+        var sourceIndex = _model.Actions.IndexOf(actionPayload.Action);
         var isSameList = sourceIndex >= 0;
 
-        var copy = ActionModel.DeepCopy(dragPayload.Action);
-        
+        var copy = ActionModel.DeepCopy(actionPayload.Action);
         _model.TryInsertAction(copy, index);
-        dragPayload.RemoveFromSource?.Invoke();
+        actionPayload.Callback?.Invoke();
     }
 
 
@@ -75,7 +74,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
 
 
-    private void OnRemoveActionRequested(ActionModel action) => _model.TryRemoveAction(action);
+    private void OnRemoveActionRequested(ActionModel action) => _model.RemoveAction(action);
 
 
 
@@ -105,7 +104,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
     private void InsertAction(ActionModel action, int index)
     {
-        var viewModel = new ActionViewModel(action, () => _model.TryRemoveAction(action));
+        var viewModel = new ActionViewModel(action, () => _model.RemoveAction(action));
         _actions.Insert(index, viewModel);
         SubscribeToActionViewModel(viewModel);
     }

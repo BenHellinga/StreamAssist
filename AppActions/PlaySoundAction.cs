@@ -18,7 +18,7 @@ public class PlaySoundAction : ActionModel
 
 
     [JsonIgnore] public override string Name => "Play Sound";
-    [JsonIgnore] public override string Description => "Plays the configured .mp3 file.";
+    [JsonIgnore] public override string Description => "Plays the configured .mp3/.wav file.";
 
 
 

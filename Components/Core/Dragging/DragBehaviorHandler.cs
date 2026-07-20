@@ -19,6 +19,7 @@ public static class DragBehaviorHandler
         if (!e.GetCurrentPoint(handle).Properties.IsLeftButtonPressed) return;
         if (handle.DataContext is not IDraggable draggable) return;
 
+        e.Handled = true;
         var payload = draggable.GetDragPayload();
         if (payload == null) return;
 
@@ -28,7 +29,6 @@ public static class DragBehaviorHandler
         var data = new DataTransfer();
         data.Add(item);
 
-        e.Handled = true;
         await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Move);
     }
 }

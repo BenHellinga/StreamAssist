@@ -137,7 +137,7 @@ public class MuteVirtualInput : ActionModel
             if (newState) filepath = "C:\\Users\\benhe\\Music\\mute.mp3";
             else filepath = "C:\\Users\\benhe\\Music\\unmute.mp3";
 
-            AudioHelper.TryPlaySound(filepath);
+            AudioHelper.TryPlaySound(filepath, 0.5f);
         }
     }
 }

@@ -106,12 +106,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
     [RelayCommand] private void OnToggleButtonPressed()
     {
-        if (_keybind == null)
-        {
-            AppLog.WriteError("Could not toggle keybind - key not bound");
-            return;    
-        }
-
+        if (_keybind == null) return;
         _keybind.SetIsDisabled(!_keybind.IsDisabled);
     }
 
@@ -158,7 +153,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
         }
         else _keybind.OnPressed.AddAction(copy);
 
-        payload.RemoveFromSource?.Invoke();
+        payload.Callback?.Invoke();
     }
 
 
@@ -171,13 +166,8 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
             return;
         }
 
-        if (_keybind != null)
-        {
-            AppLog.WriteError("Could not bind action group to key - key is already bound to an action group");
-            return;
-        }
-
-        _config.TryBindKey(_vk, payload.Keybind);
+        var copy = KeybindModel.DeepCopy(payload.Keybind);
+        _config.TryBindKey(_vk, copy);
         payload.RemoveFromSource?.Invoke();
     }
 
@@ -186,7 +176,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
     public object? GetDragPayload()
     {
         if (_config == null || _keybind == null) return null;
-        return new KeybindDragPayload(_keybind, () => _config.UnbindKey(_vk) );
+        return new KeybindDragPayload(_keybind, () => _config.UnbindKey(_vk));
     }
 
 

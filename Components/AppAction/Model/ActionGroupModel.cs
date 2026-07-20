@@ -110,27 +110,14 @@ public class ActionGroupModel : ModelBase
 
 
 
-    public bool TryRemoveAction(ActionModel action)
+    public void RemoveAction(ActionModel action)
     {
-        if (!_actions.Contains(action))
-        {
-            AppLog.WriteError("Could not remove action - action not found in list");
-            return false;
-        }
-
-        RemoveAction(action);
-        return true;
-    }
-
-
-
-    private void RemoveAction(ActionModel action)
-    {
-        _actions.Remove(action);
+        if (!_actions.Remove(action)) return;
 
         if (_actions.Count == 0)
             _tryUnbindSelf?.Invoke();
         ActionRemoved?.Invoke(action);
+        action.Dispose();
     }
 
 

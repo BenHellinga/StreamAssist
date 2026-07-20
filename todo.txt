@@ -2,7 +2,4 @@
 - start with obs integration
 - obs overlay?
 
-- redo how devices are loaded/changed
-- make dispalykey a IBindable
-- add color themes for IBindable
-- add different display types
+- revamp input devices
