@@ -1,11 +1,12 @@
 using System;
 using Avalonia.Controls;
+using StreamAssist.Components.Core;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public partial class KeyboardSlotView : UserControl
+public partial class KeyboardSlotView : ViewBase
 {
     public KeyboardSlotView()
     {

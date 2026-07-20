@@ -5,6 +5,7 @@ namespace StreamAssist.Components.AppAction.UI;
 
 
 
+// data class for a keybind drag payload
 public sealed class KeybindDragPayload
 {
     // private
@@ -12,7 +13,7 @@ public sealed class KeybindDragPayload
 
 
     private readonly KeybindModel _keybind;
-    private readonly Func<bool> _removeFromSource;
+    private readonly Action? _removeFromSource; // action to remove object from source collection
 
 
 
@@ -21,7 +22,7 @@ public sealed class KeybindDragPayload
 
 
     public KeybindModel Keybind => _keybind;
-    public Func<bool> RemoveFromSource => _removeFromSource; 
+    public Action? RemoveFromSource => _removeFromSource; 
 
 
 
@@ -29,9 +30,9 @@ public sealed class KeybindDragPayload
 
 
 
-    public KeybindDragPayload(KeybindModel keybind, Func<bool>? removeFromSource = null)
+    public KeybindDragPayload(KeybindModel keybind, Action? removeFromSource = null)
     {
         _keybind = keybind;
-        _removeFromSource = removeFromSource ?? (() => true);
+        _removeFromSource = removeFromSource;
     }
 }

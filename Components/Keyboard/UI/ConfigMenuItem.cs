@@ -4,8 +4,34 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public class ConfigMenuItem(string Label, KeybindConfigModel? Model)
+// data class for a single config menu item
+public class ConfigMenuItem
 {
-    public string Label { get; } = Label;
-    public KeybindConfigModel? Model = Model;
+    // private
+
+
+
+    private string _label;
+    private KeybindConfigModel? _config;
+
+
+
+    // public
+
+
+
+    public string Label => _label;
+    public KeybindConfigModel? Model => _config;
+
+
+
+    // constructor
+
+
+
+    public ConfigMenuItem(string label, KeybindConfigModel? config)
+    {
+        _label = label;
+        _config = config;
+    }
 }

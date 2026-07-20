@@ -35,8 +35,8 @@ public class KeybindManager : IDisposable
         foreach (var slot in _listModel.Slots)
             _slotTrackers[slot] = new SlotTracker(this, slot);
 
-        _listModel.SlotAdded += OnSlotAdded;
-        _listModel.SlotRemoved += OnSlotRemoved;
+        _listModel.SlotCreated += OnSlotAdded;
+        _listModel.SlotDeleted += OnSlotRemoved;
 
         _inputManager.KeyDown += OnKeyDown;
         _inputManager.KeyUp += OnKeyUp;
@@ -134,8 +134,8 @@ public class KeybindManager : IDisposable
 
     public void Dispose()
     {
-        _listModel.SlotAdded -= OnSlotAdded;
-        _listModel.SlotRemoved -= OnSlotRemoved;
+        _listModel.SlotCreated -= OnSlotAdded;
+        _listModel.SlotDeleted -= OnSlotRemoved;
 
         _inputManager.KeyDown -= OnKeyDown;
         _inputManager.KeyUp -= OnKeyUp;

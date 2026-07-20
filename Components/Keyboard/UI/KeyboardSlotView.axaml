@@ -34,7 +34,7 @@
 
                 <Button Classes="Square"
                         Content="＋"
-                        Command="{Binding AddConfigPressedCommand}"
+                        Command="{Binding CreateConfigPressedCommand}"
                         ToolTip.Tip="Create a copy of the current config with the name below"/>
 
                 <!-- input config box -->
@@ -47,7 +47,7 @@
 
                 <Button Classes="Square"
                         Content="－"
-                        Command="{Binding RemoveConfigPressedCommand}"
+                        Command="{Binding DeleteConfigPressedCommand}"
                         ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
 
             </StackPanel>

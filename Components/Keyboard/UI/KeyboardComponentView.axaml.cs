@@ -1,10 +1,10 @@
-using Avalonia.Controls;
+using StreamAssist.Components.Core;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public partial class KeyboardComponentView : UserControl
+public partial class KeyboardComponentView : ViewBase
 {
     public KeyboardComponentView()
     {

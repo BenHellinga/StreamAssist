@@ -8,6 +8,7 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
+// view model to modify a KeyboardComponentModel object
 public partial class KeyboardComponentViewModel : ViewModelBase
 {
     // private
@@ -32,10 +33,11 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
     public static KeyboardComponentViewModel ActivateTab(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel sidePanel, PanelViewModel bottomPanel)
     {
+        // set side and bottom panel content
         if (sidePanel.Content is not ActionListViewModel)
-            sidePanel.SetContent(new ActionListViewModel());
+            sidePanel.TransferContent(new ActionListViewModel());
 
-        bottomPanel.SetContent(null);
+        bottomPanel.TransferContent(null);
 
         return new(model, manager, bottomPanel);
     }
@@ -49,7 +51,7 @@ public partial class KeyboardComponentViewModel : ViewModelBase
     public KeyboardComponentViewModel(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel keyConfiguratorPanel)
     {
         var keybindConfigurator = new KeybindViewModel();
-        keyConfiguratorPanel.SetContent(keybindConfigurator);
+        keyConfiguratorPanel.TransferContent(keybindConfigurator);
 
         _keyboardList = new KeyboardListViewModel(model.ListModel, manager.GetInputManager(), keybindConfigurator);
     }

@@ -65,11 +65,10 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public event Action<KeyboardSlotModel>? SlotAdded;
-    public event Action<KeyboardSlotModel>? SlotRemoved;
-    public event Action<KeybindConfigModel>? ConfigAdded;
-    public event Action<KeybindConfigModel>? ConfigRemoved;
-    public event Action? DeviceListUpdated;
+    public event Action<KeyboardSlotModel>? SlotCreated;
+    public event Action<KeyboardSlotModel>? SlotDeleted;
+    public event Action<KeybindConfigModel>? ConfigCreated;
+    public event Action<KeybindConfigModel>? ConfigDeleted;
 
 
 
@@ -108,7 +107,6 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
     public void AttachDevices(IReadOnlyList<InputDeviceModel> devices)
     {
         _devices = devices;
-        DeviceListUpdated?.Invoke();
 
         foreach (var slot in _slots)
             slot.AttachDevices(_devices);
@@ -124,7 +122,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
     {
         slot = new KeyboardSlotModel(_devices, _configs);
         _slots.Add(slot);
-        SlotAdded?.Invoke(slot);
+        SlotCreated?.Invoke(slot);
     }
 
 
@@ -146,7 +144,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
     private void DeleteSlot(KeyboardSlotModel slot)
     {
         _slots.Remove(slot);
-        SlotRemoved?.Invoke(slot);
+        SlotDeleted?.Invoke(slot);
         slot.Dispose();
     }
 
@@ -189,7 +187,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
     {
         config = new KeybindConfigModel(name, keybinds);
         _configs.Add(config);
-        ConfigAdded?.Invoke(config);
+        ConfigCreated?.Invoke(config);
     }
 
 
@@ -215,7 +213,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
                 slot.TrySetSelectedConfig(null);
 
         _configs.Remove(config);
-        ConfigRemoved?.Invoke(config);
+        ConfigDeleted?.Invoke(config);
         config.Dispose();
     }
 

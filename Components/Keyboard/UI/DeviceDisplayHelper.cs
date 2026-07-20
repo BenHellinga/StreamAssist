@@ -1,10 +1,23 @@
-using System.Collections;
 using System.Collections.Generic;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
+// TODO awaiting reworking once i generalize display key and config to work with other tabs
+public partial class KeyData(string Label, ushort VK, double X, double Y, double W, double H)
+{
+    public string Label { get; init; } = Label;
+    public ushort VK { get; init; } = VK;
+    public double X { get; init; } = X;
+    public double Y { get; init; } = Y;
+    public double W { get; init; } = W;
+    public double H { get; init; } = H;
+}
+
+
+
+// TODO awaiting reworking once i generalize display key and config to work with other tabs
 public static class DeviceDisplayHelper
 {
     // device inits

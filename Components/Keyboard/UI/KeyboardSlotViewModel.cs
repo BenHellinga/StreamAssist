@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.Json;
-using Avalonia.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,13 +15,14 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
+// view model to modify a KeyboardSlotModel object
 public partial class KeyboardSlotViewModel : ViewModelBase
 {
     // private
 
 
 
-    private readonly KeyboardSlotModel _model;
+    private readonly KeyboardSlotModel _slot;
     private readonly KeyboardInputManager _inputManager;
     private readonly KeybindViewModel? _keyConfigurator;
 
@@ -35,12 +35,12 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     private double _baseWidth;
     private double _baseHeight;
     private double _pendingWidth;
+    private IDisposable? _pendingResize;
     [ObservableProperty] private double _currentWidth;
     [ObservableProperty] private double _currentHeight;
     private ObservableCollection<KeyViewModel> _keys;
     private Dictionary<ushort, List<KeyViewModel>> _keyMap;
 
-    private IDisposable? _pendingResize;
     private CallbackBlocker _callbackBlocker;
 
 
@@ -59,8 +59,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public event Action<string, Dictionary<ushort, KeybindModel>, Action<KeybindConfigModel>?>? AddConfigRequested;
-    public event Action<KeybindConfigModel>? RemoveConfigRequested;
+    public event Action<string, Dictionary<ushort, KeybindModel>, Action<KeybindConfigModel>?>? CreateConfigRequested;
+    public event Action<KeybindConfigModel>? DeleteConfigRequested;
 
 
 
@@ -68,11 +68,11 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public KeyboardSlotViewModel(KeyboardSlotModel model, KeyboardInputManager inputManager,
+    public KeyboardSlotViewModel(KeyboardSlotModel slot, KeyboardInputManager inputManager,
                                  ObservableCollection<DeviceMenuItem> deviceMenuItems, ObservableCollection<ConfigMenuItem> configMenuItems,
                                  KeybindViewModel? keyConfigurator = null)
     {
-        _model = model;
+        _slot = slot;
         _inputManager = inputManager;
         _keyConfigurator = keyConfigurator;
         _deviceMenuItems = deviceMenuItems;
@@ -85,23 +85,23 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         _baseWidth = -1;
         _baseHeight = -1;
         _pendingWidth = -1;
+        _pendingResize = null;
         _currentWidth = -1;
         _currentHeight = -1;
         _keys = [];
         _keyMap = [];
 
-        _pendingResize = null;
         _callbackBlocker = new();
 
         _callbackBlocker.Block();
 
         InitKeys();
 
-        SetMenuDevice(_model.SelectedDevice);
-        SetMenuConfig(_model.SelectedConfig);
-        SetKeyConfigs(_model.SelectedConfig);
+        SetMenuDevice(_slot.SelectedDevice);
+        SetMenuConfig(_slot.SelectedConfig);
+        SetKeyConfigs(_slot.SelectedConfig);
 
-        SubscribeToKeyboardSlotModel(_model);
+        SubscribeToKeyboardSlotModel(_slot);
         SubscribeToKeyboardInputManager(_inputManager);
 
         _callbackBlocker.Unblock();
@@ -116,7 +116,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     partial void OnMenuDeviceChanged(DeviceMenuItem value)
     {
         if (_callbackBlocker.IsBlocked()) return;
-        _model.TrySetSelectedDevice(value.Model);
+        _slot.TrySetSelectedDevice(value.Model);
     }
 
 
@@ -124,34 +124,43 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     partial void OnMenuConfigChanged(ConfigMenuItem value)
     {
         if (_callbackBlocker.IsBlocked()) return;
-        _model.TrySetSelectedConfig(value.Model);
+        _slot.TrySetSelectedConfig(value.Model);
     }
 
 
 
-    [RelayCommand] private void OnAddConfigPressed()
+    [RelayCommand] private void OnCreateConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
 
-        var json = JsonSerializer.Serialize(_model.SelectedConfig?.Keybinds);
+        // copy current config's keybinds
+        var json = JsonSerializer.Serialize(_slot.SelectedConfig?.Keybinds);
         var keybinds = JsonSerializer.Deserialize<Dictionary<ushort, KeybindModel>>(json) ?? [];
 
-        AddConfigRequested?.Invoke(InputConfig, keybinds, (configModel) => { InputConfig = ""; _model.TrySetSelectedConfig(configModel); });
+        CreateConfigRequested?.Invoke(
+            InputConfig,
+            keybinds,
+            (configModel) =>
+            {
+                InputConfig = "";
+                _slot.TrySetSelectedConfig(configModel);
+            }
+        );
     }
 
 
 
-    [RelayCommand] private void OnRemoveConfigPressed()
+    [RelayCommand] private void OnDeleteConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
 
-        if (_model.SelectedConfig == null)
+        if (_slot.SelectedConfig == null)
         {
             AppLog.WriteError($"Could not delete config - no config selected");
             return;
         }
 
-        RemoveConfigRequested?.Invoke(_model.SelectedConfig);
+        DeleteConfigRequested?.Invoke(_slot.SelectedConfig);
     }
 
 
@@ -166,8 +175,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? newConfig)
     {
-        SetMenuConfig(newConfig);
         _keyConfigurator?.DeselectKeys(_keys);
+        SetMenuConfig(newConfig);
         SetKeyConfigs(newConfig);
     }
 
@@ -179,7 +188,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void OnKeyPressed(string devicePath, ushort vk)
     {
-        if (devicePath != _model.SelectedDevice?.DevicePath) return;
+        if (devicePath != _slot.SelectedDevice?.DevicePath) return;
         Dispatcher.UIThread.Post(() => SetKeyVisualState(vk, true));
     }
 
@@ -187,7 +196,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void OnKeyReleased(string devicePath, ushort vk)
     {
-        if (devicePath != _model.SelectedDevice?.DevicePath) return;
+        if (devicePath != _slot.SelectedDevice?.DevicePath) return;
         Dispatcher.UIThread.Post(() => SetKeyVisualState(vk, false));
     }
 
@@ -197,7 +206,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public bool RepresentsModel(KeyboardSlotModel model) => _model == model;
+    public bool RepresentsModel(KeyboardSlotModel slot) => _slot == slot;
 
 
 
@@ -333,7 +342,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     public override void Dispose()
     {
-        UnsubscribeFromKeyboardSlotModel(_model);
+        UnsubscribeFromKeyboardSlotModel(_slot);
         UnsubscribeFromKeyboardInputManager(_inputManager);
 
         _pendingResize?.Dispose();

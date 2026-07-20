@@ -13,6 +13,7 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
+// view model to modify a KeyboardSlotModel object
 public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 {
     // private
@@ -78,6 +79,49 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
+    // ui events
+
+
+
+    public void OnPointerLeftClicked()
+    {
+        if (_config == null)
+        {
+            AppLog.WriteError("Could not select key - no config selected");
+            return;
+        }
+
+        if (IsSelected)
+        {
+            _keyConfigurator?.DeselectKeys(null);
+            IsSelected = false; 
+        }
+        else
+        {
+            _keyConfigurator?.SetSelectedKey(this, _keybind, _config);
+            IsSelected = true;
+        } 
+    }
+
+
+
+    [RelayCommand] private void OnToggleButtonPressed()
+    {
+        if (_keybind == null)
+        {
+            AppLog.WriteError("Could not toggle keybind - key not bound");
+            return;    
+        }
+
+        _keybind.SetIsDisabled(!_keybind.IsDisabled);
+    }
+
+
+
+    [RelayCommand] private void OnRemoveButtonPressed() => _config?.UnbindKey(_vk);
+
+
+
     // drag drop
 
 
@@ -134,8 +178,8 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
             return;
         }
 
-        payload.RemoveFromSource();
         _config.TryBindKey(_vk, payload.Keybind);
+        payload.RemoveFromSource?.Invoke();
     }
 
 
@@ -143,51 +187,8 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
     public object? GetDragPayload()
     {
         if (_config == null || _keybind == null) return null;
-        return new KeybindDragPayload(_keybind, () => { _config.UnbindKey(_vk); return true; } );
+        return new KeybindDragPayload(_keybind, () => _config.UnbindKey(_vk) );
     }
-
-
-
-    // ui events
-
-
-
-    public void OnPointerLeftClicked()
-    {
-        if (_config == null)
-        {
-            AppLog.WriteError("Could not select key - no config selected");
-            return;
-        }
-
-        if (IsSelected)
-        {
-            _keyConfigurator?.DeselectKeys(null);
-            IsSelected = false; 
-        }
-        else
-        {
-            _keyConfigurator?.SetSelectedKey(this, _keybind, _config);
-            IsSelected = true;
-        } 
-    }
-
-
-
-    [RelayCommand] private void OnToggleButtonPressed()
-    {
-        if (_keybind == null)
-        {
-            AppLog.WriteError("Could not toggle keybind - key not bound");
-            return;    
-        }
-
-        _keybind.SetIsDisabled(!_keybind.IsDisabled);
-    }
-
-
-
-    [RelayCommand] private void OnRemoveButtonPressed() => _config?.UnbindKey(_vk);
 
 
 
@@ -240,10 +241,6 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
-    public void Deselect() => IsSelected = false;
-
-
-
     // helpers
 
 
@@ -289,7 +286,6 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
         SubscribeToKeybindModel(_keybind);
     }
-
 
 
 

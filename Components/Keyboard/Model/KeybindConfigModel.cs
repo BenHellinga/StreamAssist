@@ -9,7 +9,7 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 
 // contains data for a single keybind config
-public class KeybindConfigModel : ModelBase
+public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 {
     // private
 
@@ -44,12 +44,7 @@ public class KeybindConfigModel : ModelBase
     private Dictionary<ushort, KeybindModel> JsonKeybinds
     {
         get => _keybinds;
-        set
-        {
-            _keybinds = value;
-            foreach (var (vk, keybind) in _keybinds)
-                keybind.SetUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind)); // TODO redo this?
-        }
+        set => _keybinds = value;
     }
 
 
@@ -79,6 +74,22 @@ public class KeybindConfigModel : ModelBase
     {
         _name = name;
         _keybinds = keybinds ?? [];
+
+        foreach (var (vk, keybind) in _keybinds)
+            keybind.AttachUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
+    }
+
+
+
+    // deserialized
+
+
+
+    // json deserialization is done in reverse, so this has to be done after all keybinds are already made
+    void IJsonOnDeserialized.OnDeserialized()
+    {
+        foreach (var (vk, keybind) in _keybinds)
+            keybind.AttachUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
     }
 
 
@@ -103,7 +114,7 @@ public class KeybindConfigModel : ModelBase
 
     private void BindKey(ushort vk, KeybindModel keybind)
     {
-        keybind.SetUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
+        keybind.AttachUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
         _keybinds.Add(vk, keybind);
         KeyBound?.Invoke(vk, keybind);
     }

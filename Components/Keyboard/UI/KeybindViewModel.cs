@@ -12,6 +12,7 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
+// view model to modify a KeybindModel object
 public partial class KeybindViewModel : ViewModelBase
 {
     // private
@@ -79,9 +80,10 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (vk != _key?.VK) return;
 
+        // the selected key was just bound to a keybind
         UnsubscribeFromAllActionGroupModels(_keybind);
+        SubscribeToAllActionGroupModels(keybind);
         _keybind = keybind;
-        SubscribeToAllActionGroupModels(_keybind);
         SetContent(SelectedTab);
     }
 
@@ -91,8 +93,9 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (vk != _key?.VK) return;
 
-        UnsubscribeFromAllActionGroupModels(_keybind);
+        // the selected key was just unbound
         _keybind = new();
+        UnsubscribeFromAllActionGroupModels(keybind);
         SubscribeToAllActionGroupModels(_keybind);
         SetContent(SelectedTab);
     }
@@ -101,6 +104,7 @@ public partial class KeybindViewModel : ViewModelBase
 
     private void OnFirstActionAdded()
     {
+        // one of the ActionGroupModels just got its first action
         if (1 == _keybind!.OnPressed.Actions.Count +
                  _keybind!.OnReleased.Actions.Count + 
                  _keybind!.OnRepeated.Actions.Count)
@@ -113,23 +117,24 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    public void SetSelectedKey(KeyViewModel key, KeybindModel? keybind, KeybindConfigModel? configModel)
+    public void SetSelectedKey(KeyViewModel key, KeybindModel? keybind, KeybindConfigModel config)
     {
+        // a new key was selected
         UnsubscribeFromKeybindConfigModel(_config);
         UnsubscribeFromAllActionGroupModels(_keybind);
 
-        _key?.Deselect();
+        _key?.IsSelected = false;
 
         _key = key;
         _keybind = keybind ?? new();
-        _config = configModel;
+        _config = config;
+
+        SubscribeToKeybindConfigModel(config);
+        SubscribeToAllActionGroupModels(keybind);
 
         SetContent(SelectedTab);
-        Label = $"Key: {key.Label.Replace('\n', '-')}   Config: {_config?.Name}";
+        Label = $"Key: {key.Label.Replace('\n', '-')}   Config: {_config.Name}";
         IsKeySelected = true;
-
-        SubscribeToKeybindConfigModel(_config);
-        SubscribeToAllActionGroupModels(_keybind);
     }
 
 
@@ -138,13 +143,14 @@ public partial class KeybindViewModel : ViewModelBase
     {
         if (keys != null && !keys.Contains(_key)) return;
 
+        // the selected key was just deselected
         UnsubscribeFromKeybindConfigModel(_config);
         UnsubscribeFromAllActionGroupModels(_keybind);
 
         IsKeySelected = false;
         SetContent(null);
 
-        _key?.Deselect();
+        _key?.IsSelected = false;
         _key = null;
         _keybind = null;
         _config = null;

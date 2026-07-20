@@ -67,14 +67,14 @@ public partial class MainWindowViewModel : ViewModelBase
         // view models
 
         _outputConsolePanelViewModel = new();
-        _outputConsolePanelViewModel.SetContent(new OutputConsoleViewModel());
+        _outputConsolePanelViewModel.TransferContent(new OutputConsoleViewModel());
         _sidePanelViewModel = new();
         _bottomPanelViewModel = new();
 
         // tab
         _tabs = [
             new("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _sidePanelViewModel, _bottomPanelViewModel)),
-            new("Test", () => { _bottomPanelViewModel.SetContent(null); return new OutputConsoleViewModel(); })
+            new("Test", () => { _bottomPanelViewModel.TransferContent(null); return new OutputConsoleViewModel(); })
         ];
 
         SelectedTab = _tabs[0];

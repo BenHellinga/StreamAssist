@@ -43,7 +43,7 @@ public partial class PanelViewModel : ViewModelBase
 
 
 
-    public void SetContent(ViewModelBase? content)
+    public void TransferContent(ViewModelBase? content)
     {
         if (content != null ^ _isVisible)
             SetIsVisibile(!_isVisible);

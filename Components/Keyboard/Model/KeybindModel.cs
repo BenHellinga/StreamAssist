@@ -105,7 +105,7 @@ public class KeybindModel : ModelBase
 
 
 
-    public void SetUnbindSelf(Action? tryUnbindSelf)
+    public void AttachUnbindSelf(Action? tryUnbindSelf)
     {
         _onPressed.SetUnbindSelf(tryUnbindSelf);
         _onReleased.SetUnbindSelf(tryUnbindSelf);

@@ -55,10 +55,10 @@ public class KeyboardSaveManager : IDisposable
 
     private void SubscribeToKeyboardListModel(KeyboardListModel list)
     {
-        list.SlotAdded += OnSlotAdded;
-        list.SlotRemoved += OnSlotRemoved;
-        list.ConfigAdded += OnConfigAdded;
-        list.ConfigRemoved += OnConfigRemoved;
+        list.SlotCreated += OnSlotAdded;
+        list.SlotDeleted += OnSlotRemoved;
+        list.ConfigCreated += OnConfigAdded;
+        list.ConfigDeleted += OnConfigRemoved;
 
         foreach (var slot in list.Slots)
             SubscribeToKeyboardSlotModel(slot);
@@ -71,10 +71,10 @@ public class KeyboardSaveManager : IDisposable
 
     private void UnsubscribeFromKeyboardListModel(KeyboardListModel list)
     {
-        list.SlotAdded -= OnSlotAdded;
-        list.SlotRemoved -= OnSlotRemoved;
-        list.ConfigAdded -= OnConfigAdded;
-        list.ConfigRemoved -= OnConfigRemoved;
+        list.SlotCreated -= OnSlotAdded;
+        list.SlotDeleted -= OnSlotRemoved;
+        list.ConfigCreated -= OnConfigAdded;
+        list.ConfigDeleted -= OnConfigRemoved;
 
         foreach (var slot in list.Slots)
             UnsubscribeFromKeyboardSlotModel(slot);
@@ -233,7 +233,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    public void Save() {} // => JsonFileStore.Save("keyboard", _model);
+    public void Save() => JsonFileStore.Save("keyboard", _model);
 
 
 
