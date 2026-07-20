@@ -8,7 +8,10 @@
 
     <!-- action -->
 
-    <Border HorizontalAlignment="Left">
+    <Border Classes="Bound"
+            Classes.Triggered="{Binding IsTriggered}"
+            Classes.Disabled="{Binding IsDisabled}"
+            HorizontalAlignment="Left">
         <Grid>
 
             <StackPanel Margin="5">
@@ -29,23 +32,7 @@
 
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
-                        HorizontalAlignment="Right" VerticalAlignment="Top">
-
-                <Border Classes="Draggable"
-                        Width="15" Height="15"
-                        PointerPressed="OnHandlePointerPressed">
-                    <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
-
-                <Button Classes="RemoveAction"
-                        Width="15" Height="15"
-                        Padding="0"
-                        Command="{Binding RemoveActionRequestedCommand}">
-                    <TextBlock Text="X" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
-                </Button>
-
-            </StackPanel>
+            <ui:ActionUIButtons/>
 
         </Grid>
     </Border>

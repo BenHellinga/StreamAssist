@@ -26,6 +26,8 @@ public class PlaySoundAction : ActionModel
 
     private string _filepath;
 
+
+
     // public
 
 
@@ -54,9 +56,9 @@ public class PlaySoundAction : ActionModel
 
 
 
-    public override Task SafeExecuteAsync()
+    protected override void Execute()
     {
-        if (_filepath == "") return Task.CompletedTask;
+        if (_filepath == "") return;
 
         var audioFile = new AudioFileReader(_filepath);
         var outputDevice = new WaveOutEvent();
@@ -69,7 +71,5 @@ public class PlaySoundAction : ActionModel
             outputDevice.Dispose();
             audioFile.Dispose();
         };
-        
-        return Task.CompletedTask;
     }
 }

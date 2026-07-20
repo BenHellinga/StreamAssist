@@ -4,6 +4,7 @@
              x:DataType="keyboard:KeyViewModel"
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
+             xmlns:action="using:StreamAssist.Components.AppAction.UI"
 
              Width="{Binding W}"
              Height="{Binding H}">
@@ -13,7 +14,7 @@
     <Border Classes="Droppable"
             Classes.Triggered="{Binding IsPressed}"
             Classes.Bound="{Binding IsBound}"
-            Classes.Disabled="{Binding !IsEnabled}"
+            Classes.Disabled="{Binding IsDisabled}"
             DragDrop.AllowDrop="True"
             DragDrop.DragOver="OnDragOver"
             DragDrop.DragLeave="OnDragLeave"
@@ -25,39 +26,7 @@
                        TextAlignment="Center"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-            <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
-                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                        IsVisible="{Binding IsSelected}">
-
-                <!-- drag handle -->
-
-                <Border Classes="Draggable"
-                        Width="15" Height="15"
-                        PointerPressed="OnHandlePointerPressed">
-                    <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
-
-                <!-- toggle disable -->
-
-                <Button Classes="ToggleEnabled"
-                        Width="15" Height="15"
-                        Padding="0"
-                        Command="{Binding ToggleEnabledPressedCommand}"
-                        ToolTip.Tip="Enable/disable this binding">
-                    <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
-                </Button>
-
-                <!-- unbind -->
-
-                <Button Classes="RemoveAction"
-                        Width="15" Height="15"
-                        Padding="0"
-                        Command="{Binding UnbindPressedCommand}"
-                        ToolTip.Tip="Unbind this key">
-                    <TextBlock Text="X" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
-                </Button>
-
-            </StackPanel>
+            <action:ActionUIButtons IsVisible="{Binding IsSelected}"/>
         </Grid>
     </Border>
 </UserControl>

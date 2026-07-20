@@ -6,7 +6,7 @@ using StreamAssist.Components.Config;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.Main.Model;
-using System;
+using StreamAssist.Components.Audio.Background;
 
 namespace StreamAssist.Components.Main.UI;
 
@@ -19,6 +19,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // managers
     private KeyboardComponentManager _keyboardComponentManager;
+
+    private VoicemeeterManager _voicemeeterManager; // this should go in an AudioComponentManager
 
     // main view models
     private PanelViewModel _outputConsolePanelViewModel;
@@ -47,10 +49,20 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         // models
+
         _keyboardComponentModel = JsonFileStore.Load<KeyboardComponentModel>("keyboard");
 
         // managers
+
         _keyboardComponentManager = new(_keyboardComponentModel);
+
+        _voicemeeterManager = new();
+        _voicemeeterManager.TryConnect();
+
+        // global context
+
+        GlobalContext.KeyboardComponentModel = _keyboardComponentModel;
+        GlobalContext.VoicemeeterManager = _voicemeeterManager;
 
         // view models
 
@@ -93,5 +105,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public override void Dispose()
     {
         ActiveContent.Dispose();
+
+        _bottomPanelViewModel.Dispose();
+        _sidePanelViewModel.Dispose();
+        _outputConsolePanelViewModel.Dispose();
+
+        _voicemeeterManager.Dispose();
+
+        _keyboardComponentManager.Dispose();
     }
 }

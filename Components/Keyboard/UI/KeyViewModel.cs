@@ -13,7 +13,7 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
+public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 {
     // private
 
@@ -34,9 +34,10 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
     [ObservableProperty] private double _y;
     [ObservableProperty] private double _w;
     [ObservableProperty] private double _h;
+
     [ObservableProperty] private bool _isPressed;
     [ObservableProperty] private bool _isBound;
-    [ObservableProperty] private bool _isEnabled;
+    [ObservableProperty] private bool _isDisabled;
     [ObservableProperty] private bool _isSelected;
 
 
@@ -68,6 +69,11 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
         _y = -1;
         _w = -1;
         _h = -1;
+
+        _isPressed = false;
+        _isBound = false;
+        _isDisabled = false;
+        _isSelected = false;
     }
 
 
@@ -168,8 +174,7 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
 
 
 
-    [RelayCommand]
-    private void OnToggleEnabledPressed()
+    [RelayCommand] private void OnToggleButtonPressed()
     {
         if (_keybind == null)
         {
@@ -177,13 +182,12 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
             return;    
         }
 
-        _keybind.TrySetIsEnabled(!IsEnabled);
+        _keybind.SetIsDisabled(!_keybind.IsDisabled);
     }
 
 
 
-    [RelayCommand]
-    private void OnUnbindPressed() => _config?.TryUnbindKey(_vk);
+    [RelayCommand] private void OnRemoveButtonPressed() => _config?.TryUnbindKey(_vk);
 
 
 
@@ -207,7 +211,7 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
 
 
 
-    private void OnEnabledChanged(bool isEnabled) => IsEnabled = isEnabled;
+    private void OnDisabledChanged(bool isDisabled) => IsDisabled = isDisabled;
 
 
 
@@ -262,14 +266,14 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
 
     private void SubscribeToKeybindModel(KeybindModel? keybind)
     {
-        keybind?.IsEnabledChanged += OnEnabledChanged;
+        keybind?.IsDisabledChanged += OnDisabledChanged;
     }
 
 
 
     private void UnsubscribeFromKeybindModel(KeybindModel? keybind)
     {
-        keybind?.IsEnabledChanged -= OnEnabledChanged;
+        keybind?.IsDisabledChanged -= OnDisabledChanged;
     }
 
 
@@ -281,7 +285,7 @@ public partial class KeyViewModel : ViewModelBase, IDraggable, IDroppable
         _keybind = keybind;
         
         IsBound = _keybind != null;
-        IsEnabled = _keybind?.IsEnabled ?? true;
+        IsDisabled = _keybind?.IsDisabled ?? false;
 
         SubscribeToKeybindModel(_keybind);
     }

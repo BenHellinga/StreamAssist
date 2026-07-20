@@ -1,0 +1,110 @@
+using System.Threading.Tasks;
+using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.AppAction.Model;
+using System.Text.Json.Serialization;
+using StreamAssist.Components.Core.Configurator;
+using NAudio.Wave;
+using System.Collections.Generic;
+using Avalonia.Automation;
+using StreamAssist.Components.Audio.Background;
+
+namespace StreamAssist.AppActions;
+
+
+
+public class MuteVirtualInput : ActionModel
+{
+    // info
+
+
+
+    [JsonIgnore] public override string Name => "Mute/Unmute Virtual Input";
+    [JsonIgnore] public override string Description => "Mute, unmute, or toggle the selected virtual input.";
+
+
+
+    // private
+
+
+
+    private string _setType;
+    private string _inputTarget;
+
+
+
+    // public
+
+
+
+    [ConfigurableParameter("Set Type", ConfiguratorType.Menu)] [JsonPropertyName("setType")]
+    public string SetType
+    {
+        get => _setType;
+        set => SetParameter(ref _setType, value);
+    }
+
+
+
+    [ConfigurableParameter("Input Target", ConfiguratorType.Menu)] [JsonPropertyName("inputTarget")]
+    public string InputTarget
+    {
+        get => _inputTarget;
+        set => SetParameter(ref _inputTarget, value);
+    }
+
+
+
+    // constructor
+
+
+
+    public MuteVirtualInput()
+    {
+        _setType = GetSetTypeMenuItems()[0];
+        _inputTarget = GetInputTargetMenuItems()[0];
+    }
+
+
+
+    // public
+
+
+
+    public static List<string> GetSetTypeMenuItems() => ["Mute", "Unmute", "Toggle"];
+
+
+
+    public static List<string> GetInputTargetMenuItems() => ["All", "Misc", "Obs"];
+
+
+
+    // execute
+
+
+
+    protected override void Execute()
+    {
+        var _voicemeeterManager = GlobalContext.VoicemeeterManager;
+
+        if (_voicemeeterManager == null)
+        {
+            AppLog.WriteLine("Could not set mute of input - no Voicemeeter reference in global context");
+            return;
+        }
+
+        var target = VoicemeeterManager.StereoInputTarget.All;
+        switch (_inputTarget)
+        {
+            case "All": target = VoicemeeterManager.StereoInputTarget.All; break;
+            case "Misc": target = VoicemeeterManager.StereoInputTarget.Misc; break;
+            case "Obs": target = VoicemeeterManager.StereoInputTarget.Obs; break;
+        }
+
+        switch (_setType)
+        {
+            case "Mute": _voicemeeterManager.TrySetMute(target, true); break;
+            case "Unmute": _voicemeeterManager.TrySetMute(target, false); break;
+            case "Toggle": _voicemeeterManager.TryToggleSetMute(target); break;
+        }
+    }
+}

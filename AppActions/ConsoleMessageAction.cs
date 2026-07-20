@@ -55,9 +55,8 @@ public class ConsoleMessageAction : ActionModel
 
 
 
-    public override Task SafeExecuteAsync()
+    protected override void Execute()
     {
         AppLog.WriteLine(_message);
-        return Task.CompletedTask;
     }
 }

@@ -54,8 +54,8 @@ public class KeyboardListModel : IJsonOnDeserialized
 
     public event Action<KeyboardSlotModel>? SlotAdded;
     public event Action<KeyboardSlotModel>? SlotRemoved;
-    public event Action<KeybindConfigModel>? ConfigCreated;
-    public event Action<KeybindConfigModel>? ConfigDeleted;
+    public event Action<KeybindConfigModel>? ConfigAdded;
+    public event Action<KeybindConfigModel>? ConfigRemoved;
     public event Action? DeviceListUpdated;
 
 
@@ -174,7 +174,7 @@ public class KeyboardListModel : IJsonOnDeserialized
     {
         var config = new KeybindConfigModel(name, keybinds);
         _configs.Add(config);
-        ConfigCreated?.Invoke(config);
+        ConfigAdded?.Invoke(config);
         return config;
     }
 
@@ -216,6 +216,6 @@ public class KeyboardListModel : IJsonOnDeserialized
                 slot.DeselectConfig();
 
         _configs.Remove(config);
-        ConfigDeleted?.Invoke(config);
+        ConfigRemoved?.Invoke(config);
     }
 }

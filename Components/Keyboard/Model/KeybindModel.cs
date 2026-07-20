@@ -14,7 +14,7 @@ public class KeybindModel
 
 
 
-    private bool _isEnabled;
+    private bool _isDisabled;
     private ActionGroupModel _onPressed;
     private ActionGroupModel _onReleased;
     private ActionGroupModel _onRepeated;
@@ -25,7 +25,7 @@ public class KeybindModel
 
 
 
-    [JsonIgnore] public bool IsEnabled => _isEnabled;
+    [JsonIgnore] public bool IsDisabled => _isDisabled;
     [JsonIgnore] public ActionGroupModel OnPressed => _onPressed;
     [JsonIgnore] public ActionGroupModel OnReleased => _onReleased;
     [JsonIgnore] public ActionGroupModel OnRepeated => _onRepeated;
@@ -36,11 +36,11 @@ public class KeybindModel
 
 
 
-    [JsonInclude] [JsonPropertyName("isEnabled")]
-    private bool JsonIsEnabled
+    [JsonInclude] [JsonPropertyName("isDisabled")]
+    private bool JsonIsDisabled
     {
-        get => _isEnabled;
-        set => _isEnabled = value;
+        get => _isDisabled;
+        set => _isDisabled = value;
     }
 
     [JsonInclude] [JsonPropertyName("onPressed")]
@@ -70,7 +70,7 @@ public class KeybindModel
 
 
 
-    public event Action<bool>? IsEnabledChanged;
+    public event Action<bool>? IsDisabledChanged;
 
 
     
@@ -84,7 +84,7 @@ public class KeybindModel
         _onReleased = new();
         _onRepeated = new();
 
-        _isEnabled = true;
+        _isDisabled = false;
     }
 
 
@@ -93,24 +93,11 @@ public class KeybindModel
 
 
 
-    public bool TrySetIsEnabled(bool isEnabled)
+    public void SetIsDisabled(bool isDisabled)
     {
-        if (isEnabled == _isEnabled)
-        {
-            AppLog.WriteError($"Could not set isEnabled - isEnabled is already {isEnabled}");
-            return false;
-        }
-
-        SetIsEnabled(isEnabled);
-        return true;
-    }
-
-
-
-    private void SetIsEnabled(bool isEnabled)
-    {
-        _isEnabled = isEnabled;
-        IsEnabledChanged?.Invoke(_isEnabled);
+        if (isDisabled == _isDisabled) return;
+        _isDisabled = isDisabled;
+        IsDisabledChanged?.Invoke(_isDisabled);
     }
 
 

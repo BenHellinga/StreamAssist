@@ -18,6 +18,7 @@ public class ConfiguratorTemplateSelector : IValueConverter
             ConfiguratorType.Boolean  => "BoolConfigurator",
             ConfiguratorType.Number   => "NumberConfigurator",
             ConfiguratorType.Filepath => "FilepathConfigurator",
+            ConfiguratorType.Menu     => "MenuConfigurator",
             _                          => "TextConfigurator",
         };
 

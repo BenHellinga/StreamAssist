@@ -129,8 +129,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    [RelayCommand]
-    private void OnAddConfigPressed()
+    [RelayCommand] private void OnAddConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
 
@@ -142,8 +141,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    [RelayCommand]
-    private void OnRemoveConfigPressed()
+    [RelayCommand] private void OnRemoveConfigPressed()
     {
         if (_callbackBlocker.IsBlocked()) return;
 

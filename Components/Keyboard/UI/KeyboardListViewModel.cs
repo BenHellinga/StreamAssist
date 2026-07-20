@@ -70,8 +70,8 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         model.SlotAdded += OnSlotAdded;
         model.SlotRemoved += OnSlotRemoved;
-        model.ConfigCreated += OnConfigCreated;
-        model.ConfigDeleted += OnConfigDeleted;
+        model.ConfigAdded += OnConfigCreated;
+        model.ConfigRemoved += OnConfigDeleted;
         model.DeviceListUpdated += OnDeviceListUpdated;
     }
 
@@ -81,8 +81,8 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         model.SlotAdded -= OnSlotAdded;
         model.SlotRemoved -= OnSlotRemoved;
-        model.ConfigCreated -= OnConfigCreated;
-        model.ConfigDeleted -= OnConfigDeleted;
+        model.ConfigAdded -= OnConfigCreated;
+        model.ConfigRemoved -= OnConfigDeleted;
         model.DeviceListUpdated -= OnDeviceListUpdated;
     }
 

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
@@ -10,7 +12,7 @@ namespace StreamAssist.Components.AppAction.UI;
 
 
 
-public partial class ActionViewModel : ViewModelBase, IDraggable
+public partial class ActionViewModel : ViewModelBase, IActionUIButtons
 {
     // private
 
@@ -19,6 +21,10 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
     private readonly ActionModel _action;
     private readonly Action? _removeFromSource;
     private readonly ObservableCollection<ConfigurableParameterViewModel> _configurators;
+    private IDisposable? _triggerTimer;
+
+    [ObservableProperty] private bool _isDisabled;
+    [ObservableProperty] private bool _isTriggered;
 
 
 
@@ -50,6 +56,10 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
         _action = action;
         _removeFromSource = removeFromSource;
         _configurators = ConfiguratorBuilder.Build(action);
+
+        _isDisabled = _action.IsDisabled;
+
+        SubscribeToActionModel(_action);
     }
 
 
@@ -58,8 +68,11 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
-    [RelayCommand]
-    private void OnRemoveActionRequested() => RemoveActionRequested?.Invoke(_action);
+    [RelayCommand] private void OnToggleButtonPressed() => _action.SetDisabled(!_action.IsDisabled);
+
+
+
+    [RelayCommand] private void OnRemoveButtonPressed() => RemoveActionRequested?.Invoke(_action);
 
 
 
@@ -71,6 +84,18 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
+    // model events
+
+
+
+    public void OnDisabledChanged(bool isDisabled) => IsDisabled = isDisabled;
+
+
+
+    public void OnTriggered() => FlashTriggered();
+
+
+
     // public api
 
 
@@ -79,9 +104,47 @@ public partial class ActionViewModel : ViewModelBase, IDraggable
 
 
 
+    // helpers
+
+
+
+    private void SubscribeToActionModel(ActionModel action)
+    {
+        action.IsDisabledChanged += OnDisabledChanged;
+        action.Triggered += OnTriggered;
+    }
+
+
+
+    private void UnsubscribeFromActionModel(ActionModel action)
+    {
+        action.IsDisabledChanged -= OnDisabledChanged;
+        action.Triggered -= OnTriggered;
+    }
+
+
+
+    private void FlashTriggered()
+    {
+        IsTriggered = true;
+
+        _triggerTimer?.Dispose();
+        _triggerTimer = DispatcherTimer.RunOnce(() =>
+        {
+            _triggerTimer = null;
+            IsTriggered = false;
+        }, TimeSpan.FromMilliseconds(50));
+    }
+
+
+
     // diposal
 
 
 
-    public override void Dispose() {}
+    public override void Dispose()
+    {
+        UnsubscribeFromActionModel(_action);
+        _triggerTimer?.Dispose();
+    }
 }

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia;
@@ -23,6 +25,7 @@ public partial class ConfigurableParameterViewModel : ObservableObject
     private readonly PropertyInfo _property;
     private readonly string _label;
     private readonly ConfiguratorType _configurator;
+    private readonly IReadOnlyList<string> _menuItems;
 
 
 
@@ -32,6 +35,7 @@ public partial class ConfigurableParameterViewModel : ObservableObject
 
     public string Label => _label + ":";
     public ConfiguratorType Configurator => _configurator;
+    public IReadOnlyList<string> MenuItems => _menuItems;
     public Type Type => _property.PropertyType;
 
 
@@ -46,6 +50,7 @@ public partial class ConfigurableParameterViewModel : ObservableObject
         _property = property;
         _label = attribute.Label;
         _configurator = ResolveConfigurator(attribute.Editor, property.PropertyType);
+        _menuItems = _configurator == ConfiguratorType.Menu ? ResolveMenuItems(target, property) : [];
     }
 
 
@@ -60,6 +65,26 @@ public partial class ConfigurableParameterViewModel : ObservableObject
         if (propertyType == typeof(double)) return ConfiguratorType.Number;
 
         return ConfiguratorType.Text;
+    }
+
+
+
+    private static IReadOnlyList<string> ResolveMenuItems(ActionModel target, PropertyInfo property)
+    {
+        var methodName = $"Get{property.Name}MenuItems";
+
+        var method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+
+        if (method is null) return ["null"];
+        if (method.Invoke(target, null) is not List<string> list) return ["null"];
+        if (list.Count <= 0) return ["null"];
+
+        return list;
     }
 
 

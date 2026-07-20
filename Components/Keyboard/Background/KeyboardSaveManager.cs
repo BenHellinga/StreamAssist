@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
+using StreamAssist.Components.AppAction.Background;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Config;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
@@ -11,8 +11,12 @@ namespace StreamAssist.Components.Keyboard.Background;
 
 public class KeyboardSaveManager : IDisposable
 {
+    // private
+
+
+
     private readonly KeyboardComponentModel _model;
-    private readonly KeyboardListModel _listModel;
+    private readonly Dictionary<ActionGroupModel, ActionGroupChangeManager> _changeManagers;
 
 
 
@@ -23,9 +27,9 @@ public class KeyboardSaveManager : IDisposable
     public KeyboardSaveManager(KeyboardComponentModel model)
     {
         _model = model;
-        _listModel = _model.ListModel;
+        _changeManagers = [];
 
-        SubscribeToKeyboardListModel(_listModel);
+        SubscribeToKeyboardComponentModel(_model);
     }
 
 
@@ -34,12 +38,26 @@ public class KeyboardSaveManager : IDisposable
 
 
 
+    private void SubscribeToKeyboardComponentModel(KeyboardComponentModel component)
+    {
+        SubscribeToKeyboardListModel(component.ListModel);
+    }
+
+
+
+    private void UnsubscribeFromKeyboardComponentModel(KeyboardComponentModel component)
+    {
+        UnsubscribeFromKeyboardListModel(component.ListModel);
+    }
+
+
+
     private void SubscribeToKeyboardListModel(KeyboardListModel list)
     {
         list.SlotAdded += OnSlotAdded;
         list.SlotRemoved += OnSlotRemoved;
-        list.ConfigCreated += OnConfigCreated;
-        list.ConfigDeleted += OnConfigDeleted;
+        list.ConfigAdded += OnConfigAdded;
+        list.ConfigRemoved += OnConfigRemoved;
 
         foreach (var slot in list.Slots)
             SubscribeToKeyboardSlotModel(slot);
@@ -54,8 +72,8 @@ public class KeyboardSaveManager : IDisposable
     {
         list.SlotAdded -= OnSlotAdded;
         list.SlotRemoved -= OnSlotRemoved;
-        list.ConfigCreated -= OnConfigCreated;
-        list.ConfigDeleted -= OnConfigDeleted;
+        list.ConfigAdded -= OnConfigAdded;
+        list.ConfigRemoved -= OnConfigRemoved;
 
         foreach (var slot in list.Slots)
             UnsubscribeFromKeyboardSlotModel(slot);
@@ -108,15 +126,11 @@ public class KeyboardSaveManager : IDisposable
     {
         var groups = new List<ActionGroupModel>() { keybind.OnPressed, keybind.OnReleased, keybind.OnRepeated };
 
-        keybind.IsEnabledChanged += OnIsEnabledChanged;
-
         foreach (var group in groups)
         {
-            group.ActionAdded += OnActionAdded;
-            group.ActionRemoved += OnActionRemoved;
-
-            foreach (var action in group.Actions)
-                SubscribeToActionModel(action);
+            var changeManager = new ActionGroupChangeManager(group);
+            _changeManagers.Add(group, changeManager);
+            SubscribeToActionGroupChangeManager(changeManager);
         }
     }
 
@@ -126,30 +140,26 @@ public class KeyboardSaveManager : IDisposable
     {
         var groups = new List<ActionGroupModel>() { keybind.OnPressed, keybind.OnReleased, keybind.OnRepeated };
 
-        keybind.IsEnabledChanged -= OnIsEnabledChanged;
-
         foreach (var group in groups)
         {
-            group.ActionAdded -= OnActionAdded;
-            group.ActionRemoved -= OnActionRemoved;
-
-            foreach (var action in group.Actions)
-                UnsubscribeFromActionModel(action);
+            var changeManager = _changeManagers[group];
+            UnsubscribeFromActionGroupChangeManager(changeManager);
+            changeManager.Dispose();
         }
     }
 
 
 
-    private void SubscribeToActionModel(ActionModel action)
+    private void SubscribeToActionGroupChangeManager(ActionGroupChangeManager group)
     {
-        action.ConfigurationChanged += OnConfigurationChanged;
+        group.GroupChanged += OnGroupChanged;
     }
 
 
 
-    private void UnsubscribeFromActionModel(ActionModel action)
+    private void UnsubscribeFromActionGroupChangeManager(ActionGroupChangeManager group)
     {
-        action.ConfigurationChanged -= OnConfigurationChanged;
+        group.GroupChanged -= OnGroupChanged;
     }
 
 
@@ -174,7 +184,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnConfigCreated(KeybindConfigModel config)
+    private void OnConfigAdded(KeybindConfigModel config)
     {
         SubscribeToKeybindConfigModel(config);
         Save();
@@ -182,7 +192,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnConfigDeleted(KeybindConfigModel config)
+    private void OnConfigRemoved(KeybindConfigModel config)
     {
         UnsubscribeFromKeybindConfigModel(config);
         Save();
@@ -214,27 +224,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnIsEnabledChanged(bool _) => Save();
-
-
-
-    private void OnActionAdded(ActionModel action, int _)
-    {
-        SubscribeToActionModel(action);
-        Save();
-    }
-
-
-
-    private void OnActionRemoved(ActionModel action)
-    {
-        UnsubscribeFromActionModel(action);
-        Save();
-    }
-
-
-
-    private void OnConfigurationChanged() => Save();
+    private void OnGroupChanged() => Save();
 
 
 
@@ -252,6 +242,6 @@ public class KeyboardSaveManager : IDisposable
 
     public void Dispose()
     {
-        UnsubscribeFromKeyboardListModel(_listModel);
+        UnsubscribeFromKeyboardComponentModel(_model);
     }
 }

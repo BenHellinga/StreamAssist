@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.AppAction.Model;
 
@@ -10,10 +10,87 @@ namespace StreamAssist.Components.AppAction.Model;
 
 public abstract class ActionModel
 {
-    public abstract string Name { get; }
-    public abstract string Description { get; }
+    // private
+
+
+
+    private bool _isDisabled;
+
+
+
+    // public
+
+
+
+    [JsonIgnore] public abstract string Name { get; }
+    [JsonIgnore] public abstract string Description { get; }
+    [JsonIgnore] public bool IsDisabled => _isDisabled;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("isDisabled")]
+    private bool JsonIsDisabled
+    {
+        get => _isDisabled;
+        set => _isDisabled = value;
+    }
+
+
+
+    // events
+
+
+
     public event Action? ConfigurationChanged;
-    public abstract Task SafeExecuteAsync();
+    public event Action<bool>? IsDisabledChanged;
+    public event Action? Triggered;
+
+
+
+    // constructor
+
+
+
+    protected ActionModel()
+    {
+        _isDisabled = false;
+    }
+
+
+
+    // public api
+
+
+
+    public async Task SafeExecuteAsync()
+    {
+        if (_isDisabled) return;
+
+        try
+        {
+            Execute();
+        }
+        catch (Exception ex)
+        {
+            AppLog.WriteError($"Action '{Name}' thew an exception: {ex.Message}.");
+        }
+
+        Triggered?.Invoke();
+    }
+
+
+
+    public void SetDisabled(bool isDisabled)
+    {
+        if (isDisabled == _isDisabled) return;
+
+        _isDisabled = isDisabled;
+        IsDisabledChanged?.Invoke(_isDisabled);
+    }
 
 
 
@@ -31,4 +108,12 @@ public abstract class ActionModel
         var data = ActionResolver.GetKey(action);
         return ActionResolver.Resolve(data)!;
     }
+
+
+
+    // private
+
+
+
+    protected abstract void Execute();
 }

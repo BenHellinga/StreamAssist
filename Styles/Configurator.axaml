@@ -35,4 +35,12 @@
         </Grid>
     </DataTemplate>
 
+    <DataTemplate x:Key="MenuConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding MenuItems}" SelectedItem="{Binding Value}"
+                      HorizontalAlignment="Stretch"/>
+        </Grid>
+    </DataTemplate>
+
 </ResourceDictionary>

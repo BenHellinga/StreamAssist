@@ -6,7 +6,7 @@ namespace StreamAssist.Components.Core.Configurator;
 
 public enum ConfiguratorType
 {
-    Auto, Text, Filepath, Number, Boolean 
+    Auto, Text, Filepath, Number, Boolean, Menu
 }
 
 

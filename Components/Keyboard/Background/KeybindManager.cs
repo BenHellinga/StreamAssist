@@ -204,7 +204,8 @@ public class KeybindManager : IDisposable
         private void OnKeyBound(ushort vk, KeybindModel keybind)
         {
             TrackKey(vk, keybind);
-            if (keybind.IsEnabled) Register(vk, keybind);
+            if (keybind.IsDisabled) return;
+            Register(vk, keybind);
         }
 
 
@@ -259,14 +260,14 @@ public class KeybindManager : IDisposable
         {
             _bound[vk] = keybind;
 
-            void OnIsEnabledChanged(bool isEnabled)
+            void OnIsDisabledChanged(bool isDisabled)
             {
-                if (isEnabled) Register(vk, keybind);
-                else Unregister(vk);
+                if (isDisabled) Unregister(vk);
+                else Register(vk, keybind);
             }
 
-            _enabledHandlers[vk] = OnIsEnabledChanged;
-            keybind.IsEnabledChanged += OnIsEnabledChanged;
+            _enabledHandlers[vk] = OnIsDisabledChanged;
+            keybind.IsDisabledChanged += OnIsDisabledChanged;
         }
 
 
@@ -276,7 +277,7 @@ public class KeybindManager : IDisposable
             if (!_bound.TryGetValue(vk, out var keybind)) return;
 
             if (_enabledHandlers.Remove(vk, out var handler))
-                keybind.IsEnabledChanged -= handler;
+                keybind.IsDisabledChanged -= handler;
 
             _bound.Remove(vk);
         }
@@ -291,7 +292,8 @@ public class KeybindManager : IDisposable
         {
             if (_device == null) return;
             foreach (var (vk, keybind) in _bound)
-                if (keybind.IsEnabled) Register(vk, keybind);
+                if (!keybind.IsDisabled)
+                    Register(vk, keybind);
         }
 
 

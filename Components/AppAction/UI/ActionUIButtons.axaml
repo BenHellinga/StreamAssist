@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.AppAction.UI.ActionUIButtons"
+             x:DataType="ui:IActionUIButtons"
+
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI">
+
+    <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
+                HorizontalAlignment="Right" VerticalAlignment="Top">
+
+        <!-- drag handle -->
+
+        <Border Classes="Draggable"
+                Width="15" Height="15"
+                PointerPressed="OnHandlePointerPressed">
+            <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- toggle disable -->
+
+        <Button Classes="ToggleEnabled"
+                Width="15" Height="15"
+                Padding="0"
+                Command="{Binding ToggleButtonPressedCommand}"
+                ToolTip.Tip="Enable/disable this">
+            <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
+        </Button>
+
+        <!-- remove -->
+
+        <Button Classes="RemoveAction"
+                Width="15" Height="15"
+                Padding="0"
+                Command="{Binding RemoveButtonPressedCommand}"
+                ToolTip.Tip="Remove">
+            <TextBlock Text="X" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10"/>
+        </Button>
+
+    </StackPanel>
+
+</UserControl>
