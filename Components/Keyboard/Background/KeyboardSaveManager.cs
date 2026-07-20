@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Avalonia.Threading;
 using StreamAssist.Components.AppAction.Background;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Config;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
@@ -18,6 +18,7 @@ public class KeyboardSaveManager : IDisposable
 
     private readonly KeyboardComponentModel _model;
     private readonly Dictionary<ActionGroupModel, ActionGroupChangeManager> _changeManagers;
+    private IDisposable? _pendingSave;
 
 
 
@@ -29,13 +30,95 @@ public class KeyboardSaveManager : IDisposable
     {
         _model = model;
         _changeManagers = [];
+        _pendingSave = null;
 
         SubscribeToKeyboardComponentModel(_model);
     }
 
 
 
-    // subscription helpers
+    // model callbacks
+
+
+
+    private void OnSlotAdded(KeyboardSlotModel slot)
+    {
+        SubscribeToKeyboardSlotModel(slot);
+        Save();
+    }
+
+
+
+    private void OnSlotRemoved(KeyboardSlotModel slot)
+    {
+        UnsubscribeFromKeyboardSlotModel(slot);
+        Save();
+    }
+
+
+
+    private void OnConfigAdded(KeybindConfigModel config)
+    {
+        SubscribeToKeybindConfigModel(config);
+        Save();
+    }
+
+
+
+    private void OnConfigRemoved(KeybindConfigModel config)
+    {
+        UnsubscribeFromKeybindConfigModel(config);
+        Save();
+    }
+
+
+
+    private void OnKeyBound(ushort _, KeybindModel bindingModel)
+    {
+        SubscribeToKeybindModel(bindingModel);
+        Save();
+    }
+
+
+
+    private void OnKeyUnbound(ushort _, KeybindModel bindingModel)
+    {
+        UnsubscribeFromKeybindModel(bindingModel);
+        Save();
+    }
+
+
+
+    private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? __) => Save();
+
+
+
+    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? __) => Save();
+
+
+
+    private void OnGroupChanged() => Save();
+
+
+
+    // public api
+
+
+
+    public void Save()
+    {
+        if (_pendingSave != null) return;
+
+        _pendingSave = DispatcherTimer.RunOnce(() =>
+        {
+            _pendingSave = null;
+            JsonFileStore.Save("keyboard", _model);
+        }, TimeSpan.FromSeconds(1));
+    }
+
+
+
+    // helpers
 
 
 
@@ -165,78 +248,6 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    // model callbacks
-
-
-
-    private void OnSlotAdded(KeyboardSlotModel slot)
-    {
-        SubscribeToKeyboardSlotModel(slot);
-        Save();
-    }
-
-
-
-    private void OnSlotRemoved(KeyboardSlotModel slot)
-    {
-        UnsubscribeFromKeyboardSlotModel(slot);
-        Save();
-    }
-
-
-
-    private void OnConfigAdded(KeybindConfigModel config)
-    {
-        SubscribeToKeybindConfigModel(config);
-        Save();
-    }
-
-
-
-    private void OnConfigRemoved(KeybindConfigModel config)
-    {
-        UnsubscribeFromKeybindConfigModel(config);
-        Save();
-    }
-
-
-
-    private void OnKeyBound(ushort _, KeybindModel bindingModel)
-    {
-        SubscribeToKeybindModel(bindingModel);
-        Save();
-    }
-
-
-
-    private void OnKeyUnbound(ushort _, KeybindModel bindingModel)
-    {
-        UnsubscribeFromKeybindModel(bindingModel);
-        Save();
-    }
-
-
-
-    private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? __) => Save();
-
-
-
-    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? __) => Save();
-
-
-
-    private void OnGroupChanged() => Save();
-
-
-
-    // persistence
-
-
-
-    public void Save() => JsonFileStore.Save("keyboard", _model);
-
-
-
     // disposal
 
 
@@ -244,5 +255,7 @@ public class KeyboardSaveManager : IDisposable
     public void Dispose()
     {
         UnsubscribeFromKeyboardComponentModel(_model);
+
+        _pendingSave?.Dispose();
     }
 }

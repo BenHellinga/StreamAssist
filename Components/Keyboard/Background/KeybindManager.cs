@@ -7,6 +7,7 @@ namespace StreamAssist.Components.Keyboard.Background;
 
 
 
+// TODO look over and redo (AI generated)
 public class KeybindManager : IDisposable
 {
     // private

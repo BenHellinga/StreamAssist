@@ -7,6 +7,10 @@ namespace StreamAssist.Components.Keyboard.Background;
 
 public class KeyboardComponentManager : IDisposable
 {
+    // private
+
+
+
     private readonly KeyboardComponentModel _model;
 
     private readonly KeyboardSaveManager _saveManager;
@@ -41,7 +45,7 @@ public class KeyboardComponentManager : IDisposable
 
 
 
-    // getters
+    // public api
 
 
 

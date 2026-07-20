@@ -9,6 +9,7 @@ namespace StreamAssist.Components.Keyboard.Background;
 
 
 
+// TODO gotta redo this to include pluggin/unplugged callbacks and more device types
 public class KeyboardInputManager : IDisposable
 {
     // TODO GetAvailableKeyboards should probably be private, then setup callbacks for plugging/unplugging keyboards to update this reference

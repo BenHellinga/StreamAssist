@@ -1,4 +1,3 @@
-using System;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Core;
