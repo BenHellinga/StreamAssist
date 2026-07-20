@@ -1,14 +1,14 @@
 using System;
-using System.Dynamic;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.Core;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeybindModel
+// contains data for a single keybind
+public class KeybindModel : ModelBase
 {
     // private
 
@@ -80,16 +80,15 @@ public class KeybindModel
 
     public KeybindModel()
     {
+        _isDisabled = false;
         _onPressed = new();
         _onReleased = new();
         _onRepeated = new();
-
-        _isDisabled = false;
     }
 
 
 
-    // setters
+    // isDisabled management
 
 
 
@@ -102,10 +101,27 @@ public class KeybindModel
 
 
 
-    public void SetSelfUnbindLambda(Action? tryUnbindSelf)
+    // public api
+
+
+
+    public void SetUnbindSelf(Action? tryUnbindSelf)
     {
-        _onPressed.SetUnbindSelfLambda(tryUnbindSelf);
-        _onReleased.SetUnbindSelfLambda(tryUnbindSelf);
-        _onRepeated.SetUnbindSelfLambda(tryUnbindSelf);
+        _onPressed.SetUnbindSelf(tryUnbindSelf);
+        _onReleased.SetUnbindSelf(tryUnbindSelf);
+        _onRepeated.SetUnbindSelf(tryUnbindSelf);
+    }
+
+
+
+    // disposal
+
+
+
+    public override void Dispose()
+    {
+        _onPressed.Dispose();
+        _onReleased.Dispose();
+        _onRepeated.Dispose();
     }
 }

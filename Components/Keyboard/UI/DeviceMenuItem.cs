@@ -4,8 +4,8 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-public class DeviceMenuItem(string Label, KeyboardDeviceModel? Model)
+public class DeviceMenuItem(string Label, InputDeviceModel? Model)
 {
     public string Label { get; } = Label;
-    public KeyboardDeviceModel? Model = Model;
+    public InputDeviceModel? Model = Model;
 }

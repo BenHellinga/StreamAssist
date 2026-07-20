@@ -1,25 +1,37 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using StreamAssist.Components.Core;
 using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeyboardSlotModel
+// contains the data for a single keyboard slot
+public class KeyboardSlotModel : ModelBase
 {
-    // dependencies
-    private KeyboardListModel? _ownerList;
+    // private
 
-    // private storage fields
-    private KeyboardDeviceModel? _selectedDevice;
+
+
+    private IReadOnlyList<InputDeviceModel>? _devices;
+    private IReadOnlyList<KeybindConfigModel>? _configs;
+
+    private InputDeviceModel? _selectedDevice;
     private KeybindConfigModel? _selectedConfig;
+    private string? _pendingDeviceString;
+    private string? _pendingConfigString;
+
+
     
-    // public getter properties
-    [JsonIgnore] public KeyboardDeviceModel? SelectedDevice => _selectedDevice;
+    // public
+
+
+
+    [JsonIgnore] public InputDeviceModel? SelectedDevice => _selectedDevice;
     [JsonIgnore] public KeybindConfigModel? SelectedConfig => _selectedConfig;
-    [JsonIgnore] public int SlotID => _ownerList?.Slots.IndexOf(this) ?? -1;
 
 
 
@@ -27,23 +39,18 @@ public class KeyboardSlotModel
 
 
 
-    private string? _pendingDeviceString;
-    private string? _pendingConfigString;
-
-
-
     [JsonInclude] [JsonPropertyName("selectedDevice")]
     private string? JsonSelectedDevice
     {
-        get => _selectedDevice?.DevicePath;
-        set => _pendingDeviceString = value;
+        get => _selectedDevice?.DevicePath ?? _pendingDeviceString;
+        set => _pendingDeviceString = value; // defer validation until device list is attached
     }
 
     [JsonInclude] [JsonPropertyName("selectedConfig")]
     private string? JsonSelectedConfig
     {
-        get => _selectedConfig?.Name;
-        set => _pendingConfigString = value;
+        get => _selectedConfig?.Name ?? _pendingConfigString;
+        set => _pendingConfigString = value; // defer validation until config list is attached
     }
 
 
@@ -52,7 +59,7 @@ public class KeyboardSlotModel
 
 
 
-    public event Action<KeyboardDeviceModel?, KeyboardDeviceModel?>? SelectedDeviceChanged;
+    public event Action<InputDeviceModel?, InputDeviceModel?>? SelectedDeviceChanged;
     public event Action<KeybindConfigModel?, KeybindConfigModel?>? SelectedConfigChanged;
 
 
@@ -63,77 +70,68 @@ public class KeyboardSlotModel
 
     public KeyboardSlotModel()
     {
+        _devices = null;
+        _configs = null;
+
         _selectedDevice = null;
         _selectedConfig = null;
         _pendingDeviceString = null;
         _pendingConfigString = null;
-
-        _ownerList = null;
     }
 
 
 
-    public KeyboardSlotModel(KeyboardListModel ownerList)
+    public KeyboardSlotModel(IReadOnlyList<InputDeviceModel>? devices, IReadOnlyList<KeybindConfigModel>? configs)
     {
+        _devices = devices;
+        _configs = configs;
+
         _selectedDevice = null;
         _selectedConfig = null;
         _pendingDeviceString = null;
         _pendingConfigString = null;
-
-        _ownerList = ownerList;
     }
 
 
 
-    // attach owner
+    // attach methods
 
 
 
-    public void AttachOwner(KeyboardListModel ownerList)
+    public void AttachConfigs(IReadOnlyList<KeybindConfigModel> configs)
     {
-        _ownerList = ownerList;
-        ValidatePendingConfig();
-    }
-
-
-
-    // validation methods
-
-
-
-    public void ValidatePendingConfig()
-    {
+        _configs = configs;
         if (_pendingConfigString == null) return;
-        if (_ownerList == null) return;
         
-        var config = _ownerList.Configs.FirstOrDefault(c => c.Name == _pendingConfigString);
+        var config = _configs.FirstOrDefault(c => c.Name == _pendingConfigString);
         if (config == null)
         {
-            AppLog.WriteWarning($"The config '{_pendingConfigString}' on keyboard slot {SlotID} could not be found and was deselected");
+            AppLog.WriteWarning($"The config '{_pendingConfigString}' could not be found");
             SetSelectedConfig(null);
+            return; // pendingConfigString maintains its value until config is explicitly set
         }
-        else SetSelectedConfig(config);
 
         _pendingConfigString = null;
+        SetSelectedConfig(config);
     }
 
 
 
-    public void ValidatePendingDevice()
+    public void AttachDevices(IReadOnlyList<InputDeviceModel> devices)
     {
+        _devices = devices;
         if (_pendingDeviceString == null) return;
-        if (_ownerList == null) return;
-        if (_ownerList.Devices == null) return;
 
-        var device = _ownerList.Devices.FirstOrDefault(d => d.DevicePath == _pendingDeviceString);
+        var device = _devices.FirstOrDefault(d => d.DevicePath == _pendingDeviceString);
         if (device == null)
         {
-            AppLog.WriteWarning($"The device '{_pendingDeviceString}' on keyboard slot {SlotID} could not be found and was deselected");
+            AppLog.WriteWarning($"The device '{_pendingDeviceString}' could not be found");
             TrySetSelectedDevice(null);
+            return; // pendingDeviceString maintains its value until device is explicitly set
         }
-        else SetSelectedDevice(device);
-
+        
         _pendingDeviceString = null;
+        SetSelectedDevice(device);
     }
 
 
@@ -142,7 +140,7 @@ public class KeyboardSlotModel
 
 
 
-    public bool TrySetSelectedDevice(KeyboardDeviceModel? device)
+    public bool TrySetSelectedDevice(InputDeviceModel? device)
     {
         if (device == null)
         {
@@ -150,19 +148,7 @@ public class KeyboardSlotModel
             return true;
         }
 
-        if (_ownerList == null)
-        {
-            AppLog.WriteError($"Could not select device '{device.DevicePath}' - no owner to confirm validity");
-            return false;
-        }
-
-        if (_ownerList.Devices == null)
-        {
-            AppLog.WriteError($"Could not select device '{device.DevicePath}' - no device list to confirm validity");
-            return false;
-        }
-
-        if (!_ownerList.Devices.Contains(device))
+        if (!_devices?.Contains(device) ?? false)
         {
             AppLog.WriteError($"Could not select device '{device.DevicePath}' - device not found in list");
             return false;
@@ -174,55 +160,13 @@ public class KeyboardSlotModel
 
 
 
-    public KeyboardDeviceModel? TrySetSelectedDeviceByString(string? deviceString)
-    {
-        if (deviceString == null)
-        {
-            SetSelectedDevice(null);
-            return null;
-        }
-
-        if (_ownerList == null)
-        {
-            AppLog.WriteError($"Could not select device '{deviceString}' by string - no ownerList to confirm validity");
-            return null;
-        }
-
-        if (_ownerList.Devices == null)
-        {
-            AppLog.WriteError($"Could not select device '{deviceString}' by string - no KeyboardDeviceModel list to confirm validity");
-            return null;
-        }
-
-        var device = _ownerList.Devices.FirstOrDefault(d => d.DevicePath == deviceString);
-        if (device == null)
-        {
-            AppLog.WriteError($"Could not select device '{deviceString}' by string - device not found in list");
-            return null;
-        }
-
-        SetSelectedDevice(device);
-        return device;
-    }
-
-
-
-    private void SetSelectedDevice(KeyboardDeviceModel? newDevice)
+    private void SetSelectedDevice(InputDeviceModel? newDevice)
     {
         if (_selectedDevice == newDevice) return;
 
         var oldDevice = _selectedDevice;
         _selectedDevice = newDevice;
-        SelectedDeviceChanged?.Invoke(oldDevice, newDevice);
-    }
-
-
-
-    public void DeselectDevice()
-    {
-        var oldDevice = _selectedDevice;
-        _selectedDevice = null;
-        SelectedDeviceChanged?.Invoke(oldDevice, null);
+        SelectedDeviceChanged?.Invoke(oldDevice, _selectedDevice);
     }
 
 
@@ -238,14 +182,8 @@ public class KeyboardSlotModel
             SetSelectedConfig(config);
             return true;
         }
-
-        if (_ownerList == null)
-        {
-            AppLog.WriteError($"Could not select config '{config.Name}' - no ownerList to confirm validity");
-            return false;
-        }
         
-        if (!_ownerList.Configs.Contains(config))
+        if (!_configs?.Contains(config) ?? false)
         {
             AppLog.WriteError($"Could not select config '{config.Name}' - config not found in list");
             return false;
@@ -257,48 +195,24 @@ public class KeyboardSlotModel
 
 
 
-    public KeybindConfigModel? TrySetSelectedConfigByString(string? configString)
-    {
-        if (configString == null)
-        {
-            SetSelectedConfig(null);
-            return null;
-        }
-
-        if (_ownerList == null)
-        {
-            AppLog.WriteError($"Could not select config '{configString}' - no ownerList to confirm validity");
-            return null;
-        }
-
-        var config = _ownerList.Configs.FirstOrDefault(c => c.Name == configString);
-        if (config == null)
-        {
-            AppLog.WriteError($"Could not select config '{configString}' - config not found in list");
-            return null;
-        }
-
-        SetSelectedConfig(config);
-        return config;
-    }
-
-
-
     private void SetSelectedConfig(KeybindConfigModel? newConfig)
     {
         if (_selectedConfig == newConfig) return;
 
         var oldConfig = _selectedConfig;
         _selectedConfig = newConfig;
-        SelectedConfigChanged?.Invoke(oldConfig, newConfig);
+        SelectedConfigChanged?.Invoke(oldConfig, _selectedConfig);
     }
 
 
 
-    public void DeselectConfig()
+    // disposal
+
+
+
+    public override void Dispose()
     {
-        var oldConfig = _selectedConfig;
-        _selectedConfig = null;
-        SelectedConfigChanged?.Invoke(oldConfig, null);
+        _selectedDevice?.Dispose();
+        _selectedConfig?.Dispose();
     }
 }

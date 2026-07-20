@@ -160,7 +160,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    private void OnSelectedDeviceChanged(KeyboardDeviceModel? _, KeyboardDeviceModel? newDevice) => SetMenuDevice(newDevice);
+    private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? newDevice) => SetMenuDevice(newDevice);
 
 
 
@@ -251,7 +251,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    private void SetMenuDevice(KeyboardDeviceModel? device)
+    private void SetMenuDevice(InputDeviceModel? device)
     {
         _callbackBlocker.Block();
         MenuDevice = _deviceMenuItems.FirstOrDefault(d => d.Model == device)!;

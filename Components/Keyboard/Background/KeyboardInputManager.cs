@@ -12,7 +12,7 @@ namespace StreamAssist.Components.Keyboard.Background;
 public class KeyboardInputManager : IDisposable
 {
     // TODO GetAvailableKeyboards should probably be private, then setup callbacks for plugging/unplugging keyboards to update this reference
-    public static readonly List<KeyboardDeviceModel> Devices = GetAvailableKeyboards();
+    public static readonly List<InputDeviceModel> Devices = GetAvailableKeyboards();
 
     private Win32.WNDPROC? _wndProcDelegate;
     private IntPtr _originalWndProc;
@@ -55,9 +55,9 @@ public class KeyboardInputManager : IDisposable
 
 
 
-    public static List<KeyboardDeviceModel> GetAvailableKeyboards()
+    public static List<InputDeviceModel> GetAvailableKeyboards()
     {
-        var results = new List<KeyboardDeviceModel>();
+        var results = new List<InputDeviceModel>();
         var seen = new HashSet<(int, int)>();
 
         foreach (RawInputDevice? device in RawInputDevice.GetDevices())
@@ -67,12 +67,12 @@ public class KeyboardInputManager : IDisposable
             if (device.DevicePath.Contains("&Col")) continue;
             if (!seen.Add((device.VendorId, device.ProductId))) continue;
 
-            results.Add(new KeyboardDeviceModel(
-                DevicePath: device.DevicePath,
-                ManufacturerName: device.ManufacturerName ?? "Unknown",
-                ProductName: device.ProductName ?? "Unknown",
-                VendorId: device.VendorId,
-                ProductId: device.ProductId
+            results.Add(new InputDeviceModel(
+                devicePath: device.DevicePath,
+                manufacturerName: device.ManufacturerName ?? "Unknown",
+                productName: device.ProductName ?? "Unknown",
+                vendorId: device.VendorId,
+                productId: device.ProductId
             ));
         }
 

@@ -1,15 +1,25 @@
 using System.Text.Json.Serialization;
+using StreamAssist.Components.Core;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeyboardComponentModel
+// contains all data for the entire keyboard component
+public class KeyboardComponentModel : ModelBase
 {
-    // private storage fields
+    // private
+
+
+
     private KeyboardListModel _listModel;
 
-    // public getter properties
+
+
+    // public
+
+
+
     [JsonIgnore] public KeyboardListModel ListModel => _listModel;
 
 
@@ -34,5 +44,16 @@ public class KeyboardComponentModel
     public KeyboardComponentModel()
     {
         _listModel = new();
+    }
+
+
+
+    // disposal
+
+
+
+    public override void Dispose()
+    {
+        _listModel.Dispose();
     }
 }

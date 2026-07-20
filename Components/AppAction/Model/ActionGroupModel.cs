@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using StreamAssist.Components.Core;
 using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.AppAction.Model;
 
 
 
-public class ActionGroupModel
+public class ActionGroupModel : ModelBase
 {
     // private
 
@@ -133,7 +135,7 @@ public class ActionGroupModel
 
 
 
-    public void SetUnbindSelfLambda(Action? tryUnbindSelf) => _tryUnbindSelf = tryUnbindSelf;
+    public void SetUnbindSelf(Action? tryUnbindSelf) => _tryUnbindSelf = tryUnbindSelf;
 
 
 
@@ -141,9 +143,20 @@ public class ActionGroupModel
 
 
 
-    public void SafeExecuteAllAsync()
+    public async Task SafeExecuteAllAsync()
     {
         foreach (var action in _actions)
-            _ = action.SafeExecuteAsync();
+            await action.SafeExecuteAsync();
+    }
+
+
+
+    // disposal
+
+
+
+    public override void Dispose()
+    {
+        // TODO
     }
 }

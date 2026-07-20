@@ -20,7 +20,8 @@ public sealed class KeybindDragPayload
 
 
 
-    public KeybindModel keybind => _keybind;
+    public KeybindModel Keybind => _keybind;
+    public Func<bool> RemoveFromSource => _removeFromSource; 
 
 
 
@@ -33,12 +34,4 @@ public sealed class KeybindDragPayload
         _keybind = keybind;
         _removeFromSource = removeFromSource ?? (() => true);
     }
-
-
-
-    // public api
-
-
-
-    public bool RemoveFromSource() => _removeFromSource();
 }

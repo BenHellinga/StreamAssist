@@ -135,7 +135,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
         }
 
         payload.RemoveFromSource();
-        _config.TryBindKey(_vk, payload.keybind);
+        _config.TryBindKey(_vk, payload.Keybind);
     }
 
 
@@ -143,7 +143,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
     public object? GetDragPayload()
     {
         if (_config == null || _keybind == null) return null;
-        return new KeybindDragPayload(_keybind, () => _config.TryUnbindKey(_vk));
+        return new KeybindDragPayload(_keybind, () => { _config.UnbindKey(_vk); return true; } );
     }
 
 
@@ -187,7 +187,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
-    [RelayCommand] private void OnRemoveButtonPressed() => _config?.TryUnbindKey(_vk);
+    [RelayCommand] private void OnRemoveButtonPressed() => _config?.UnbindKey(_vk);
 
 
 

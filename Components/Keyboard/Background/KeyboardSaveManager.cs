@@ -4,6 +4,7 @@ using StreamAssist.Components.AppAction.Background;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Config;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
@@ -142,9 +143,9 @@ public class KeyboardSaveManager : IDisposable
 
         foreach (var group in groups)
         {
-            var changeManager = _changeManagers[group];
-            UnsubscribeFromActionGroupChangeManager(changeManager);
-            changeManager.Dispose();
+            _changeManagers.Remove(group, out var changeManager);
+            UnsubscribeFromActionGroupChangeManager(changeManager!);
+            changeManager!.Dispose();
         }
     }
 
@@ -216,7 +217,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnSelectedDeviceChanged(KeyboardDeviceModel? _, KeyboardDeviceModel? __) => Save();
+    private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? __) => Save();
 
 
 
@@ -232,7 +233,7 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    public void Save() => JsonFileStore.Save("keyboard", _model);
+    public void Save() {} // => JsonFileStore.Save("keyboard", _model);
 
 
 

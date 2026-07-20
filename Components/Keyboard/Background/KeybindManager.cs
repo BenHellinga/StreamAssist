@@ -72,7 +72,7 @@ public class KeybindManager : IDisposable
         if (bindings == null) return;
 
         foreach (var binding in bindings)
-            (isRepeat ? binding.OnRepeated : binding.OnPressed).SafeExecuteAllAsync();
+            _ = (isRepeat ? binding.OnRepeated : binding.OnPressed).SafeExecuteAllAsync();
     }
 
 
@@ -85,7 +85,7 @@ public class KeybindManager : IDisposable
         if (bindings == null) return;
 
         foreach (var binding in bindings)
-            binding.OnReleased.SafeExecuteAllAsync();
+            _ = binding.OnReleased.SafeExecuteAllAsync();
     }
 
 
@@ -184,7 +184,7 @@ public class KeybindManager : IDisposable
 
 
 
-        private void OnSelectedDeviceChanged(KeyboardDeviceModel? _, KeyboardDeviceModel? newDevice)
+        private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? newDevice)
         {
             UnregisterAll();
             _device = newDevice?.DevicePath;

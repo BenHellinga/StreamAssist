@@ -1,20 +1,29 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using StreamAssist.Components.Core;
 using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-public class KeybindConfigModel
+// contains data for a single keybind config
+public class KeybindConfigModel : ModelBase
 {
-    // private storage fields
+    // private
+
+
+
     private string _name;
     private Dictionary<ushort, KeybindModel> _keybinds;
 
-    // public getter properties
+
+
+    // public
+
+
+
     [JsonIgnore] public string Name => _name;
     [JsonIgnore] public IReadOnlyDictionary<ushort, KeybindModel> Keybinds => _keybinds;
 
@@ -39,7 +48,7 @@ public class KeybindConfigModel
         {
             _keybinds = value;
             foreach (var (vk, keybind) in _keybinds)
-                keybind.SetSelfUnbindLambda(MakeSelfUnbindLambda(vk, keybind));
+                keybind.SetUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind)); // TODO redo this?
         }
     }
 
@@ -66,7 +75,7 @@ public class KeybindConfigModel
 
 
 
-    public KeybindConfigModel(string name, Dictionary<ushort, KeybindModel>? keybinds = null)
+    public KeybindConfigModel(string name, Dictionary<ushort, KeybindModel>? keybinds)
     {
         _name = name;
         _keybinds = keybinds ?? [];
@@ -78,46 +87,34 @@ public class KeybindConfigModel
 
 
 
-    public void TryBindKey(ushort vk, KeybindModel keybind)
+    public bool TryBindKey(ushort vk, KeybindModel keybind)
     {
         if (_keybinds.ContainsKey(vk))
         {
             AppLog.WriteError("Could not bind key - key already bound");
-            return;
+            return false;
         }
 
         BindKey(vk, keybind);
+        return true;
     }
 
 
 
     private void BindKey(ushort vk, KeybindModel keybind)
     {
-        keybind.SetSelfUnbindLambda(MakeSelfUnbindLambda(vk, keybind));
+        keybind.SetUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
         _keybinds.Add(vk, keybind);
         KeyBound?.Invoke(vk, keybind);
     }
 
 
 
-    public bool TryUnbindKey(ushort key)
+    public void UnbindKey(ushort key)
     {
-        if (!_keybinds.ContainsKey(key))
-        {
-            AppLog.WriteError("Could not unbind key - key not bound");
-            return false;
-        }
-
-        UnbindKey(key);
-        return true;
-    }
-
-
-
-    private void UnbindKey(ushort key)
-    {
-        _keybinds.Remove(key, out var bindingModel);
-        KeyUnbound?.Invoke(key, bindingModel!);
+        if (!_keybinds.Remove(key, out var keybind)) return;
+        KeyUnbound?.Invoke(key, keybind!);
+        keybind.Dispose();
     }
 
 
@@ -126,14 +123,26 @@ public class KeybindConfigModel
 
 
 
-    private Action MakeSelfUnbindLambda(ushort vk, KeybindModel keybind)
+    private Action MakeKeybindUnbindSelfLambda(ushort vk, KeybindModel keybind)
     {
         return () =>
         {
             if (0 == keybind.OnPressed.Actions.Count +
                      keybind.OnReleased.Actions.Count +
                      keybind.OnRepeated.Actions.Count)
-                TryUnbindKey(vk);
+                UnbindKey(vk);
         };
+    }
+
+
+
+    // disposal
+
+
+
+    public override void Dispose()
+    {
+        foreach (var keybind in _keybinds.Values)
+            keybind.Dispose();
     }
 }

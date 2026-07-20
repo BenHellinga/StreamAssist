@@ -108,11 +108,11 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    [RelayCommand] private void OnAddSlotRequested() => _listModel.AddSlot();
+    [RelayCommand] private void OnAddSlotRequested() => _listModel.CreateSlot(out var _);
 
 
 
-    [RelayCommand] private void OnRemoveSlotRequested() => _listModel.TryRemoveLastSlot();
+    [RelayCommand] private void OnRemoveSlotRequested() => _listModel.TryDeleteSlot(_listModel.Slots.Last());
 
 
 
@@ -151,14 +151,14 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
     private void OnAddConfigRequested(string name, Dictionary<ushort, KeybindModel>? bindings, Action<KeybindConfigModel>? callback)
     {
-        var configModel = _listModel.TryAddConfig(name, bindings);
-        if (configModel == null) return;
-        callback?.Invoke(configModel);
+        _listModel.TryCreateConfig(name, bindings, out var config);
+        if (config == null) return;
+        callback?.Invoke(config);
     }
 
 
 
-    private void OnRemoveConfigRequested(KeybindConfigModel model) => _listModel.TryRemoveConfig(model);
+    private void OnRemoveConfigRequested(KeybindConfigModel model) => _listModel.TryDeleteConfig(model);
 
 
 
@@ -197,7 +197,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         _deviceMenuItems.Clear();
         _deviceMenuItems.Add(new(KeyboardListModel.NoneDevice, null));
         foreach (var device in _listModel.Devices ?? [])
-            _deviceMenuItems.Add(new(device.DisplayLabel, device));
+            _deviceMenuItems.Add(new(device.GetDisplayLabel(), device));
     }
 
 
