@@ -25,7 +25,10 @@ public partial class ConfigurableParameterViewModel : ObservableObject
     private readonly PropertyInfo _property;
     private readonly string _label;
     private readonly ConfiguratorType _configurator;
+
     private readonly IReadOnlyList<string> _menuItems;
+    public double _min;
+    public double _max;
 
 
 
@@ -35,8 +38,11 @@ public partial class ConfigurableParameterViewModel : ObservableObject
 
     public string Label => _label + ":";
     public ConfiguratorType Configurator => _configurator;
-    public IReadOnlyList<string> MenuItems => _menuItems;
     public Type Type => _property.PropertyType;
+
+    public IReadOnlyList<string> MenuItems => _menuItems;
+    public double Min => _min;
+    public double Max => _max;
 
 
 
@@ -50,7 +56,9 @@ public partial class ConfigurableParameterViewModel : ObservableObject
         _property = property;
         _label = attribute.Label;
         _configurator = ResolveConfigurator(attribute.Editor, property.PropertyType);
+
         _menuItems = _configurator == ConfiguratorType.Menu ? ResolveMenuItems(target, property) : [];
+        (_min, _max) = _configurator == ConfiguratorType.Slider ? ResolveBounds(target, property) : (0, 1);
     }
 
 
@@ -85,6 +93,26 @@ public partial class ConfigurableParameterViewModel : ObservableObject
         if (list.Count <= 0) return ["null"];
 
         return list;
+    }
+
+
+
+    private static (double, double) ResolveBounds(ActionModel target, PropertyInfo property)
+    {
+        var methodName = $"Get{property.Name}Bounds";
+
+        var method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+
+        if (method is null) return (0, 1);
+        if (method.Invoke(target, null) is not ValueTuple<double, double> bounds) return (0, 1);
+        if (bounds.Item1 >= bounds.Item2) return (0, 1);
+
+        return bounds;
     }
 
 

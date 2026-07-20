@@ -4,6 +4,8 @@ using StreamAssist.Components.AppAction.Model;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Core.Configurator;
 using NAudio.Wave;
+using System.Collections.Generic;
+using StreamAssist.Components.AppAction.Background;
 
 namespace StreamAssist.AppActions;
 
@@ -16,7 +18,7 @@ public class PlaySoundAction : ActionModel
 
 
     [JsonIgnore] public override string Name => "Play Sound";
-    [JsonIgnore] public override string Description => "Plays the configured .mp3/.wav file to StreamAssistAudioOut.";
+    [JsonIgnore] public override string Description => "Plays the configured .mp3 file.";
 
 
 
@@ -25,6 +27,8 @@ public class PlaySoundAction : ActionModel
 
 
     private string _filepath;
+    private float _volume;
+    private string _outputDevice;
 
 
 
@@ -39,6 +43,20 @@ public class PlaySoundAction : ActionModel
         set => SetParameter(ref _filepath, value);
     }
 
+    [ConfigurableParameter("Volume", ConfiguratorType.Slider)] [JsonPropertyName("volume")]
+    public float Volume
+    {
+        get => _volume;
+        set => SetParameter(ref _volume, value);
+    }
+
+    [ConfigurableParameter("Output Device", ConfiguratorType.Menu)] [JsonPropertyName("outputDevice")]
+    public string OutputDevice
+    {
+        get => _outputDevice;
+        set => SetParameter(ref _outputDevice, value);
+    }
+
 
 
     // constructor
@@ -48,6 +66,25 @@ public class PlaySoundAction : ActionModel
     public PlaySoundAction()
     {
         _filepath = "";
+        _volume = 1f;
+        _outputDevice = "Default";
+    }
+
+
+
+    // public
+
+
+
+    public static (double, double) GetVolumeBounds() => (0, 1);
+
+
+
+    public static List<string> GetOutputDeviceMenuItems()
+    {
+        var list = new List<string>() { "Default" };
+        list.AddRange(AudioHelper.GetDeviceNames());
+        return list;
     }
 
 
@@ -58,18 +95,6 @@ public class PlaySoundAction : ActionModel
 
     protected override void Execute()
     {
-        if (_filepath == "") return;
-
-        var audioFile = new AudioFileReader(_filepath);
-        var outputDevice = new WaveOutEvent();
-
-        outputDevice.Init(audioFile);
-        outputDevice.Play();
-
-        outputDevice.PlaybackStopped += (_, _) =>
-        {
-            outputDevice.Dispose();
-            audioFile.Dispose();
-        };
+        AudioHelper.TryPlaySound(_filepath, _volume, _outputDevice);
     }
 }

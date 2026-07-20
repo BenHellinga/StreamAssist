@@ -1,11 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Runtime.InteropServices;
-using Avalonia.Metadata;
 using StreamAssist.Components.Main.Model;
-using TwitchLib.Api.Helix.Models.Videos.GetVideos;
-using TwitchLib.Api.Services.Events.FollowerService;
 
 namespace StreamAssist.Components.Audio.Background;
 

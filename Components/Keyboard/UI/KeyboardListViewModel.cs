@@ -120,8 +120,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
     private void OnCreateConfigRequested(string name, Dictionary<ushort, KeybindModel>? bindings, Action<KeybindConfigModel>? callback)
     {
-        _list.TryCreateConfig(name, bindings, out var config);
-        if (config == null) return;
+        if (!_list.TryCreateConfig(name, bindings, out var config)) return;
         callback?.Invoke(config);
     }
 

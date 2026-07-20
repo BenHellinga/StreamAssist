@@ -133,7 +133,7 @@ public partial class KeybindViewModel : ViewModelBase
         SubscribeToAllActionGroupModels(keybind);
 
         SetContent(SelectedTab);
-        Label = $"Key: {key.Label.Replace('\n', '-')}   Config: {_config.Name}";
+        Label = $"Key: {key.Label.Replace('\n', '-')}     Config: {_config.Name}";
         IsKeySelected = true;
     }
 

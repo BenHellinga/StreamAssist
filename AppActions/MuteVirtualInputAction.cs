@@ -7,6 +7,7 @@ using NAudio.Wave;
 using System.Collections.Generic;
 using Avalonia.Automation;
 using StreamAssist.Components.Audio.Background;
+using StreamAssist.Components.AppAction.Background;
 
 namespace StreamAssist.AppActions;
 
@@ -29,6 +30,7 @@ public class MuteVirtualInput : ActionModel
 
     private string _setType;
     private string _inputTarget;
+    private bool _playSound;
 
 
 
@@ -43,14 +45,20 @@ public class MuteVirtualInput : ActionModel
         set => SetParameter(ref _setType, value);
     }
 
-
-
     [ConfigurableParameter("Input Target", ConfiguratorType.Menu)] [JsonPropertyName("inputTarget")]
     public string InputTarget
     {
         get => _inputTarget;
         set => SetParameter(ref _inputTarget, value);
     }
+
+    [ConfigurableParameter("Play Sound", ConfiguratorType.Boolean)] [JsonPropertyName("playSound")]
+    public bool PlaySound
+    {
+        get => _playSound;
+        set => SetParameter(ref _playSound, value);
+    }
+
 
 
 
@@ -62,6 +70,7 @@ public class MuteVirtualInput : ActionModel
     {
         _setType = GetSetTypeMenuItems()[0];
         _inputTarget = GetInputTargetMenuItems()[0];
+        _playSound = true;
     }
 
 
@@ -100,11 +109,35 @@ public class MuteVirtualInput : ActionModel
             case "Obs": target = VoicemeeterManager.StereoInputTarget.Obs; break;
         }
 
+        _voicemeeterManager.TryGetMute(target, out bool muted);
+        var newState = false;
+
         switch (_setType)
         {
-            case "Mute": _voicemeeterManager.TrySetMute(target, true); break;
-            case "Unmute": _voicemeeterManager.TrySetMute(target, false); break;
-            case "Toggle": _voicemeeterManager.TryToggleSetMute(target); break;
+            case "Mute":
+                _voicemeeterManager.TrySetMute(target, true);
+                newState = true;
+                break;
+
+            case "Unmute":
+                _voicemeeterManager.TrySetMute(target, false);
+                newState = false;
+                break;
+
+            case "Toggle":
+                _voicemeeterManager.TryToggleSetMute(target);
+                newState = !muted;
+                break;
+        }
+
+        if (_playSound && muted != newState)
+        {
+            string filepath;
+
+            if (newState) filepath = "C:\\Users\\benhe\\Music\\mute.mp3";
+            else filepath = "C:\\Users\\benhe\\Music\\unmute.mp3";
+
+            AudioHelper.TryPlaySound(filepath);
         }
     }
 }

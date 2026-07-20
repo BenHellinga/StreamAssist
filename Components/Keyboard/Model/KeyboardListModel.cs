@@ -154,9 +154,9 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public bool TryCreateConfig(string name, Dictionary<ushort, KeybindModel>? keybinds, out KeybindConfigModel? config)
+    public bool TryCreateConfig(string name, Dictionary<ushort, KeybindModel>? keybinds, out KeybindConfigModel config)
     {
-        config = null;
+        config = null!;
         var trimmed = name.Trim();
         
         if (string.IsNullOrWhiteSpace(trimmed))

@@ -43,4 +43,13 @@
         </Grid>
     </DataTemplate>
 
+    <DataTemplate x:Key="SliderConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
+                    VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat={}{0:0.00}}" VerticalAlignment="Center" MinWidth="40"/>
+        </Grid>
+    </DataTemplate>
+
 </ResourceDictionary>
