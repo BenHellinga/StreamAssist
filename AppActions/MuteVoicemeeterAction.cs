@@ -1,11 +1,8 @@
-using System.Threading.Tasks;
 using StreamAssist.Components.Main.Model;
 using StreamAssist.Components.AppAction.Model;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Core.Configurator;
-using NAudio.Wave;
 using System.Collections.Generic;
-using Avalonia.Automation;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.AppAction.Background;
 
@@ -13,14 +10,14 @@ namespace StreamAssist.AppActions;
 
 
 
-public class MuteVirtualInput : ActionModel
+public class MuteVoicemeeterInput : ActionModel
 {
     // info
 
 
 
-    [JsonIgnore] public override string Name => "Mute/Unmute Virtual Input";
-    [JsonIgnore] public override string Description => "Mute, unmute, or toggle the selected virtual input.";
+    [JsonIgnore] public override string Name => "Mute/Unmute Voicemeeter";
+    [JsonIgnore] public override string Description => "Mute, unmute, or toggle the selected target in Voicemeeter (setup specific).";
 
 
 
@@ -66,7 +63,7 @@ public class MuteVirtualInput : ActionModel
 
 
 
-    public MuteVirtualInput()
+    public MuteVoicemeeterInput()
     {
         _setType = GetSetTypeMenuItems()[0];
         _inputTarget = GetInputTargetMenuItems()[0];
@@ -137,7 +134,7 @@ public class MuteVirtualInput : ActionModel
             if (newState) filepath = "C:\\Users\\benhe\\Music\\mute.mp3";
             else filepath = "C:\\Users\\benhe\\Music\\unmute.mp3";
 
-            AudioHelper.TryPlaySound(filepath, 0.5f);
+            AudioHelper.TryPlaySound(filepath);
         }
     }
 }

@@ -57,6 +57,14 @@ public class KeyboardSaveManager : IDisposable
 
 
 
+    private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? __) => Save();
+
+
+
+    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? __) => Save();
+
+
+
     private void OnConfigAdded(KeybindConfigModel config)
     {
         SubscribeToKeybindConfigModel(config);
@@ -89,11 +97,19 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnSelectedDeviceChanged(InputDeviceModel? _, InputDeviceModel? __) => Save();
+    private void OnTriggerBound(KeybindModel.TriggerType _, ActionGroupModel group)
+    {
+        SubscribeToActionGroupModel(group);
+        Save();
+    }
 
 
 
-    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? __) => Save();
+    private void OnTriggerUnbound(KeybindModel.TriggerType _, ActionGroupModel group)
+    {
+        UnsubscribeFromActionGroupModel(group);
+        Save();
+    }
 
 
 
@@ -208,42 +224,42 @@ public class KeyboardSaveManager : IDisposable
 
     private void SubscribeToKeybindModel(KeybindModel keybind)
     {
-        var groups = new List<ActionGroupModel>() { keybind.OnPressed, keybind.OnReleased, keybind.OnRepeated };
+        keybind.TriggerBound += OnTriggerBound;
+        keybind.TriggerUnbound += OnTriggerUnbound;
 
-        foreach (var group in groups)
-        {
-            var changeManager = new ActionGroupChangeManager(group);
-            _changeManagers.Add(group, changeManager);
-            SubscribeToActionGroupChangeManager(changeManager);
-        }
+        if (keybind.OnPressed != null) SubscribeToActionGroupModel(keybind.OnPressed);
+        if (keybind.OnReleased != null) SubscribeToActionGroupModel(keybind.OnReleased);
+        if (keybind.OnRepeated != null) SubscribeToActionGroupModel(keybind.OnRepeated);
     }
 
 
 
     private void UnsubscribeFromKeybindModel(KeybindModel keybind)
     {
-        var groups = new List<ActionGroupModel>() { keybind.OnPressed, keybind.OnReleased, keybind.OnRepeated };
+        keybind.TriggerBound -= OnTriggerBound;
+        keybind.TriggerUnbound -= OnTriggerUnbound;
 
-        foreach (var group in groups)
-        {
-            _changeManagers.Remove(group, out var changeManager);
-            UnsubscribeFromActionGroupChangeManager(changeManager!);
-            changeManager!.Dispose();
-        }
+        if (keybind.OnPressed != null) UnsubscribeFromActionGroupModel(keybind.OnPressed);
+        if (keybind.OnReleased != null) UnsubscribeFromActionGroupModel(keybind.OnReleased);
+        if (keybind.OnRepeated != null) UnsubscribeFromActionGroupModel(keybind.OnRepeated);
     }
 
 
 
-    private void SubscribeToActionGroupChangeManager(ActionGroupChangeManager group)
+    private void SubscribeToActionGroupModel(ActionGroupModel group)
     {
-        group.GroupChanged += OnGroupChanged;
+        var changeManager = new ActionGroupChangeManager(group);
+        _changeManagers.Add(group, changeManager);
+        changeManager.GroupChanged += OnGroupChanged;
     }
 
 
 
-    private void UnsubscribeFromActionGroupChangeManager(ActionGroupChangeManager group)
+    private void UnsubscribeFromActionGroupModel(ActionGroupModel group)
     {
-        group.GroupChanged -= OnGroupChanged;
+        _changeManagers.Remove(group, out var changeManager);
+        changeManager!.GroupChanged -= OnGroupChanged;
+        changeManager.Dispose();
     }
 
 

@@ -7,7 +7,7 @@ namespace StreamAssist.Components.Core.Configurator;
 
 
 
-public static class ConfiguratorBuilder
+public static class ConfiguratorListBuilder
 {
     public static ObservableCollection<ConfigurableParameterViewModel> Build(ActionModel action)
     {

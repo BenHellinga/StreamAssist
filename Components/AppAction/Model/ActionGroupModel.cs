@@ -122,7 +122,7 @@ public class ActionGroupModel : ModelBase
 
 
 
-    public void SetUnbindSelf(Action? tryUnbindSelf) => _tryUnbindSelf = tryUnbindSelf;
+    public void AttachUnbindSelf(Action? tryUnbindSelf) => _tryUnbindSelf = tryUnbindSelf;
 
 
 
@@ -144,6 +144,7 @@ public class ActionGroupModel : ModelBase
 
     public override void Dispose()
     {
-        // TODO
+        foreach (var action in _actions)
+            action.Dispose();
     }
 }

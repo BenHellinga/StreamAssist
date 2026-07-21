@@ -1,9 +1,6 @@
-using System.Threading.Tasks;
-using StreamAssist.Components.Main.Model;
 using StreamAssist.Components.AppAction.Model;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Core.Configurator;
-using NAudio.Wave;
 using System.Collections.Generic;
 using StreamAssist.Components.AppAction.Background;
 

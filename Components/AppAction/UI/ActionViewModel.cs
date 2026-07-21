@@ -55,7 +55,7 @@ public partial class ActionViewModel : ViewModelBase, IActionUIButtons
     {
         _action = action;
         _removeFromSource = removeFromSource;
-        _configurators = ConfiguratorBuilder.Build(action);
+        _configurators = ConfiguratorListBuilder.Build(action);
 
         _isDisabled = _action.IsDisabled;
 

@@ -148,8 +148,16 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
         if (_keybind == null)
         {
             var keybind = new KeybindModel();
-            keybind.OnPressed.AddAction(copy);
+            var group = new ActionGroupModel();
+            group.AddAction(copy);
+            keybind.TryBindTrigger(KeybindModel.TriggerType.OnPressed, group);
             _config.TryBindKey(_vk, keybind);
+        }
+        else if (_keybind.OnPressed == null)
+        {
+            var group = new ActionGroupModel();
+            group.AddAction(copy);
+            _keybind.TryBindTrigger(KeybindModel.TriggerType.OnPressed, group);
         }
         else _keybind.OnPressed.AddAction(copy);
 

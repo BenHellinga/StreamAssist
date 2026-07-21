@@ -76,7 +76,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
         _keybinds = keybinds ?? [];
 
         foreach (var (vk, keybind) in _keybinds)
-            keybind.AttachUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
+            keybind.AttachUnbindSelf(() => UnbindKey(vk));
     }
 
 
@@ -89,7 +89,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
     void IJsonOnDeserialized.OnDeserialized()
     {
         foreach (var (vk, keybind) in _keybinds)
-            keybind.AttachUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
+            keybind.AttachUnbindSelf(() => UnbindKey(vk));
     }
 
 
@@ -114,7 +114,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 
     private void BindKey(ushort vk, KeybindModel keybind)
     {
-        keybind.AttachUnbindSelf(MakeKeybindUnbindSelfLambda(vk, keybind));
+        keybind.AttachUnbindSelf(() => UnbindKey(vk));
         _keybinds.Add(vk, keybind);
         KeyBound?.Invoke(vk, keybind);
     }
@@ -126,23 +126,6 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
         if (!_keybinds.Remove(key, out var keybind)) return;
         KeyUnbound?.Invoke(key, keybind!);
         keybind.Dispose();
-    }
-
-
-
-    // helpers
-
-
-
-    private Action MakeKeybindUnbindSelfLambda(ushort vk, KeybindModel keybind)
-    {
-        return () =>
-        {
-            if (0 == keybind.OnPressed.Actions.Count +
-                     keybind.OnReleased.Actions.Count +
-                     keybind.OnRepeated.Actions.Count)
-                UnbindKey(vk);
-        };
     }
 
 

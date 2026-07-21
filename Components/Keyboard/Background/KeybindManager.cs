@@ -73,7 +73,10 @@ public class KeybindManager : IDisposable
         if (bindings == null) return;
 
         foreach (var binding in bindings)
-            _ = (isRepeat ? binding.OnRepeated : binding.OnPressed).SafeExecuteAllAsync();
+        {
+            var group = isRepeat ? binding.OnRepeated : binding.OnPressed;
+            _ = group?.SafeExecuteAllAsync();
+        }
     }
 
 
@@ -86,7 +89,10 @@ public class KeybindManager : IDisposable
         if (bindings == null) return;
 
         foreach (var binding in bindings)
-            _ = binding.OnReleased.SafeExecuteAllAsync();
+        {
+            var group = binding.OnReleased;
+            _ = group?.SafeExecuteAllAsync();
+        }
     }
 
 

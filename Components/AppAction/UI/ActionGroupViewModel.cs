@@ -1,9 +1,9 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using StreamAssist.Components.AppAction.Model;
 using StreamAssist.Components.Core;
 using StreamAssist.Components.Core.Dragging;
-using StreamAssist.Components.Main.Model;
 
 namespace StreamAssist.Components.AppAction.UI;
 
@@ -17,6 +17,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
     private ActionGroupModel _model;
     private ObservableCollection<ActionViewModel> _actions;
+    private Action<ActionGroupModel>? _bindSelf;
 
 
 
@@ -32,9 +33,10 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
 
 
-    public ActionGroupViewModel(ActionGroupModel model)
+    public ActionGroupViewModel(ActionGroupModel? model = null, Action<ActionGroupModel>? bindSelf = null)
     {
-        _model = model;
+        _model = model ?? new();
+        _bindSelf = bindSelf;
 
         _actions = [];
         foreach (var action in _model.Actions)
@@ -42,6 +44,14 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
         SubscribeToActionGroupModel(_model);
     }
+
+
+
+    // ui events
+
+
+
+    private void OnRemoveActionRequested(ActionModel action) => _model.RemoveAction(action);
 
 
 
@@ -70,14 +80,6 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
 
 
 
-    // ui events
-
-
-
-    private void OnRemoveActionRequested(ActionModel action) => _model.RemoveAction(action);
-
-
-
     // model events
 
 
@@ -94,6 +96,15 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
         _actions.Remove(viewModel);
         UnsubscribeFromActionViewModel(viewModel);
         viewModel.Dispose();
+    }
+
+
+
+    private void OnFirstActionAdded()
+    {
+        var bind = _bindSelf;
+        _bindSelf = null;
+        bind?.Invoke(_model);
     }
 
 
@@ -115,6 +126,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
     {
         model.ActionAdded += OnActionAdded;
         model.ActionRemoved += OnActionRemoved;
+        model.FirstActionAdded += OnFirstActionAdded;
     }
 
 
@@ -123,6 +135,7 @@ public class ActionGroupViewModel : ViewModelBase, IDroppable
     {
         model.ActionAdded -= OnActionAdded;
         model.ActionRemoved -= OnActionRemoved;
+        model.FirstActionAdded -= OnFirstActionAdded;
     }
 
 

@@ -51,9 +51,9 @@ public partial class KeybindViewModel : ViewModelBase
         _config = null;
 
         _tabs = [
-            new("On Pressed", () => new ActionGroupViewModel(_keybind!.OnPressed)),
-            new("On Released", () => new ActionGroupViewModel(_keybind!.OnReleased)),
-            new("On Repeated", () => new ActionGroupViewModel(_keybind!.OnRepeated)),
+            new("On Pressed", () => new ActionGroupViewModel(_keybind!.OnPressed, g => _keybind!.TryBindTrigger(KeybindModel.TriggerType.OnPressed, g))),
+            new("On Released", () => new ActionGroupViewModel(_keybind!.OnReleased, g => _keybind!.TryBindTrigger(KeybindModel.TriggerType.OnReleased, g))),
+            new("On Repeated", () => new ActionGroupViewModel(_keybind!.OnRepeated, g => _keybind!.TryBindTrigger(KeybindModel.TriggerType.OnRepeated, g))),
         ];
         _selectedTab = _tabs[0];
         _activeContent = null;
@@ -81,8 +81,8 @@ public partial class KeybindViewModel : ViewModelBase
         if (vk != _key?.VK) return;
 
         // the selected key was just bound to a keybind
-        UnsubscribeFromAllActionGroupModels(_keybind);
-        SubscribeToAllActionGroupModels(keybind);
+        UnsubscribeFromKeybindModel(_keybind);
+        SubscribeToKeybindModel(keybind);
         _keybind = keybind;
         SetContent(SelectedTab);
     }
@@ -95,21 +95,14 @@ public partial class KeybindViewModel : ViewModelBase
 
         // the selected key was just unbound
         _keybind = new();
-        UnsubscribeFromAllActionGroupModels(keybind);
-        SubscribeToAllActionGroupModels(_keybind);
+        UnsubscribeFromKeybindModel(keybind);
+        SubscribeToKeybindModel(_keybind);
         SetContent(SelectedTab);
     }
 
 
 
-    private void OnFirstActionAdded()
-    {
-        // one of the ActionGroupModels just got its first action
-        if (1 == _keybind!.OnPressed.Actions.Count +
-                 _keybind!.OnReleased.Actions.Count + 
-                 _keybind!.OnRepeated.Actions.Count)
-            _config?.TryBindKey(_key!.VK, _keybind);
-    }
+    private void OnFirstTriggerBound() => _config?.TryBindKey(_key!.VK, _keybind!);
 
 
 
@@ -121,7 +114,7 @@ public partial class KeybindViewModel : ViewModelBase
     {
         // a new key was selected
         UnsubscribeFromKeybindConfigModel(_config);
-        UnsubscribeFromAllActionGroupModels(_keybind);
+        UnsubscribeFromKeybindModel(_keybind);
 
         _key?.IsSelected = false;
 
@@ -130,7 +123,7 @@ public partial class KeybindViewModel : ViewModelBase
         _config = config;
 
         SubscribeToKeybindConfigModel(config);
-        SubscribeToAllActionGroupModels(keybind);
+        SubscribeToKeybindModel(keybind);
 
         SetContent(SelectedTab);
         Label = $"Key: {key.Label.Replace('\n', '-')}     Config: {_config.Name}";
@@ -145,7 +138,7 @@ public partial class KeybindViewModel : ViewModelBase
 
         // the selected key was just deselected
         UnsubscribeFromKeybindConfigModel(_config);
-        UnsubscribeFromAllActionGroupModels(_keybind);
+        UnsubscribeFromKeybindModel(_keybind);
 
         IsKeySelected = false;
         SetContent(null);
@@ -178,20 +171,16 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    private void SubscribeToAllActionGroupModels(KeybindModel? keybind)
+    private void SubscribeToKeybindModel(KeybindModel? keybind)
     {
-        keybind?.OnPressed.FirstActionAdded += OnFirstActionAdded;
-        keybind?.OnReleased.FirstActionAdded += OnFirstActionAdded;
-        keybind?.OnRepeated.FirstActionAdded += OnFirstActionAdded;
+        keybind?.FirstTriggerBound += OnFirstTriggerBound;
     }
 
 
 
-    private void UnsubscribeFromAllActionGroupModels(KeybindModel? keybind)
+    private void UnsubscribeFromKeybindModel(KeybindModel? keybind)
     {
-        keybind?.OnPressed.FirstActionAdded -= OnFirstActionAdded;
-        keybind?.OnReleased.FirstActionAdded -= OnFirstActionAdded;
-        keybind?.OnRepeated.FirstActionAdded -= OnFirstActionAdded;
+        keybind?.FirstTriggerBound -= OnFirstTriggerBound;
     }
 
 
@@ -212,7 +201,7 @@ public partial class KeybindViewModel : ViewModelBase
     public override void Dispose()
     {
         UnsubscribeFromKeybindConfigModel(_config);
-        UnsubscribeFromAllActionGroupModels(_keybind);
+        UnsubscribeFromKeybindModel(_keybind);
         
         ActiveContent?.Dispose();
     }
