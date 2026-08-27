@@ -1,5 +1,0 @@
-- start with chatbot
-- start with obs integration
-- obs overlay?
-
-- revamp input devices
