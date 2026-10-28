@@ -83,7 +83,17 @@ public sealed class VoicemeeterManager : IDisposable
             break;
         }
 
-        int result = Voicemeeter64.VBVMR_Login();
+        int result;
+        try
+        {
+            result = Voicemeeter64.VBVMR_Login();
+        }
+        catch (Exception ex)
+        {
+            AppLog.WriteError($"Could not connect to Voicemeeter - failed to load VoicemeeterRemote64.dll ({ex.Message}).");
+            return false;
+        }
+
         if (result != 0 && result != 1)
         {
             AppLog.WriteError($"Could not connect to Voicemeeter - code {result}.");

@@ -11,7 +11,7 @@ namespace StreamAssist.Components.Config;
 /// </summary>
 public static class JsonFileStore
 {
-    private static readonly string RootDir = "C:\\Users\\benhe\\OneDrive\\Documents\\Code Projects\\StreamAssist\\Config";
+    private static readonly string RootDir = "C:\\Users\\benhe\\OneDrive\\Documents\\Code Projects\\2026\\StreamAssist\\Config";
     // private static readonly string RootDir = Path.Combine(
     //     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
     //     "StreamAssist");
