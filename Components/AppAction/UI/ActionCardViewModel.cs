@@ -1,6 +1,6 @@
-using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Core.Dragging;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Core;
+using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.AppAction.UI;
 

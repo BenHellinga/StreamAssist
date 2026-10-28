@@ -1,0 +1,63 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="Button">
+        <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
+        <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
+        <Setter Property="Padding" Value="5"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+        <Setter Property="CornerRadius" Value="3"/>
+    </Style>
+
+    <!-- hover -->
+
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+    <!-- width always matches height -->
+
+    <Style Selector="Button.Square">
+        <Setter Property="Width" Value="{Binding RelativeSource={RelativeSource Self}, Path=Bounds.Height}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <!-- sizes, combine with Square for icon buttons (e.g. Classes="Square Medium") -->
+
+    <!-- corner buttons on keys and actions -->
+    <Style Selector="Button.Small">
+        <Setter Property="Height" Value="15"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="10"/>
+    </Style>
+
+    <!-- inline buttons next to inputs (config create/delete) -->
+    <Style Selector="Button.Medium">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+    </Style>
+
+    <!-- standalone buttons (add/remove keyboard slot) -->
+    <Style Selector="Button.Large">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="FontSize" Value="20"/>
+    </Style>
+
+    <!-- square + size: explicit width, more reliable than the Bounds.Height binding above -->
+
+    <Style Selector="Button.Square.Small">
+        <Setter Property="Width" Value="15"/>
+    </Style>
+    <Style Selector="Button.Square.Medium">
+        <Setter Property="Width" Value="28"/>
+    </Style>
+    <Style Selector="Button.Square.Large">
+        <Setter Property="Width" Value="40"/>
+    </Style>
+
+</Styles>

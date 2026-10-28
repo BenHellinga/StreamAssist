@@ -1,7 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using StreamAssist.Components.Core;
+using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.AppAction.Model;
 
 namespace StreamAssist.Components.AppAction.UI;

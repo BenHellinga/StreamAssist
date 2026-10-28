@@ -4,9 +4,9 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Core;
-using StreamAssist.Components.Core.Configurator;
-using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Components.AppAction.UI.Configurator;
+using StreamAssist.Core.Dragging;
 
 namespace StreamAssist.Components.AppAction.UI;
 

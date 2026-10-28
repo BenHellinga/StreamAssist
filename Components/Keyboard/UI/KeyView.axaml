@@ -11,7 +11,7 @@
 
     <!-- single key -->
 
-    <Border Classes="Droppable"
+    <Border Classes="Panel Droppable"
             Classes.Triggered="{Binding IsPressed}"
             Classes.Bound="{Binding IsBound}"
             Classes.Disabled="{Binding IsDisabled}"
@@ -24,7 +24,7 @@
         <Grid>
             <TextBlock Text="{Binding Label}"
                        TextAlignment="Center"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                       HorizontalAlignment="Center"/>
 
             <action:ActionUIButtons IsVisible="{Binding IsSelected}"/>
         </Grid>

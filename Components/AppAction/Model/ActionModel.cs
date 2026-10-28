@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.AppAction.Model;
 

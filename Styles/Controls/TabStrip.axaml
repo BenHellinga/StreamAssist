@@ -1,0 +1,51 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+
+        xmlns:mvvm="using:StreamAssist.Core.Mvvm"
+        xmlns:dragging="using:StreamAssist.Core.Dragging">
+
+    <!-- a horizontal ListBox of ViewModelTabItems, used as a tab bar -->
+
+    <Style Selector="ListBox.TopTabStrip">
+        <Setter Property="Background" Value="{DynamicResource MainBackground}"/>
+
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="5"/>
+            </ItemsPanelTemplate>
+        </Setter>
+
+        <Setter Property="ItemTemplate">
+            <DataTemplate x:DataType="mvvm:ViewModelTabItem">
+                <TextBlock Text="{Binding Label}"/>
+            </DataTemplate>
+        </Setter>
+    </Style>
+
+    <!-- tabs -->
+
+    <Style Selector="ListBox.TopTabStrip ListBoxItem">
+        <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="5,5"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="DragDrop.AllowDrop" Value="True"/>
+        <Setter Property="dragging:DragHoverTabSwitch.Enable" Value="True"/>
+    </Style>
+
+    <Style Selector="ListBox.TopTabStrip ListBoxItem:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+    <Style Selector="ListBox.TopTabStrip ListBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PanelFillToggle}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderToggle}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+</Styles>

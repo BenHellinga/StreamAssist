@@ -3,17 +3,7 @@
              x:Class="StreamAssist.Components.Keyboard.UI.KeybindView"
              x:DataType="keyboard:KeybindViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
-             xmlns:core="using:StreamAssist.Components.Core"
-             xmlns:action="using:StreamAssist.Components.AppAction.UI">
-
-    <!-- content datatemplates -->
-
-    <UserControl.DataTemplates>
-        <DataTemplate DataType="action:ActionGroupViewModel">
-            <action:ActionGroupView DataContext="{Binding}"/>
-        </DataTemplate>
-    </UserControl.DataTemplates>
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
 
     <!-- key configurator -->
 
@@ -23,7 +13,6 @@
 
         <TextBlock Text="No key selected"
                    HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
                    IsVisible="{Binding !IsKeySelected}"/>
 
         <!-- * | content -->
@@ -37,7 +26,7 @@
 
             <!-- tab strip | label -->
 
-            <Grid Grid.Row="0" Margin="5,5,5,10">
+            <Grid Grid.Row="0" Margin="{StaticResource HeaderMargin}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -48,13 +37,7 @@
                 <ListBox Grid.Column="0"
                          Classes="TopTabStrip"
                          ItemsSource="{Binding Tabs}"
-                         SelectedItem="{Binding SelectedTab}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="core:ViewModelTabItem">
-                            <TextBlock Text="{Binding Label}"/>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                         SelectedItem="{Binding SelectedTab}"/>
 
                 <!-- label -->
 
@@ -64,9 +47,9 @@
 
             </Grid>
 
-            <Border Grid.Row="1" Margin="0,0,0,5" Classes="Divider"/>
+            <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
 
-            <!-- content -->
+            <!-- content (an ActionGroupViewModel, shown through the ViewLocator) -->
 
             <ContentControl Grid.Row="2" Content="{Binding ActiveContent}"/>
 

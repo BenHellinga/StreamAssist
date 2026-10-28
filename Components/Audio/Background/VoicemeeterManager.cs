@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Audio.Background;
 

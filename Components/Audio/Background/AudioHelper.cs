@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.OutputConsole.Model;
 
-namespace StreamAssist.Components.AppAction.Background;
+namespace StreamAssist.Components.Audio.Background;
 
 
 

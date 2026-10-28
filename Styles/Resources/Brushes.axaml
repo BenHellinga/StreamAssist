@@ -1,0 +1,53 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- palette: every raw color lives here, the brushes below give them a meaning -->
+
+    <Color x:Key="ColorBlack">#000000</Color>
+    <Color x:Key="ColorWhite">#ffffff</Color>
+    <Color x:Key="ColorGray200">#cccccc</Color>
+    <Color x:Key="ColorGray500">#888888</Color>
+    <Color x:Key="ColorGray700">#555555</Color>
+    <Color x:Key="ColorGray800">#333333</Color>
+    <Color x:Key="ColorGray900">#262626</Color>
+    <Color x:Key="ColorGray950">#1e1e1e</Color>
+    <Color x:Key="ColorPurple">#7c3aed</Color>
+    <Color x:Key="ColorGreen">#22c55e</Color>
+    <Color x:Key="ColorRed">#ef4444</Color>
+
+    <!-- backgrounds -->
+
+    <SolidColorBrush x:Key="MainBackground" Color="{StaticResource ColorBlack}"/>
+
+    <!-- text -->
+
+    <SolidColorBrush x:Key="TextBright" Color="{StaticResource ColorWhite}"/>
+    <SolidColorBrush x:Key="TextNormal" Color="{StaticResource ColorGray200}"/>
+    <SolidColorBrush x:Key="TextMuted" Color="{StaticResource ColorGray500}"/>
+    <SolidColorBrush x:Key="TextDim" Color="{StaticResource ColorGray700}"/>
+
+    <!-- accent -->
+
+    <SolidColorBrush x:Key="Accent" Color="{StaticResource ColorPurple}"/>
+
+    <!-- panel -->
+
+    <SolidColorBrush x:Key="PanelFill" Color="{StaticResource ColorGray950}"/>
+    <SolidColorBrush x:Key="PanelFillHover" Color="{StaticResource ColorGray900}"/>
+    <SolidColorBrush x:Key="PanelFillToggle" Color="{StaticResource ColorGray900}"/>
+
+    <SolidColorBrush x:Key="PanelBorder" Color="{StaticResource ColorGray800}"/>
+    <SolidColorBrush x:Key="PanelBorderHover" Color="{StaticResource ColorPurple}"/>
+    <SolidColorBrush x:Key="PanelBorderToggle" Color="{StaticResource ColorPurple}"/>
+
+    <!-- borders -->
+
+    <SolidColorBrush x:Key="Border" Color="{StaticResource ColorGray800}"/>
+    <SolidColorBrush x:Key="Splitter" Color="{StaticResource ColorGray800}"/>
+
+    <!-- actions -->
+
+    <SolidColorBrush x:Key="Bound" Color="{StaticResource ColorGreen}"/>
+    <SolidColorBrush x:Key="Disabled" Color="{StaticResource ColorRed}"/>
+
+</ResourceDictionary>

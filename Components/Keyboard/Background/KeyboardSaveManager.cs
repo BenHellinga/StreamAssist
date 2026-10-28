@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Avalonia.Threading;
 using StreamAssist.Components.AppAction.Background;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Config;
+using StreamAssist.Core.Persistence;
 using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;

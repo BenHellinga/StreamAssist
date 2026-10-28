@@ -4,11 +4,11 @@
              x:DataType="ui:ActionViewModel"
 
              xmlns:ui="using:StreamAssist.Components.AppAction.UI"
-             xmlns:configurator="using:StreamAssist.Components.Core.Configurator">
+             xmlns:configurator="using:StreamAssist.Components.AppAction.UI.Configurator">
 
     <!-- action -->
 
-    <Border Classes="Bound"
+    <Border Classes="Panel Bound"
             Classes.Triggered="{Binding IsTriggered}"
             Classes.Disabled="{Binding IsDisabled}"
             HorizontalAlignment="Left">
@@ -19,15 +19,15 @@
                 <TextBlock Classes="Title" Text="{Binding Name}" Margin="5"/>
                 <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
 
-                <ItemsControl ItemsSource="{Binding Configurators}">
+                <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
 
+                <ItemsControl ItemsSource="{Binding Configurators}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
                             <ContentControl Content="{Binding}" Margin="5,0,5,5"
                                             ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
-
                 </ItemsControl>
 
             </StackPanel>

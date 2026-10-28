@@ -1,0 +1,31 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="ComboBox">
+        <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
+        <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+    </Style>
+
+    <!-- hover -->
+
+    <Style Selector="ComboBox:pointerover /template/ Border#Background">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
+    </Style>
+    <Style Selector="ComboBox:pointerover">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+    <!-- focus -->
+
+    <Style Selector="ComboBox:focus /template/ Border#Background">
+        <Setter Property="Background" Value="{DynamicResource PanelFillToggle}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderToggle}"/>
+    </Style>
+    <Style Selector="ComboBox:focus">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+</Styles>

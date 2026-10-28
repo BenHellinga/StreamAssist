@@ -5,7 +5,7 @@ using System.Linq;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.AppAction.UI;
-using StreamAssist.Components.Core;
+using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Keyboard.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;

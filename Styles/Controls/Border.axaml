@@ -1,0 +1,77 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- panel look (opt-in with Classes="Panel" so borders inside built-in controls are left alone) -->
+
+    <Style Selector="Border.Panel">
+        <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.07"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.07"/>
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <!-- divider line -->
+
+    <Style Selector="Border.Divider">
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Background" Value="{DynamicResource Border}"/>
+    </Style>
+
+    <!-- drag source -->
+
+    <Style Selector="Border.Draggable">
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Border.Draggable:pointerover">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
+    </Style>
+    <Style Selector="Border.Draggable:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+    <!-- drop target (the Dragover class is toggled by DropBehaviorHandler) -->
+
+    <Style Selector="Border.Droppable.Dragover">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>
+    </Style>
+    <Style Selector="Border.Droppable.Dragover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+    <!-- clickable -->
+
+    <Style Selector="Border.Clickable">
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Border.Clickable:pointerover">
+        <Setter Property="Background" Value="{DynamicResource PanelFillHover}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderHover}"/>
+    </Style>
+    <Style Selector="Border.Clickable:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
+    <!-- state -->
+
+    <Style Selector="Border.Bound">
+        <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>
+    </Style>
+
+    <Style Selector="Border.Disabled">
+        <Setter Property="BorderBrush" Value="{DynamicResource Disabled}"/>
+    </Style>
+
+    <Style Selector="Border.Triggered">
+        <Setter Property="Background" Value="{DynamicResource Accent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+    </Style>
+
+</Styles>

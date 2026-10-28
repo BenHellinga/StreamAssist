@@ -32,7 +32,7 @@
 
                 <!-- add config button -->
 
-                <Button Classes="Square"
+                <Button Classes="Square Medium"
                         Content="＋"
                         Command="{Binding CreateConfigPressedCommand}"
                         ToolTip.Tip="Create a copy of the current config with the name below"/>
@@ -45,10 +45,10 @@
 
                 <!-- delete config button -->
 
-                <Button Classes="Square"
+                <Button Classes="Square Medium"
                         Content="－"
                         Command="{Binding DeleteConfigPressedCommand}"
-                        ToolTip.Tip="Delete selected config (cannot delete Default or active config)"/>
+                        ToolTip.Tip="Delete the selected config"/>
 
             </StackPanel>
 
@@ -56,7 +56,7 @@
 
             <StackPanel Orientation="Horizontal" Spacing="10">
 
-                <TextBlock Classes="label" Text="Device"/>
+                <TextBlock Classes="Label" Text="Device"/>
 
                 <!-- device dropdown -->
 
@@ -72,7 +72,7 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- keyboard -->
+        <!-- keyboard (each KeyViewModel becomes a KeyView through the ViewLocator) -->
 
         <Decorator x:Name="KeyboardHost">
             <ItemsControl ItemsSource="{Binding Keys}"
@@ -96,12 +96,6 @@
                         <Setter Property="Canvas.Top" Value="{Binding Y}"/>
                     </ControlTheme>
                 </ItemsControl.ItemContainerTheme>
-
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="keyboard:KeyViewModel">
-                        <keyboard:KeyView/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
 
             </ItemsControl>
         </Decorator>

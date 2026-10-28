@@ -3,8 +3,7 @@
              x:Class="StreamAssist.Components.AppAction.UI.ActionListView"
              x:DataType="ui:ActionListViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.AppAction.UI"
-             xmlns:model="using:StreamAssist.Components.AppAction.Model">
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI">
 
     <!-- action list -->
 
@@ -13,9 +12,9 @@
         <TextBlock DockPanel.Dock="Top"
                    Classes="Label"
                    Text="Actions"
-                   Margin="0,0,0,5"/>
+                   Margin="{StaticResource PanelGapBottom}"/>
 
-        <!-- list of actions -->
+        <!-- list of action cards (each ActionCardViewModel becomes an ActionCardView through the ViewLocator) -->
 
         <ScrollViewer>
             <ItemsControl ItemsSource="{Binding Actions}">
@@ -24,12 +23,6 @@
                         <StackPanel Spacing="5"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
-                
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="ui:ActionCardViewModel">
-                        <ui:ActionCardView/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
 

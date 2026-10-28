@@ -1,10 +1,10 @@
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
-using StreamAssist.Components.Core;
-using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Core.Dragging;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.AppAction.UI;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.OutputConsole.Model;
 using System.Collections.Generic;
 using StreamAssist.Components.AppAction.Model;
 

@@ -3,11 +3,10 @@
              x:Class="StreamAssist.App"
 
              xmlns:local="using:StreamAssist"
-             xmlns:configurator="using:StreamAssist.Components.Core.Configurator"
 
              RequestedThemeVariant="Default">
 
-    <!-- view locator -->
+    <!-- view locator: finds FooView for any FooViewModel -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>
@@ -18,17 +17,25 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://StreamAssist/Styles/Brushes.axaml"/>
-                <ResourceInclude Source="avares://StreamAssist/Styles/Configurator.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Brushes.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Typography.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Spacing.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Components/AppAction/UI/Configurator/ConfiguratorTemplates.axaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 
-    <!-- shared styles -->
+    <!-- shared styles (order matters: when two styles set the same property, the later one wins) -->
 
     <Application.Styles>
         <FluentTheme/>
-        <StyleInclude Source="avares://StreamAssist/Styles/Controls.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/TextBlock.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/TextBox.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/ComboBox.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/GridSplitter.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/Border.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/Button.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/TabStrip.axaml"/>
     </Application.Styles>
 
 </Application>

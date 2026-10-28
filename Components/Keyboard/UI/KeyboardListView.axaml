@@ -33,7 +33,7 @@
 
                             <!-- keyboard slot -->
 
-                            <keyboard:KeyboardSlotView DataContext="{Binding}" Margin="5,0"/>
+                            <keyboard:KeyboardSlotView Margin="5,0"/>
 
                             <Border Classes="Divider"/>
 
@@ -49,16 +49,16 @@
                         HorizontalAlignment="Center"
                         Spacing="10">
 
-                <Button Classes="Square" Height="40" FontSize="20"
-                        Content="+"
+                <Button Classes="Square Large"
+                        Content="＋"
                         Command="{Binding AddSlotRequestedCommand}"
                         ToolTip.Tip="Add another keyboard"/>
 
-                <Button Classes="Square" Height="40" FontSize="20"
+                <Button Classes="Square Large"
                         Content="－"
                         Command="{Binding RemoveSlotRequestedCommand}"
                         ToolTip.Tip="Remove the last keyboard"/>
-                        
+
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

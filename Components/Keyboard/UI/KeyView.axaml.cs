@@ -1,6 +1,6 @@
 using Avalonia.Input;
-using StreamAssist.Components.Core;
-using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Core.Dragging;
 
 namespace StreamAssist.Components.Keyboard.UI;
 

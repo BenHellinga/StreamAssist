@@ -1,0 +1,33 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style Selector="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}"/>
+    </Style>
+
+    <Style Selector="TextBlock.Title">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}"/>
+    </Style>
+
+    <!-- marker class for field labels, no overrides yet -->
+    <Style Selector="TextBlock.Label">
+    </Style>
+
+    <Style Selector="TextBlock.Description">
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style Selector="TextBlock.Placeholder">
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+    </Style>
+
+    <Style Selector="TextBlock.OutputLine">
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+</Styles>

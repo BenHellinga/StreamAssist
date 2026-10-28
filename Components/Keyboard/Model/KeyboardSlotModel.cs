@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
-using StreamAssist.Components.Core;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 

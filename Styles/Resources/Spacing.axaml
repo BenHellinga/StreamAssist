@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- layout spacing shared across views, use with Margin="{StaticResource Name}" -->
+
+    <!-- gap between two side-by-side or stacked panels (applied to the left/top one) -->
+    <Thickness x:Key="PanelGapRight">0,0,5,0</Thickness>
+    <Thickness x:Key="PanelGapBottom">0,0,0,5</Thickness>
+
+    <!-- header row (tab strip, title + buttons) that sits above a divider -->
+    <Thickness x:Key="HeaderMargin">5,5,5,10</Thickness>
+
+    <!-- divider under a header -->
+    <Thickness x:Key="DividerMargin">0,0,0,5</Thickness>
+
+</ResourceDictionary>

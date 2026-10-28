@@ -1,7 +1,7 @@
 using System;
 using StreamAssist.Components.Keyboard.Model;
 
-namespace StreamAssist.Components.AppAction.UI;
+namespace StreamAssist.Components.Keyboard.UI;
 
 
 

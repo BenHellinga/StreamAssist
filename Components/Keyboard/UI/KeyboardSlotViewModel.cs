@@ -6,10 +6,11 @@ using System.Text.Json;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StreamAssist.Components.Core;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Core.Utilities;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 

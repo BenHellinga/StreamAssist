@@ -1,8 +1,25 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="StreamAssist.Components.AppAction.UI.ActionGroupView"
-             x:DataType="appAction:ActionGroupViewModel"
-             xmlns:appAction="using:StreamAssist.Components.AppAction.UI">
+             x:DataType="ui:ActionGroupViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.AppAction.UI">
+
+    <!-- drop zone look, shared by the zones between actions and the one at the end -->
+
+    <UserControl.Styles>
+        <Style Selector="Border.DropZone">
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="DragDrop.AllowDrop" Value="True"/>
+        </Style>
+        <Style Selector="Border.DropZone > TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- action group -->
 
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
@@ -11,42 +28,40 @@
 
         <StackPanel Margin="5,0,10,200">
 
-            <ItemsControl ItemsSource="{Binding Actions}" Margin="0,0,0,5">
+            <ItemsControl ItemsSource="{Binding Actions}" Margin="{StaticResource PanelGapBottom}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="5"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
 
+                <!-- drop zone above each action -->
+
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="appAction:ActionViewModel">
+                    <DataTemplate x:DataType="ui:ActionViewModel">
                         <StackPanel Spacing="5">
 
-                            <Border Classes="Droppable"
-                                    HorizontalAlignment="Left"
-                                    DragDrop.AllowDrop="True"
+                            <Border Classes="Panel Droppable DropZone"
                                     DragDrop.DragOver="OnZoneDragOver"
                                     DragDrop.DragLeave="OnZoneDragLeave"
-                                    DragDrop.Drop="OnZoneDrop"
-                                    Width="100" Height="25">
-                                <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    DragDrop.Drop="OnZoneDrop">
+                                <TextBlock Text="+"/>
                             </Border>
 
-                            <appAction:ActionView DataContext="{Binding}"/>
-                            
+                            <ui:ActionView/>
+
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <Border Classes="Droppable"
-                    HorizontalAlignment="Left"
-                    DragDrop.AllowDrop="True"
+            <!-- drop zone at the end -->
+
+            <Border Classes="Panel Droppable DropZone"
                     DragDrop.DragOver="OnZoneDragOver"
                     DragDrop.DragLeave="OnZoneDragLeave"
-                    DragDrop.Drop="OnZoneDrop"
-                    Width="100" Height="25">
-                <TextBlock Text="+" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    DragDrop.Drop="OnZoneDrop">
+                <TextBlock Text="+"/>
             </Border>
 
         </StackPanel>

@@ -3,8 +3,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.VisualBasic;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Core;
-using StreamAssist.Components.Main.Model;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 

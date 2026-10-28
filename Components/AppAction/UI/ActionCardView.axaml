@@ -7,7 +7,7 @@
 
     <!-- action card -->
 
-    <Border Classes="Draggable"
+    <Border Classes="Panel Draggable"
             PointerPressed="OnPointerPressed">
 
         <StackPanel>

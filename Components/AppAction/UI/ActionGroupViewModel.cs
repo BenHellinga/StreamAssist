@@ -2,8 +2,9 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using StreamAssist.Components.AppAction.Model;
-using StreamAssist.Components.Core;
-using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Core.Mvvm;
+using StreamAssist.Core.Utilities;
+using StreamAssist.Core.Dragging;
 
 namespace StreamAssist.Components.AppAction.UI;
 

@@ -1,8 +1,8 @@
-using StreamAssist.Components.Core;
+using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Main.UI;
+using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Keyboard.UI;
 

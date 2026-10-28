@@ -1,5 +1,5 @@
 using CommunityToolkit.Mvvm.Input;
-using StreamAssist.Components.Core.Dragging;
+using StreamAssist.Core.Dragging;
 
 namespace StreamAssist.Components.AppAction.UI;
 

@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StreamAssist.Shell.MainWindowView"
+        x:DataType="shell:MainWindowViewModel"
+
+        xmlns:shell="using:StreamAssist.Shell"
+
+        Title="StreamAssist"
+        Background="{DynamicResource MainBackground}">
+
+    <!-- output console | * -->
+
+    <Grid Margin="5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding OutputConsolePanel.Length, Mode=TwoWay}" MinWidth="100"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="*" MinWidth="100"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- output console panel -->
+
+        <shell:PanelView Grid.Column="0" Margin="{StaticResource PanelGapRight}" DataContext="{Binding OutputConsolePanel}"/>
+
+        <GridSplitter Grid.Column="1" Margin="{StaticResource PanelGapRight}" Classes="ColumnSplitter"/>
+
+        <!-- tab strip | * -->
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*" MinHeight="100"/>
+            </Grid.RowDefinitions>
+
+            <!-- tab strip -->
+
+            <ListBox Grid.Row="0" Margin="{StaticResource HeaderMargin}"
+                     Classes="TopTabStrip"
+                     ItemsSource="{Binding Tabs}"
+                     SelectedItem="{Binding SelectedTab}"/>
+
+            <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+            <!-- * | side panel -->
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="100"/>
+                    <ColumnDefinition Width="{Binding SidePanel.SplitterLength}"/>
+                    <ColumnDefinition Width="{Binding SidePanel.Length, Mode=TwoWay}"
+                                      MinWidth="{Binding SidePanel.MinLength}"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- main content | bottom panel -->
+
+                <Grid Grid.Column="0" Margin="{StaticResource PanelGapRight}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="100"/>
+                        <RowDefinition Height="{Binding BottomPanel.SplitterLength}"/>
+                        <RowDefinition Height="{Binding BottomPanel.Length, Mode=TwoWay}"
+                                       MinHeight="{Binding BottomPanel.MinLength}"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- main content -->
+
+                    <ContentControl Grid.Row="0" Margin="{StaticResource PanelGapBottom}" Content="{Binding ActiveContent}"/>
+
+                    <GridSplitter Grid.Row="1" Margin="{StaticResource PanelGapBottom}" Classes="RowSplitter"
+                                  MinHeight="{Binding BottomPanel.SplitterMinLength}"/>
+
+                    <!-- bottom panel -->
+
+                    <shell:PanelView Grid.Row="2" DataContext="{Binding BottomPanel}"/>
+                </Grid>
+
+                <GridSplitter Grid.Column="1" Margin="{StaticResource PanelGapRight}" Classes="ColumnSplitter"
+                              MinWidth="{Binding SidePanel.SplitterMinLength}"/>
+
+                <!-- side panel -->
+
+                <shell:PanelView Grid.Column="2" DataContext="{Binding SidePanel}"/>
+
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

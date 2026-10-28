@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using StreamAssist.Components.Core;
+using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist;
 
@@ -10,9 +10,9 @@ namespace StreamAssist;
 /// Avalonia's ViewLocator convention: given a ViewModel, find its View by
 /// replacing "ViewModel" with "View" in the fully-qualified type name.
 ///
-/// With the feature-slice structure, this means:
-///   StreamAssist.Features.Keyboard.KeyboardViewModel
-///   → StreamAssist.Features.Keyboard.KeyboardView  ✓
+/// For example:
+///   StreamAssist.Components.Keyboard.UI.KeyViewModel
+///   → StreamAssist.Components.Keyboard.UI.KeyView  ✓
 ///
 /// So the convention works automatically as long as your View and ViewModel
 /// live in the same namespace (same folder).

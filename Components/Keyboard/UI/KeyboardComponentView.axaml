@@ -5,7 +5,7 @@
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
 
-    <!-- keybaord main panel -->
+    <!-- keyboard main panel -->
 
     <keyboard:KeyboardListView DataContext="{Binding KeyboardList}"/>
 
