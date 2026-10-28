@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.BindableEditorView"
+             x:DataType="ui:BindableEditorViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- editor | block list -->
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="100"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="{Binding BlockListWidth, Mode=TwoWay}" MinWidth="100"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- editor -->
+
+        <Grid Grid.Column="0" Margin="{StaticResource PanelGapRight}">
+
+            <!-- nothing selected -->
+
+            <TextBlock Text="{Binding EmptyText}"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding !HasBindable}"/>
+
+            <!-- header | root slot -->
+
+            <Grid IsVisible="{Binding HasBindable}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Margin="{StaticResource HeaderMargin}"
+                           Classes="Label"
+                           Text="{Binding Label}"/>
+
+                <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+                <!-- the bindable's single slot (a BlockSlotView through the ViewLocator) -->
+
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto"
+                              AllowAutoHide="False"
+                              Margin="0,5">
+                    <ContentControl Content="{Binding RootSlot}" Margin="5,0,10,200"/>
+                </ScrollViewer>
+
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Column="1" Margin="{StaticResource PanelGapRight}" Classes="ColumnSplitter"/>
+
+        <!-- block list -->
+
+        <ui:BlockPaletteView Grid.Column="2" DataContext="{Binding Palette}"/>
+
+    </Grid>
+
+</UserControl>

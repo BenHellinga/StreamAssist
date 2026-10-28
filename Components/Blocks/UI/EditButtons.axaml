@@ -10,6 +10,14 @@
     <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
                 HorizontalAlignment="Right" VerticalAlignment="Top">
 
+        <!-- collapse (blocks only) -->
+
+        <Button Classes="Square Small Collapse"
+                Content="▴"
+                Command="{Binding CollapseButtonPressedCommand}"
+                IsVisible="{Binding CanCollapse}"
+                ToolTip.Tip="Collapse"/>
+
         <!-- drag handle (same size as the Small buttons next to it) -->
 
         <Border Classes="Panel Draggable"

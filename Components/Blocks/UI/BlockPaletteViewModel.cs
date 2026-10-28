@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Core.Mvvm;
 
@@ -18,14 +20,22 @@ public class BlockCategoryGroup(string title, IReadOnlyList<BlockCardViewModel> 
 
 
 
-// the block list: every block type, grouped by category
-public class BlockPaletteViewModel : ViewModelBase
+// a block list: the block types of the given categories, one heading each, filtered by the search box
+public partial class BlockPaletteViewModel : ViewModelBase
 {
     // private
 
 
 
-    private readonly ObservableCollection<BlockCategoryGroup> _categories;
+    // wait this long after the last keystroke before filtering
+    private static readonly TimeSpan SearchDelay = TimeSpan.FromMilliseconds(500);
+
+    private readonly List<BlockCategoryGroup> _allCategories; // every card, never filtered
+    private readonly ObservableCollection<BlockCategoryGroup> _categories; // what's shown
+    private IDisposable? _pendingSearch;
+
+    [ObservableProperty] private string _searchText;
+    [ObservableProperty] private bool _hasResults;
 
 
 
@@ -41,15 +51,39 @@ public class BlockPaletteViewModel : ViewModelBase
 
 
 
-    public BlockPaletteViewModel()
+    // e.g. new(("Actions", BlockCategory.Action)), headings appear in the order given
+    public BlockPaletteViewModel(params (string Title, BlockCategory Category)[] categories)
     {
+        _allCategories = [];
         _categories = [];
+        _pendingSearch = null;
+
+        _searchText = "";
+        _hasResults = true;
 
         var blocks = BlockResolver.DiscoverAll();
 
-        AddCategory("Containers", BlockCategory.Container, blocks);
-        AddCategory("Conditions", BlockCategory.Condition, blocks);
-        AddCategory("Actions", BlockCategory.Action, blocks);
+        foreach (var (title, category) in categories)
+            AddCategory(title, category, blocks);
+
+        ApplySearch();
+    }
+
+
+
+    // ui events
+
+
+
+    // restart the wait on every keystroke, so filtering only happens once typing pauses
+    partial void OnSearchTextChanged(string value)
+    {
+        _pendingSearch?.Dispose();
+        _pendingSearch = DispatcherTimer.RunOnce(() =>
+        {
+            _pendingSearch = null;
+            ApplySearch();
+        }, SearchDelay);
     }
 
 
@@ -58,7 +92,6 @@ public class BlockPaletteViewModel : ViewModelBase
 
 
 
-    // empty categories are left out
     private void AddCategory(string title, BlockCategory category, IReadOnlyList<BlockModel> blocks)
     {
         var cards = blocks
@@ -67,8 +100,28 @@ public class BlockPaletteViewModel : ViewModelBase
             .Select(b => new BlockCardViewModel(b))
             .ToList();
 
-        if (cards.Count > 0)
-            _categories.Add(new(title, cards));
+        _allCategories.Add(new(title, cards));
+    }
+
+
+
+    // shows the cards whose name contains the search text (any case), categories with nothing left are hidden
+    private void ApplySearch()
+    {
+        var search = SearchText.Trim();
+        _categories.Clear();
+
+        foreach (var category in _allCategories)
+        {
+            var cards = category.Cards
+                .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (cards.Count > 0)
+                _categories.Add(new(category.Title, cards));
+        }
+
+        HasResults = _categories.Count > 0;
     }
 
 
@@ -79,7 +132,9 @@ public class BlockPaletteViewModel : ViewModelBase
 
     public override void Dispose()
     {
-        foreach (var category in _categories)
+        _pendingSearch?.Dispose();
+
+        foreach (var category in _allCategories)
             foreach (var card in category.Cards)
                 card.Dispose();
     }

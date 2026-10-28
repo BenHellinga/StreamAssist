@@ -8,6 +8,9 @@ namespace StreamAssist.Shell;
 
 public partial class PanelViewModel : ViewModelBase
 {
+    private readonly WindowLayoutModel _layout;
+    private readonly string _layoutKey;
+
     private GridLength _oldLength;
     private bool _isVisible;
 
@@ -24,9 +27,13 @@ public partial class PanelViewModel : ViewModelBase
 
 
 
-    public PanelViewModel(int length = 200)
+    // layoutKey is the name this panel's size is saved under in the window layout
+    public PanelViewModel(WindowLayoutModel layout, string layoutKey, double defaultLength = 200)
     {
-        _oldLength = new(length);
+        _layout = layout;
+        _layoutKey = layoutKey;
+
+        _oldLength = new(_layout.GetPanelSize(_layoutKey, defaultLength));
         _isVisible = false;
 
         _length = new(0);
@@ -35,6 +42,8 @@ public partial class PanelViewModel : ViewModelBase
         _splitterMinLength = 0;
 
         _content = null;
+
+        _layout.PanelSizeChanged += OnLayoutPanelSizeChanged;
     }
 
 
@@ -79,12 +88,40 @@ public partial class PanelViewModel : ViewModelBase
 
 
 
+    // ui events
+
+
+
+    // the splitter was dragged (Length is bound two-way to the grid column/row)
+    partial void OnLengthChanged(GridLength value)
+    {
+        if (_isVisible && value.IsAbsolute) _layout.SetPanelSize(_layoutKey, value.Value);
+    }
+
+
+
+    // model events
+
+
+
+    // something else (e.g. an action) changed this panel's size
+    private void OnLayoutPanelSizeChanged(string panel, double size)
+    {
+        if (panel != _layoutKey) return;
+
+        if (_isVisible) Length = new(size);
+        else _oldLength = new(size);
+    }
+
+
+
     // disposal
 
 
 
     public override void Dispose()
     {
+        _layout.PanelSizeChanged -= OnLayoutPanelSizeChanged;
         Content?.Dispose();
     }
 }

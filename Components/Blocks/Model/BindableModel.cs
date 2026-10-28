@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -19,6 +20,7 @@ public class BindableModel : ModelBase
     private bool _isDisabled;
     private readonly BlockSlot _root;
     private readonly CancellationTokenSource _cancellation;
+    private Action? _unbindSelf;
 
 
 
@@ -70,8 +72,10 @@ public class BindableModel : ModelBase
         _isDisabled = false;
         _root = new("", typeof(ExecutableBlock));
         _cancellation = new();
+        _unbindSelf = null;
 
         _root.Changed += OnRootChanged;
+        _root.BlockChanged += OnRootBlockChanged;
     }
 
 
@@ -98,17 +102,18 @@ public class BindableModel : ModelBase
 
 
 
-    public void TriggerOnce() => Trigger(TriggerPhase.Once);
+    // parameters are passed down to every block in this run (e.g. a chat command's values)
+    public void TriggerOnce(IReadOnlyDictionary<string, string>? parameters = null) => Trigger(TriggerPhase.Once, parameters);
 
 
 
     // runs the tree in the background, errors are logged by SafeRunAsync
-    private void Trigger(TriggerPhase phase)
+    private void Trigger(TriggerPhase phase, IReadOnlyDictionary<string, string>? parameters = null)
     {
         if (_isDisabled) return;
         if (_root.Block is not ExecutableBlock root) return;
 
-        _ = root.SafeRunAsync(new TriggerContext(phase, _cancellation.Token));
+        _ = root.SafeRunAsync(new TriggerContext(phase, _cancellation.Token, parameters));
     }
 
 
@@ -125,6 +130,23 @@ public class BindableModel : ModelBase
         IsDisabledChanged?.Invoke(_isDisabled);
         Changed?.Invoke();
     }
+
+
+
+    // block management
+
+
+
+    // removes the root block, which also removes this bindable from its owner (see OnRootBlockChanged)
+    public void Clear()
+    {
+        if (_root.Block != null) _root.RemoveBlock(_root.Block);
+    }
+
+
+
+    // the owner (e.g. a keybind config) passes a callback that removes this bindable from it
+    public void AttachUnbindSelf(Action? unbindSelf) => _unbindSelf = unbindSelf;
 
 
 
@@ -148,6 +170,14 @@ public class BindableModel : ModelBase
 
 
 
+    // a bindable with no root block has nothing to run, so it removes itself from its owner
+    private void OnRootBlockChanged(BlockModel? _, BlockModel? newBlock)
+    {
+        if (newBlock == null) _unbindSelf?.Invoke();
+    }
+
+
+
     // disposal
 
 
@@ -155,6 +185,7 @@ public class BindableModel : ModelBase
     public override void Dispose()
     {
         _root.Changed -= OnRootChanged;
+        _root.BlockChanged -= OnRootBlockChanged;
 
         _cancellation.Cancel(); // stops anything still running
         _cancellation.Dispose();

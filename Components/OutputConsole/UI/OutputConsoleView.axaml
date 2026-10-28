@@ -28,14 +28,12 @@
 
         <!-- log messages -->
 
+        <!-- one selectable text for the whole log: drag to select across lines, Ctrl+A / Ctrl+C or right click to copy -->
+
         <ScrollViewer x:Name="LogScrollViewer" Margin="5">
-            <ItemsControl ItemsSource="{Binding Lines}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="x:String">
-                        <TextBlock Classes="OutputLine" Text="{Binding}"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- fills the whole console (transparent background) so clicking empty space still focuses it for Ctrl+A -->
+            <SelectableTextBlock Classes="OutputLine" Text="{Binding Text}" Background="Transparent"
+                                 MinHeight="{Binding #LogScrollViewer.Bounds.Height}"/>
         </ScrollViewer>
 
     </DockPanel>

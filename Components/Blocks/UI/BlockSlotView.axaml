@@ -13,13 +13,11 @@
 
         <!-- empty: drop zone -->
 
-        <Border Classes="Panel Droppable DropZone"
-                IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNull}}"
-                DragDrop.DragOver="OnZoneDragOver"
-                DragDrop.DragLeave="OnZoneDragLeave"
-                DragDrop.Drop="OnZoneDrop">
-            <TextBlock Text="+"/>
-        </Border>
+        <ui:DropZone IsCondition="{Binding IsConditionSlot}"
+                     IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNull}}"
+                     DragDrop.DragOver="OnZoneDragOver"
+                     DragDrop.DragLeave="OnZoneDragLeave"
+                     DragDrop.Drop="OnZoneDrop"/>
 
         <!-- filled: the block's card (a BlockView through the ViewLocator) -->
 

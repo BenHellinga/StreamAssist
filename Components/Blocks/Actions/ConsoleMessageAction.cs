@@ -14,7 +14,7 @@ public class ConsoleMessageAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Console Message";
-    [JsonIgnore] public override string Description => "Prints the configured message to the console.";
+    [JsonIgnore] public override string Description => "Prints the configured message to the console ({name} is replaced with a parameter, e.g. {user}).";
 
 
 
@@ -56,7 +56,7 @@ public class ConsoleMessageAction : ActionBlock
 
     protected override Task ExecuteAsync(TriggerContext context)
     {
-        AppLog.WriteLine(_message);
+        AppLog.WriteLine(context.Format(_message));
         return Task.CompletedTask;
     }
 }

@@ -26,6 +26,7 @@ public class BlockSlotListViewModel : ViewModelBase, IDroppable
 
     public string Label => _list.Label;
     public bool HasLabel => !string.IsNullOrEmpty(_list.Label);
+    public bool IsConditionSlot => typeof(ConditionBlock).IsAssignableFrom(_list.AcceptedType);
     public ObservableCollection<BlockViewModel> Blocks => _blocks;
 
 

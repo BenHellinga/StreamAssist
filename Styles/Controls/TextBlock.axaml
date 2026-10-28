@@ -30,4 +30,17 @@
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
+    <!-- text the user can select and copy (looks like normal text) -->
+
+    <Style Selector="SelectableTextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource Accent}"/>
+    </Style>
+
+    <Style Selector="SelectableTextBlock.OutputLine">
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
 </Styles>

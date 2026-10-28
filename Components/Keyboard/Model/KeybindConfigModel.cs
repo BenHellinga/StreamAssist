@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Blocks.Model;
@@ -10,7 +11,7 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 
 // contains data for a single keybind config (which key runs which bindable)
-public class KeybindConfigModel : ModelBase
+public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 {
     // private
 
@@ -75,7 +76,18 @@ public class KeybindConfigModel : ModelBase
     {
         _name = name;
         _keybinds = keybinds ?? [];
+
+        AttachKeybinds();
     }
+
+
+
+    // deserialized
+
+
+
+    // the dictionary is filled in by the json loader, so link each bindable back to this config afterwards
+    void IJsonOnDeserialized.OnDeserialized() => AttachKeybinds();
 
 
 
@@ -99,6 +111,7 @@ public class KeybindConfigModel : ModelBase
 
     private void BindKey(ushort vk, BindableModel keybind)
     {
+        keybind.AttachUnbindSelf(() => UnbindKey(vk));
         _keybinds.Add(vk, keybind);
         KeyBound?.Invoke(vk, keybind);
     }
@@ -110,6 +123,28 @@ public class KeybindConfigModel : ModelBase
         if (!_keybinds.Remove(key, out var keybind)) return;
         KeyUnbound?.Invoke(key, keybind!);
         keybind.Dispose();
+    }
+
+
+
+    // helpers
+
+
+
+    // empty bindables (saved before they removed themselves) are dropped, the rest can remove themselves from now on
+    private void AttachKeybinds()
+    {
+        foreach (var (vk, keybind) in _keybinds.ToArray())
+        {
+            if (!keybind.HasBlock)
+            {
+                _keybinds.Remove(vk);
+                keybind.Dispose();
+                continue;
+            }
+
+            keybind.AttachUnbindSelf(() => UnbindKey(vk));
+        }
     }
 
 

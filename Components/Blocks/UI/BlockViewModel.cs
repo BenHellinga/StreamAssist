@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,6 +19,14 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
 
+    // which view model shows each kind of slot, other components add their own with RegisterSlotViewModel
+    private static readonly Dictionary<Type, Func<BlockSlotBase, ViewModelBase>> SlotViewModelFactories = new()
+    {
+        [typeof(BlockSlot)] = slot => new BlockSlotViewModel((BlockSlot)slot),
+        [typeof(BlockSlotList)] = slot => new BlockSlotListViewModel((BlockSlotList)slot),
+        [typeof(BlockBranchList)] = slot => new BlockBranchListViewModel((BlockBranchList)slot),
+    };
+
     private readonly BlockModel _block;
     private readonly Action? _removeFromSource;
     private readonly ObservableCollection<ConfigurableParameterViewModel> _configurators;
@@ -25,6 +34,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     private IDisposable? _triggerTimer;
 
     [ObservableProperty] private bool _isDisabled;
+    [ObservableProperty] private bool _isCollapsed;
     [ObservableProperty] private bool _isTriggered;
 
 
@@ -54,23 +64,23 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
         _triggerTimer = null;
 
         _isDisabled = _block.IsDisabled;
+        _isCollapsed = _block.IsCollapsed;
         _isTriggered = false;
 
         foreach (var slot in _block.Slots)
         {
-            ViewModelBase? slotViewModel = slot switch
-            {
-                BlockSlot single => new BlockSlotViewModel(single),
-                BlockSlotList list => new BlockSlotListViewModel(list),
-                BlockBranchList branches => new BlockBranchListViewModel(branches),
-                _ => null
-            };
-
-            if (slotViewModel != null) _slots.Add(slotViewModel);
+            if (SlotViewModelFactories.TryGetValue(slot.GetType(), out var createViewModel))
+                _slots.Add(createViewModel(slot));
         }
 
         SubscribeToBlockModel(_block);
     }
+
+
+
+    // lets a component show its own kind of slot (e.g. the chatbot's Match Text rows)
+    public static void RegisterSlotViewModel<TSlot>(Func<TSlot, ViewModelBase> create) where TSlot : BlockSlotBase =>
+        SlotViewModelFactories[typeof(TSlot)] = slot => create((TSlot)slot);
 
 
 
@@ -83,6 +93,12 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
     [RelayCommand] private void OnRemoveButtonPressed() => _removeFromSource?.Invoke();
+
+
+
+    public bool CanCollapse => true;
+    [RelayCommand] private void OnCollapseButtonPressed() => _block.SetIsCollapsed(true);
+    [RelayCommand] private void OnExpandPressed() => _block.SetIsCollapsed(false);
 
 
 
@@ -99,6 +115,10 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
     private void OnBlockIsDisabledChanged(bool isDisabled) => IsDisabled = isDisabled;
+
+
+
+    private void OnBlockIsCollapsedChanged(bool isCollapsed) => IsCollapsed = isCollapsed;
 
 
 
@@ -121,6 +141,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     private void SubscribeToBlockModel(BlockModel block)
     {
         block.IsDisabledChanged += OnBlockIsDisabledChanged;
+        block.IsCollapsedChanged += OnBlockIsCollapsedChanged;
         block.Triggered += OnTriggered;
     }
 
@@ -129,6 +150,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     private void UnsubscribeFromBlockModel(BlockModel block)
     {
         block.IsDisabledChanged -= OnBlockIsDisabledChanged;
+        block.IsCollapsedChanged -= OnBlockIsCollapsedChanged;
         block.Triggered -= OnTriggered;
     }
 

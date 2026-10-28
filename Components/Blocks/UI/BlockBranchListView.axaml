@@ -22,12 +22,10 @@
                 <DataTemplate x:DataType="ui:BlockBranchViewModel">
                     <StackPanel Spacing="5">
 
-                        <Border Classes="Panel Droppable DropZone"
-                                DragDrop.DragOver="OnZoneDragOver"
-                                DragDrop.DragLeave="OnZoneDragLeave"
-                                DragDrop.Drop="OnZoneDrop">
-                            <TextBlock Text="+ condition"/>
-                        </Border>
+                        <ui:DropZone IsCondition="True"
+                                     DragDrop.DragOver="OnZoneDragOver"
+                                     DragDrop.DragLeave="OnZoneDragLeave"
+                                     DragDrop.Drop="OnZoneDrop"/>
 
                         <TextBlock Classes="Label" Text="{Binding Header}"/>
                         <ContentControl Content="{Binding Condition}"/>
@@ -42,12 +40,10 @@
 
         <!-- condition drop zone at the end -->
 
-        <Border Classes="Panel Droppable DropZone"
-                DragDrop.DragOver="OnZoneDragOver"
-                DragDrop.DragLeave="OnZoneDragLeave"
-                DragDrop.Drop="OnZoneDrop">
-            <TextBlock Text="+ condition"/>
-        </Border>
+        <ui:DropZone IsCondition="True"
+                     DragDrop.DragOver="OnZoneDragOver"
+                     DragDrop.DragLeave="OnZoneDragLeave"
+                     DragDrop.Drop="OnZoneDrop"/>
 
     </StackPanel>
 

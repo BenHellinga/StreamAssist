@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.DropZone">
+
+    <!-- the one place that decides what a block drop target looks like, every slot uses this control
+         (the borders need the Droppable class, it's how DropBehaviorHandler finds them) -->
+
+    <UserControl.Styles>
+        <Style Selector="Border.DropZone">
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="DragDrop.AllowDrop" Value="True"/>
+        </Style>
+        <Style Selector="Border.DropZone > TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel>
+
+        <!-- slot for blocks that run (containers, actions) -->
+
+        <Border x:Name="BlockZone" Classes="Panel Droppable DropZone">
+            <TextBlock Text="+"/>
+        </Border>
+
+        <!-- slot for conditions -->
+
+        <Border x:Name="ConditionZone" Classes="Panel Droppable DropZone" IsVisible="False">
+            <TextBlock Text="+ condition"/>
+        </Border>
+
+    </Panel>
+
+</UserControl>

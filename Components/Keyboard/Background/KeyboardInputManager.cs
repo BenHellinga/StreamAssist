@@ -21,13 +21,16 @@ public class KeyboardInputManager : IDisposable
 
     private const int WM_INPUT = 0x00FF;
 
+    // every key currently held, per keyboard (left/right shift, ctrl and alt share one key code)
+    private readonly HashSet<(string device, ushort vk)> _keysDown = [];
+
 
 
     // events
 
 
 
-    public event Action<string, ushort>? KeyDown;
+    public event Action<string, ushort>? KeyDown; // first press only, not windows' key repeat
     public event Action<string, ushort>? KeyUp;
 
 
@@ -53,6 +56,22 @@ public class KeyboardInputManager : IDisposable
             Marshal.GetFunctionPointerForDelegate(_wndProcDelegate)
         );
     }
+
+
+
+    // true if the key is held on any keyboard
+    public bool IsKeyDown(ushort vk)
+    {
+        foreach (var (_, heldVk) in _keysDown)
+            if (heldVk == vk) return true;
+
+        return false;
+    }
+
+
+
+    // true if the key is held on the given keyboard
+    public bool IsKeyDown(string devicePath, ushort vk) => _keysDown.Contains((devicePath, vk));
 
 
 
@@ -96,8 +115,17 @@ public class KeyboardInputManager : IDisposable
                 var vk     = (ushort)kb.Keyboard.VirutalKey;
                 var isDown = !kb.Keyboard.Flags.HasFlag(RawKeyboardFlags.Up);
 
-                if (isDown) KeyDown?.Invoke(path, vk);
-                else        KeyUp?.Invoke(path, vk);
+                // update the held set before raising the event, so listeners see the new state
+                // (windows repeats key down while a key is held, only the first one is passed on)
+                if (isDown)
+                {
+                    if (_keysDown.Add((path, vk))) KeyDown?.Invoke(path, vk);
+                }
+                else
+                {
+                    _keysDown.Remove((path, vk));
+                    KeyUp?.Invoke(path, vk);
+                }
             }
         }
 

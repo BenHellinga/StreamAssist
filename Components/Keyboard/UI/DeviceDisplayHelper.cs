@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace StreamAssist.Components.Keyboard.UI;
@@ -178,6 +179,68 @@ public static class DeviceDisplayHelper
         }
 
         return (keys, totalWidth, totalHeight);
+    }
+
+
+
+    // name -> key code
+
+
+
+    // common names people type that aren't the windows names (CONTROL, MENU, RETURN, ...)
+    private static readonly Dictionary<string, ushort> KeyNameAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ctrl"] = 0x11, ["alt"] = 0x12, ["win"] = 0x5b, ["windows"] = 0x5b,
+        ["enter"] = 0x0d, ["esc"] = 0x1b, ["backspace"] = 0x08, ["del"] = 0x2e, ["ins"] = 0x2d,
+        ["caps"] = 0x14, ["capslock"] = 0x14, ["pgup"] = 0x21, ["pageup"] = 0x21, ["pgdn"] = 0x22, ["pagedown"] = 0x22,
+        ["menu"] = 0x5d, ["prtsc"] = 0x2c, ["printscreen"] = 0x2c, ["numlock"] = 0x90, ["scrolllock"] = 0x91,
+    };
+
+
+
+    // turns what the user typed into a key code: an alias ("ctrl"), a windows name ("SHIFT", "F5", "NUMPAD1"),
+    // or a character printed on the key (";", "[", "/"), not case sensitive
+    public static bool TryParseKeyName(string? text, out ushort vk)
+    {
+        vk = 0;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        var name = text.Trim();
+
+        if (KeyNameAliases.TryGetValue(name, out vk)) return true;
+
+        for (ushort i = 0; i <= 0xff; ++i)
+        {
+            if (string.Equals(VKToGenericLabel(i), name, StringComparison.OrdinalIgnoreCase))
+            {
+                vk = i;
+                return true;
+            }
+        }
+
+        // main keys are checked before the numpad, so "/" means the slash key, not numpad divide
+        // (numpad keys can still be typed by name, e.g. "DIVIDE" or "NUMPAD1")
+        foreach (var checkNumpad in new[] { false, true })
+        {
+            for (ushort i = 0; i <= 0xff; ++i)
+            {
+                var isNumpad = i >= 0x60 && i <= 0x6f;
+                if (isNumpad != checkNumpad) continue;
+
+                var label = VKToKeyboardLabel(i);
+                if (label == null) continue;
+
+                foreach (var part in label.Split('\n'))
+                {
+                    if (!string.Equals(part, name, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    vk = i;
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
 

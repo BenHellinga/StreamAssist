@@ -26,6 +26,7 @@ public partial class BlockSlotViewModel : ViewModelBase, IDroppable
 
     public string Label => _slot.Label;
     public bool HasLabel => !string.IsNullOrEmpty(_slot.Label);
+    public bool IsConditionSlot => typeof(ConditionBlock).IsAssignableFrom(_slot.AcceptedType);
 
 
 
@@ -112,5 +113,6 @@ public partial class BlockSlotViewModel : ViewModelBase, IDroppable
     {
         UnsubscribeFromBlockSlot(_slot);
         Block?.Dispose();
+        Block = null;
     }
 }

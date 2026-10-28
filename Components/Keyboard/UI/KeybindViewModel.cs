@@ -1,17 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
-using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Blocks.UI;
-using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-// bottom panel for the keyboard tab: the selected key's block editor, plus the block list
-public partial class KeybindViewModel : ViewModelBase
+// bottom panel for the keyboard tab: the shared bindable editor, showing the selected key's bindable
+public class KeybindViewModel : BindableEditorViewModel
 {
     // private
 
@@ -24,38 +23,18 @@ public partial class KeybindViewModel : ViewModelBase
     private BindableModel? _bindable;
     private bool _isDraft;
 
-    private readonly BlockPaletteViewModel _palette;
-
-    [ObservableProperty] private BlockSlotViewModel? _rootSlot;
-    [ObservableProperty] private bool _isKeySelected;
-    [ObservableProperty] private string _label;
-
-
-
-    // public
-
-
-
-    public BlockPaletteViewModel Palette => _palette;
-
 
 
     // constructor
 
 
 
-    public KeybindViewModel()
+    public KeybindViewModel(WindowLayoutModel layout) : base(layout, "No key selected")
     {
         _key = null;
         _config = null;
         _bindable = null;
         _isDraft = false;
-
-        _palette = new();
-
-        _rootSlot = null;
-        _isKeySelected = false;
-        _label = "null";
     }
 
 
@@ -72,7 +51,7 @@ public partial class KeybindViewModel : ViewModelBase
         if (bindable == _bindable) return;
 
         // something else was bound to the selected key (e.g. a key dragged onto it)
-        ShowBindable(bindable, isDraft: false);
+        ShowKeybind(bindable, isDraft: false);
     }
 
 
@@ -82,7 +61,7 @@ public partial class KeybindViewModel : ViewModelBase
         if (vk != _key?.VK) return;
 
         // the selected key was cleared, go back to an unsaved default
-        ShowBindable(BindableModel.CreateDefault(), isDraft: true);
+        ShowKeybind(BindableModel.CreateDefault(), isDraft: true);
     }
 
 
@@ -91,6 +70,9 @@ public partial class KeybindViewModel : ViewModelBase
     private void OnDraftChanged()
     {
         if (!_isDraft || _bindable == null || _key == null || _config == null) return;
+
+        // e.g. the default On Pressed was deleted, there's still nothing worth saving
+        if (!_bindable.HasBlock) return;
 
         _bindable.Changed -= OnDraftChanged;
         _isDraft = false;
@@ -116,11 +98,8 @@ public partial class KeybindViewModel : ViewModelBase
 
         SubscribeToKeybindConfigModel(_config);
 
-        if (bindable == null) ShowBindable(BindableModel.CreateDefault(), isDraft: true);
-        else ShowBindable(bindable, isDraft: false);
-
-        Label = $"Key: {key.Label.Replace('\n', '-')}     Config: {_config.Name}";
-        IsKeySelected = true;
+        if (bindable == null) ShowKeybind(BindableModel.CreateDefault(), isDraft: true);
+        else ShowKeybind(bindable, isDraft: false);
     }
 
 
@@ -131,9 +110,7 @@ public partial class KeybindViewModel : ViewModelBase
 
         // the selected key was just deselected
         UnsubscribeFromKeybindConfigModel(_config);
-        ClearBindable();
-
-        IsKeySelected = false;
+        ClearKeybind();
 
         _key?.IsSelected = false;
         _key = null;
@@ -146,9 +123,9 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    private void ShowBindable(BindableModel bindable, bool isDraft)
+    private void ShowKeybind(BindableModel bindable, bool isDraft)
     {
-        ClearBindable();
+        ClearKeybind();
 
         _bindable = bindable;
         _isDraft = isDraft;
@@ -156,16 +133,14 @@ public partial class KeybindViewModel : ViewModelBase
         if (_isDraft)
             _bindable.Changed += OnDraftChanged;
 
-        RootSlot = new BlockSlotViewModel(_bindable.Root);
+        ShowBindable(_bindable, $"Key: {_key?.Label.Replace('\n', '-')}     Config: {_config?.Name}");
     }
 
 
 
-    private void ClearBindable()
+    private void ClearKeybind()
     {
-        var oldSlot = RootSlot;
-        RootSlot = null;
-        oldSlot?.Dispose();
+        ClearBindable();
 
         // a draft that was never changed is thrown away, a real bindable belongs to the config
         if (_bindable != null && _isDraft)
@@ -203,8 +178,8 @@ public partial class KeybindViewModel : ViewModelBase
     public override void Dispose()
     {
         UnsubscribeFromKeybindConfigModel(_config);
-        ClearBindable();
+        ClearKeybind();
 
-        _palette.Dispose();
+        base.Dispose();
     }
 }

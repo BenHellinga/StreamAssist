@@ -30,13 +30,13 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
 
 
-    public static KeyboardComponentViewModel ActivateTab(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel sidePanel, PanelViewModel bottomPanel)
+    public static KeyboardComponentViewModel ActivateTab(KeyboardComponentModel model, KeyboardComponentManager manager, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel)
     {
         // no side panel, the block list lives in the bottom panel next to the editor
         sidePanel.TransferContent(null);
         bottomPanel.TransferContent(null);
 
-        return new(model, manager, bottomPanel);
+        return new(model, manager, layout, bottomPanel);
     }
 
 
@@ -45,9 +45,9 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
 
 
-    public KeyboardComponentViewModel(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel keyConfiguratorPanel)
+    public KeyboardComponentViewModel(KeyboardComponentModel model, KeyboardComponentManager manager, WindowLayoutModel layout, PanelViewModel keyConfiguratorPanel)
     {
-        var keybindConfigurator = new KeybindViewModel();
+        var keybindConfigurator = new KeybindViewModel(layout);
         keyConfiguratorPanel.TransferContent(keybindConfigurator);
 
         _keyboardList = new KeyboardListViewModel(model.ListModel, manager.GetInputManager(), keybindConfigurator);

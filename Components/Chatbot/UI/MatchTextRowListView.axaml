@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Chatbot.UI.MatchTextRowListView"
+             x:DataType="ui:MatchTextRowListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
+
+    <!-- one row per pattern: text box | the chat block that continues after it -->
+
+    <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Spacing="5"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="ui:MatchTextRowViewModel">
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+
+                    <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top"
+                             Text="{Binding Pattern}" PlaceholderText="Text or regex…"/>
+
+                    <!-- the slot (a BlockSlotView through the ViewLocator), only once the row has text -->
+                    <ContentControl Grid.Column="1" Content="{Binding Child}" IsVisible="{Binding ShowSlot}"/>
+
+                </Grid>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+</UserControl>

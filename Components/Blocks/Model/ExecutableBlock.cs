@@ -39,7 +39,7 @@ public abstract class ExecutableBlock : BlockModel
         }
         catch (Exception ex)
         {
-            AppLog.WriteError($"Block '{Name}' stopped - {ex.Message}");
+            AppLog.WriteError($"Could not run block '{Name}' - {ex.Message}");
         }
     }
 

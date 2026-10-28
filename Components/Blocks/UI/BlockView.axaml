@@ -6,45 +6,66 @@
              xmlns:ui="using:StreamAssist.Components.Blocks.UI"
              xmlns:configurator="using:StreamAssist.Components.Blocks.UI.Configurator">
 
-    <!-- block card -->
+    <Panel HorizontalAlignment="Left">
 
-    <Border Classes="Panel Bound"
-            Classes.Triggered="{Binding IsTriggered}"
-            Classes.Disabled="{Binding IsDisabled}"
-            HorizontalAlignment="Left">
-        <Grid>
+        <!-- collapsed: a small box the size of a drop zone, same outline as the card, click to expand -->
 
-            <StackPanel Margin="5">
+        <Border Classes="Panel Bound Clickable"
+                Classes.Triggered="{Binding IsTriggered}"
+                Classes.Disabled="{Binding IsDisabled}"
+                IsVisible="{Binding IsCollapsed}"
+                Width="100" Height="25" HorizontalAlignment="Left"
+                ToolTip.Tip="{Binding Name}"
+                PointerPressed="OnCollapsedPointerPressed">
+            <TextBlock Text="▾" HorizontalAlignment="Center"/>
+        </Border>
 
-                <TextBlock Classes="Title" Text="{Binding Name}" Margin="5"/>
-                <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
+        <!-- block card -->
 
-                <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
+        <Border Classes="Panel Bound"
+                Classes.Triggered="{Binding IsTriggered}"
+                Classes.Disabled="{Binding IsDisabled}"
+                IsVisible="{Binding !IsCollapsed}"
+                HorizontalAlignment="Left">
+            <StackPanel>
 
-                <ItemsControl ItemsSource="{Binding Configurators}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
-                            <ContentControl Content="{Binding}" Margin="5,0,5,5"
-                                            ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <!-- title | corner buttons, side by side so the buttons never cover the title
+                     (the card is at least title + buttons wide, wider content just stretches the gap between them) -->
 
-                <!-- nested slots (each becomes a BlockSlotView or BlockSlotListView through the ViewLocator) -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <!-- placed blocks only show their name, the description is in the block list (and on hover here) -->
+                    <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="10,10,5,5" ToolTip.Tip="{Binding Description}"/>
+                    <ui:EditButtons Grid.Column="1"/>
+                </Grid>
 
-                <ItemsControl ItemsSource="{Binding Slots}" Margin="5,0,5,5">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Spacing="5"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
+                <StackPanel Margin="5,0,5,5">
+
+                    <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
+
+                    <ItemsControl ItemsSource="{Binding Configurators}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
+                                <ContentControl Content="{Binding}" Margin="5,0,5,5"
+                                                ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- nested slots (each becomes a BlockSlotView or BlockSlotListView through the ViewLocator) -->
+
+                    <ItemsControl ItemsSource="{Binding Slots}" Margin="5,0,5,5">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="5"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+
+                </StackPanel>
 
             </StackPanel>
+        </Border>
 
-            <ui:EditButtons/>
-
-        </Grid>
-    </Border>
+    </Panel>
 
 </UserControl>

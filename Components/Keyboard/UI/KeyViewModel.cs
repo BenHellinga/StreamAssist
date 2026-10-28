@@ -116,6 +116,12 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
 
 
+    // keys can't collapse (the button is hidden)
+    public bool CanCollapse => false;
+    [RelayCommand] private void OnCollapseButtonPressed() { }
+
+
+
     // drag drop
 
 

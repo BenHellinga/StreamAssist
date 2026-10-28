@@ -5,34 +5,52 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- block list: a heading per category, its cards below (each card is a BlockCardView through the ViewLocator) -->
+    <!-- search box | block list -->
 
-    <ScrollViewer Margin="5">
-        <ItemsControl ItemsSource="{Binding Categories}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Spacing="10"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
+    <DockPanel Margin="5">
 
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="ui:BlockCategoryGroup">
-                    <StackPanel Spacing="5">
+        <!-- search (filters as you type, after a short pause) -->
 
-                        <TextBlock Classes="Label" Text="{Binding Title}"/>
+        <TextBox DockPanel.Dock="Top"
+                 Margin="{StaticResource PanelGapBottom}"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="Search blocks…"/>
 
-                        <ItemsControl ItemsSource="{Binding Cards}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="5"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+        <TextBlock DockPanel.Dock="Top"
+                   Classes="Description"
+                   Text="No matching blocks"
+                   IsVisible="{Binding !HasResults}"/>
 
-                    </StackPanel>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </ScrollViewer>
+        <!-- a heading per category, its cards below (each card is a BlockCardView through the ViewLocator) -->
+
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Categories}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="10"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ui:BlockCategoryGroup">
+                        <StackPanel Spacing="5">
+
+                            <TextBlock Classes="Label" Text="{Binding Title}"/>
+
+                            <ItemsControl ItemsSource="{Binding Cards}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="5"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
 
 </UserControl>

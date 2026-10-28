@@ -43,7 +43,7 @@ public static class BlockResolver
     {
         if (!_typeMap.TryGetValue(data.TypeName, out var type))
         {
-            AppLog.WriteWarning($"Unknown block type '{data.TypeName}' - block skipped");
+            AppLog.WriteWarning($"Could not load block '{data.TypeName}' - unknown block type, it was skipped");
             return null;
         }
 
@@ -53,7 +53,7 @@ public static class BlockResolver
         }
         catch (Exception ex)
         {
-            AppLog.WriteError($"Failed to load block '{data.TypeName}': {ex.Message}");
+            AppLog.WriteError($"Could not load block '{data.TypeName}' - {ex.Message}");
             return null;
         }
     }
@@ -93,7 +93,7 @@ public static class BlockResolver
             }
             catch (Exception ex)
             {
-                AppLog.WriteError($"Failed to create block '{type.Name}': {ex.Message}");
+                AppLog.WriteError($"Could not create block '{type.Name}' - {ex.Message}");
             }
         }
 

@@ -7,8 +7,8 @@ namespace StreamAssist.Components.Blocks.Model;
 
 
 
-// which heading a block is listed under in the block list
-public enum BlockCategory { Container, Condition, Action }
+// which heading a block is listed under in the block list (Chat blocks only appear in the chatbot's list)
+public enum BlockCategory { Container, Condition, Action, Chat }
 
 
 
@@ -20,6 +20,7 @@ public abstract class BlockModel : ModelBase
 
 
     private bool _isDisabled;
+    private bool _isCollapsed;
 
 
 
@@ -32,6 +33,7 @@ public abstract class BlockModel : ModelBase
     [JsonIgnore] public abstract BlockCategory Category { get; }
     [JsonIgnore] public virtual IReadOnlyList<BlockSlotBase> Slots => [];
     [JsonIgnore] public bool IsDisabled => _isDisabled;
+    [JsonIgnore] public bool IsCollapsed => _isCollapsed; // shown as a small box in the editor
 
 
 
@@ -46,6 +48,13 @@ public abstract class BlockModel : ModelBase
         set => _isDisabled = value;
     }
 
+    [JsonInclude] [JsonPropertyName("isCollapsed")]
+    private bool JsonIsCollapsed
+    {
+        get => _isCollapsed;
+        set => _isCollapsed = value;
+    }
+
 
 
     // events
@@ -53,6 +62,7 @@ public abstract class BlockModel : ModelBase
 
 
     public event Action<bool>? IsDisabledChanged;
+    public event Action<bool>? IsCollapsedChanged;
     public event Action? Triggered;
     public event Action? Changed; // this block, or anything nested inside it, changed
 
@@ -65,6 +75,7 @@ public abstract class BlockModel : ModelBase
     protected BlockModel()
     {
         _isDisabled = false;
+        _isCollapsed = false;
     }
 
 
@@ -79,6 +90,17 @@ public abstract class BlockModel : ModelBase
 
         _isDisabled = isDisabled;
         IsDisabledChanged?.Invoke(_isDisabled);
+        RaiseChanged();
+    }
+
+
+
+    public void SetIsCollapsed(bool isCollapsed)
+    {
+        if (isCollapsed == _isCollapsed) return;
+
+        _isCollapsed = isCollapsed;
+        IsCollapsedChanged?.Invoke(_isCollapsed);
         RaiseChanged();
     }
 
