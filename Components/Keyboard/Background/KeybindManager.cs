@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Blocks.Model;
 
 namespace StreamAssist.Components.Keyboard.Background;
 
@@ -17,7 +18,7 @@ public class KeybindManager : IDisposable
     private readonly KeyboardInputManager _inputManager;
     private readonly KeyboardListModel _listModel;
 
-    private readonly Dictionary<string, List<KeybindModel>?[]> _lookup = [];
+    private readonly Dictionary<string, List<BindableModel>?[]> _lookup = [];
     private readonly HashSet<(string device, ushort VK)> _keysDown = [];
 
     private readonly Dictionary<KeyboardSlotModel, SlotTracker> _slotTrackers = [];
@@ -67,16 +68,15 @@ public class KeybindManager : IDisposable
 
     private void OnKeyDown(string device, ushort vk)
     {
+        // windows repeats key down while a key is held, only the first one starts the bind
         var isRepeat = !_keysDown.Add((device, vk));
+        if (isRepeat) return;
 
         var bindings = GetBindings(device, vk);
         if (bindings == null) return;
 
         foreach (var binding in bindings)
-        {
-            var group = isRepeat ? binding.OnRepeated : binding.OnPressed;
-            _ = group?.SafeExecuteAllAsync();
-        }
+            binding.TriggerStart();
     }
 
 
@@ -89,15 +89,12 @@ public class KeybindManager : IDisposable
         if (bindings == null) return;
 
         foreach (var binding in bindings)
-        {
-            var group = binding.OnReleased;
-            _ = group?.SafeExecuteAllAsync();
-        }
+            binding.TriggerStop();
     }
 
 
 
-    private List<KeybindModel>? GetBindings(string device, ushort vk)
+    private List<BindableModel>? GetBindings(string device, ushort vk)
     {
         if (!_lookup.TryGetValue(device, out var table)) return null;
         return table[vk];
@@ -109,11 +106,11 @@ public class KeybindManager : IDisposable
 
 
 
-    private void Register(string device, ushort vk, KeybindModel keybind)
+    private void Register(string device, ushort vk, BindableModel keybind)
     {
         if (!_lookup.TryGetValue(device, out var table))
         {
-            table = new List<KeybindModel>?[256];
+            table = new List<BindableModel>?[256];
             _lookup[device] = table;
         }
 
@@ -122,7 +119,7 @@ public class KeybindManager : IDisposable
 
 
 
-    private void Unregister(string device, ushort vk, KeybindModel keybind)
+    private void Unregister(string device, ushort vk, BindableModel keybind)
     {
         if (!_lookup.TryGetValue(device, out var table)) return;
 
@@ -164,7 +161,7 @@ public class KeybindManager : IDisposable
         private KeybindConfigModel? _config;
 
         // all keybinds in config
-        private readonly Dictionary<ushort, KeybindModel> _bound = [];
+        private readonly Dictionary<ushort, BindableModel> _bound = [];
 
         // bound && enabled && has device
         private readonly HashSet<ushort> _registered = [];
@@ -208,7 +205,7 @@ public class KeybindManager : IDisposable
 
 
 
-        private void OnKeyBound(ushort vk, KeybindModel keybind)
+        private void OnKeyBound(ushort vk, BindableModel keybind)
         {
             TrackKey(vk, keybind);
             if (keybind.IsDisabled) return;
@@ -217,7 +214,7 @@ public class KeybindManager : IDisposable
 
 
 
-        private void OnKeyUnbound(ushort vk, KeybindModel _)
+        private void OnKeyUnbound(ushort vk, BindableModel _)
         {
             Unregister(vk);
             UntrackKey(vk);
@@ -263,7 +260,7 @@ public class KeybindManager : IDisposable
 
 
 
-        private void TrackKey(ushort vk, KeybindModel keybind)
+        private void TrackKey(ushort vk, BindableModel keybind)
         {
             _bound[vk] = keybind;
 
@@ -313,7 +310,7 @@ public class KeybindManager : IDisposable
 
 
 
-        private void Register(ushort vk, KeybindModel keybind)
+        private void Register(ushort vk, BindableModel keybind)
         {
             if (_device == null) return;
             if (!_registered.Add(vk)) return;

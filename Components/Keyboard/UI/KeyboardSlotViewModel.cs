@@ -11,6 +11,7 @@ using StreamAssist.Core.Utilities;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Components.Blocks.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -60,7 +61,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public event Action<string, Dictionary<ushort, KeybindModel>, Action<KeybindConfigModel>?>? CreateConfigRequested;
+    public event Action<string, Dictionary<ushort, BindableModel>, Action<KeybindConfigModel>?>? CreateConfigRequested;
     public event Action<KeybindConfigModel>? DeleteConfigRequested;
 
 
@@ -136,7 +137,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
         // copy current config's keybinds
         var json = JsonSerializer.Serialize(_slot.SelectedConfig?.Keybinds);
-        var keybinds = JsonSerializer.Deserialize<Dictionary<ushort, KeybindModel>>(json) ?? [];
+        var keybinds = JsonSerializer.Deserialize<Dictionary<ushort, BindableModel>>(json) ?? [];
 
         CreateConfigRequested?.Invoke(
             InputConfig,

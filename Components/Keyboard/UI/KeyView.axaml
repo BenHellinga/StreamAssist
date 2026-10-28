@@ -4,7 +4,7 @@
              x:DataType="keyboard:KeyViewModel"
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
-             xmlns:action="using:StreamAssist.Components.AppAction.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
 
              Width="{Binding W}"
              Height="{Binding H}">
@@ -26,7 +26,7 @@
                        TextAlignment="Center"
                        HorizontalAlignment="Center"/>
 
-            <action:ActionUIButtons IsVisible="{Binding IsSelected}"/>
+            <blocks:EditButtons IsVisible="{Binding IsSelected}"/>
         </Grid>
     </Border>
 </UserControl>

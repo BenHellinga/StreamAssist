@@ -20,7 +20,7 @@
                 <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Brushes.axaml"/>
                 <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Typography.axaml"/>
                 <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Spacing.axaml"/>
-                <ResourceInclude Source="avares://StreamAssist/Components/AppAction/UI/Configurator/ConfiguratorTemplates.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Components/Blocks/UI/Configurator/ConfiguratorTemplates.axaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:configurator="using:StreamAssist.Components.Blocks.UI.Configurator">
+
+    <!-- picks one of the templates below based on ConfigurableParameterViewModel.Configurator -->
+
+    <configurator:ConfiguratorTemplateSelector x:Key="ConfiguratorTemplateSelector"/>
+
+    <DataTemplate x:Key="TextConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
+            <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="Enter Text…"
+                     AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap" VerticalContentAlignment="Top"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NumberConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
+            <NumericUpDown Grid.Column="1" Value="{Binding Value}" MinWidth="150"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="BoolConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
+            <CheckBox Grid.Column="1" IsChecked="{Binding Value}" HorizontalAlignment="Left"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="FilepathConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
+            <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="No File Selected…"/>
+            <Button Grid.Column="2" Content="Browse…" Command="{Binding BrowsePressedCommand}"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="MenuConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding MenuItems}" SelectedItem="{Binding Value}"
+                      HorizontalAlignment="Stretch"/>
+        </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="SliderConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
+            <Slider Grid.Column="1" Minimum="{Binding Min}" Maximum="{Binding Max}" Value="{Binding Value}"
+                    VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat={}{0:0.00}}" MinWidth="40"/>
+        </Grid>
+    </DataTemplate>
+
+</ResourceDictionary>

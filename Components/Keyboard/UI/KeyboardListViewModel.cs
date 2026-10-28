@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Blocks.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -118,7 +119,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnCreateConfigRequested(string name, Dictionary<ushort, KeybindModel>? bindings, Action<KeybindConfigModel>? callback)
+    private void OnCreateConfigRequested(string name, Dictionary<ushort, BindableModel>? bindings, Action<KeybindConfigModel>? callback)
     {
         if (!_list.TryCreateConfig(name, bindings, out var config)) return;
         callback?.Invoke(config);

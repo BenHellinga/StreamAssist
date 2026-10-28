@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Avalonia.Threading;
-using StreamAssist.Components.AppAction.Background;
-using StreamAssist.Components.AppAction.Model;
+using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Core.Persistence;
 using StreamAssist.Components.Keyboard.Model;
 
@@ -17,7 +16,6 @@ public class KeyboardSaveManager : IDisposable
 
 
     private readonly KeyboardComponentModel _model;
-    private readonly Dictionary<ActionGroupModel, ActionGroupChangeManager> _changeManagers;
     private IDisposable? _pendingSave;
 
 
@@ -29,7 +27,6 @@ public class KeyboardSaveManager : IDisposable
     public KeyboardSaveManager(KeyboardComponentModel model)
     {
         _model = model;
-        _changeManagers = [];
         _pendingSave = null;
 
         SubscribeToKeyboardComponentModel(_model);
@@ -81,39 +78,23 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnKeyBound(ushort _, KeybindModel bindingModel)
+    private void OnKeyBound(ushort _, BindableModel bindable)
     {
-        SubscribeToKeybindModel(bindingModel);
+        SubscribeToBindableModel(bindable);
         Save();
     }
 
 
 
-    private void OnKeyUnbound(ushort _, KeybindModel bindingModel)
+    private void OnKeyUnbound(ushort _, BindableModel bindable)
     {
-        UnsubscribeFromKeybindModel(bindingModel);
+        UnsubscribeFromBindableModel(bindable);
         Save();
     }
 
 
 
-    private void OnTriggerBound(KeybindModel.TriggerType _, ActionGroupModel group)
-    {
-        SubscribeToActionGroupModel(group);
-        Save();
-    }
-
-
-
-    private void OnTriggerUnbound(KeybindModel.TriggerType _, ActionGroupModel group)
-    {
-        UnsubscribeFromActionGroupModel(group);
-        Save();
-    }
-
-
-
-    private void OnGroupChanged() => Save();
+    private void OnBindableChanged() => Save();
 
 
 
@@ -206,7 +187,7 @@ public class KeyboardSaveManager : IDisposable
         config.KeyUnbound += OnKeyUnbound;
 
         foreach (var bindingModel in config.Keybinds.Values)
-            SubscribeToKeybindModel(bindingModel);
+            SubscribeToBindableModel(bindingModel);
     }
 
 
@@ -217,50 +198,17 @@ public class KeyboardSaveManager : IDisposable
         config.KeyUnbound -= OnKeyUnbound;
 
         foreach (var bindingModel in config.Keybinds.Values)
-            UnsubscribeFromKeybindModel(bindingModel);
+            UnsubscribeFromBindableModel(bindingModel);
     }
 
 
 
-    private void SubscribeToKeybindModel(KeybindModel keybind)
-    {
-        keybind.TriggerBound += OnTriggerBound;
-        keybind.TriggerUnbound += OnTriggerUnbound;
-
-        if (keybind.OnPressed != null) SubscribeToActionGroupModel(keybind.OnPressed);
-        if (keybind.OnReleased != null) SubscribeToActionGroupModel(keybind.OnReleased);
-        if (keybind.OnRepeated != null) SubscribeToActionGroupModel(keybind.OnRepeated);
-    }
+    // a bindable raises Changed for anything inside it, so one subscription covers the whole block tree
+    private void SubscribeToBindableModel(BindableModel bindable) => bindable.Changed += OnBindableChanged;
 
 
 
-    private void UnsubscribeFromKeybindModel(KeybindModel keybind)
-    {
-        keybind.TriggerBound -= OnTriggerBound;
-        keybind.TriggerUnbound -= OnTriggerUnbound;
-
-        if (keybind.OnPressed != null) UnsubscribeFromActionGroupModel(keybind.OnPressed);
-        if (keybind.OnReleased != null) UnsubscribeFromActionGroupModel(keybind.OnReleased);
-        if (keybind.OnRepeated != null) UnsubscribeFromActionGroupModel(keybind.OnRepeated);
-    }
-
-
-
-    private void SubscribeToActionGroupModel(ActionGroupModel group)
-    {
-        var changeManager = new ActionGroupChangeManager(group);
-        _changeManagers.Add(group, changeManager);
-        changeManager.GroupChanged += OnGroupChanged;
-    }
-
-
-
-    private void UnsubscribeFromActionGroupModel(ActionGroupModel group)
-    {
-        _changeManagers.Remove(group, out var changeManager);
-        changeManager!.GroupChanged -= OnGroupChanged;
-        changeManager.Dispose();
-    }
+    private void UnsubscribeFromBindableModel(BindableModel bindable) => bindable.Changed -= OnBindableChanged;
 
 
 

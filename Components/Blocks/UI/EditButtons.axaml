@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.EditButtons"
+             x:DataType="ui:IEditButtons"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- small corner buttons for a key or block -->
+
+    <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
+                HorizontalAlignment="Right" VerticalAlignment="Top">
+
+        <!-- drag handle (same size as the Small buttons next to it) -->
+
+        <Border Classes="Panel Draggable"
+                Width="15" Height="15"
+                PointerPressed="OnHandlePointerPressed">
+            <TextBlock Text="⠿" HorizontalAlignment="Center"/>
+        </Border>
+
+        <!-- toggle disable -->
+
+        <Button Classes="Square Small ToggleEnabled"
+                Content="+"
+                Command="{Binding ToggleButtonPressedCommand}"
+                ToolTip.Tip="Enable/disable this"/>
+
+        <!-- remove -->
+
+        <Button Classes="Square Small RemoveAction"
+                Content="X"
+                Command="{Binding RemoveButtonPressedCommand}"
+                ToolTip.Tip="Remove"/>
+
+    </StackPanel>
+
+</UserControl>

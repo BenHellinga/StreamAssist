@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Components.Blocks.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
@@ -154,7 +155,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public bool TryCreateConfig(string name, Dictionary<ushort, KeybindModel>? keybinds, out KeybindConfigModel config)
+    public bool TryCreateConfig(string name, Dictionary<ushort, BindableModel>? keybinds, out KeybindConfigModel config)
     {
         config = null!;
         var trimmed = name.Trim();
@@ -183,7 +184,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    private void CreateConfig(string name, Dictionary<ushort, KeybindModel>? keybinds, out KeybindConfigModel config)
+    private void CreateConfig(string name, Dictionary<ushort, BindableModel>? keybinds, out KeybindConfigModel config)
     {
         config = new KeybindConfigModel(name, keybinds);
         _configs.Add(config);

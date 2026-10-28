@@ -46,6 +46,18 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
+    <!-- small "+" target to drop blocks on -->
+
+    <Style Selector="Border.DropZone">
+        <Setter Property="Width" Value="100"/>
+        <Setter Property="Height" Value="25"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="DragDrop.AllowDrop" Value="True"/>
+    </Style>
+    <Style Selector="Border.DropZone > TextBlock">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
+
     <!-- clickable -->
 
     <Style Selector="Border.Clickable">

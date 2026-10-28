@@ -3,57 +3,61 @@
              x:Class="StreamAssist.Components.Keyboard.UI.KeybindView"
              x:DataType="keyboard:KeybindViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- key configurator -->
+    <!-- editor | block list -->
 
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="100"/>
+            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="200" MinWidth="100"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- no key selected -->
+        <!-- editor -->
 
-        <TextBlock Text="No key selected"
-                   HorizontalAlignment="Center"
-                   IsVisible="{Binding !IsKeySelected}"/>
+        <Grid Grid.Column="0" Margin="{StaticResource PanelGapRight}">
 
-        <!-- * | content -->
+            <!-- no key selected -->
 
-        <Grid IsVisible="{Binding IsKeySelected}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+            <TextBlock Text="No key selected"
+                       HorizontalAlignment="Center"
+                       IsVisible="{Binding !IsKeySelected}"/>
 
-            <!-- tab strip | label -->
+            <!-- header | root slot -->
 
-            <Grid Grid.Row="0" Margin="{StaticResource HeaderMargin}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Grid IsVisible="{Binding IsKeySelected}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-                <!-- tab strip -->
-
-                <ListBox Grid.Column="0"
-                         Classes="TopTabStrip"
-                         ItemsSource="{Binding Tabs}"
-                         SelectedItem="{Binding SelectedTab}"/>
-
-                <!-- label -->
-
-                <TextBlock Grid.Column="1"
+                <TextBlock Grid.Row="0" Margin="{StaticResource HeaderMargin}"
                            Classes="Label"
                            Text="{Binding Label}"/>
 
+                <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+                <!-- the key's single slot (a BlockSlotView through the ViewLocator) -->
+
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto"
+                              AllowAutoHide="False"
+                              Margin="0,5">
+                    <ContentControl Content="{Binding RootSlot}" Margin="5,0,10,200"/>
+                </ScrollViewer>
+
             </Grid>
-
-            <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
-
-            <!-- content (an ActionGroupViewModel, shown through the ViewLocator) -->
-
-            <ContentControl Grid.Row="2" Content="{Binding ActiveContent}"/>
-
         </Grid>
+
+        <GridSplitter Grid.Column="1" Margin="{StaticResource PanelGapRight}" Classes="ColumnSplitter"/>
+
+        <!-- block list -->
+
+        <blocks:BlockPaletteView Grid.Column="2" DataContext="{Binding Palette}"/>
 
     </Grid>
 

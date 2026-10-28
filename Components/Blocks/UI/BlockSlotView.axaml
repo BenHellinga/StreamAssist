@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.BlockSlotView"
+             x:DataType="ui:BlockSlotViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- single slot -->
+
+    <StackPanel Spacing="5">
+
+        <TextBlock Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+
+        <!-- empty: drop zone -->
+
+        <Border Classes="Panel Droppable DropZone"
+                IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNull}}"
+                DragDrop.DragOver="OnZoneDragOver"
+                DragDrop.DragLeave="OnZoneDragLeave"
+                DragDrop.Drop="OnZoneDrop">
+            <TextBlock Text="+"/>
+        </Border>
+
+        <!-- filled: the block's card (a BlockView through the ViewLocator) -->
+
+        <ContentControl Content="{Binding Block}"
+                        IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+    </StackPanel>
+
+</UserControl>

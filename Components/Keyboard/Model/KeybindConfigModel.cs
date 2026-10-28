@@ -2,21 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using StreamAssist.Core.Mvvm;
+using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-// contains data for a single keybind config
-public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
+// contains data for a single keybind config (which key runs which bindable)
+public class KeybindConfigModel : ModelBase
 {
     // private
 
 
 
     private string _name;
-    private Dictionary<ushort, KeybindModel> _keybinds;
+    private Dictionary<ushort, BindableModel> _keybinds;
 
 
 
@@ -25,7 +26,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 
 
     [JsonIgnore] public string Name => _name;
-    [JsonIgnore] public IReadOnlyDictionary<ushort, KeybindModel> Keybinds => _keybinds;
+    [JsonIgnore] public IReadOnlyDictionary<ushort, BindableModel> Keybinds => _keybinds;
 
 
 
@@ -40,8 +41,8 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
         set => _name = value;
     }
 
-    [JsonInclude] [JsonPropertyName("keybinds")]
-    private Dictionary<ushort, KeybindModel> JsonKeybinds
+    [JsonInclude] [JsonPropertyName("bindables")]
+    private Dictionary<ushort, BindableModel> JsonKeybinds
     {
         get => _keybinds;
         set => _keybinds = value;
@@ -53,8 +54,8 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public event Action<ushort, KeybindModel>? KeyBound;
-    public event Action<ushort, KeybindModel>? KeyUnbound;
+    public event Action<ushort, BindableModel>? KeyBound;
+    public event Action<ushort, BindableModel>? KeyUnbound;
 
 
 
@@ -70,26 +71,10 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public KeybindConfigModel(string name, Dictionary<ushort, KeybindModel>? keybinds)
+    public KeybindConfigModel(string name, Dictionary<ushort, BindableModel>? keybinds)
     {
         _name = name;
         _keybinds = keybinds ?? [];
-
-        foreach (var (vk, keybind) in _keybinds)
-            keybind.AttachUnbindSelf(() => UnbindKey(vk));
-    }
-
-
-
-    // deserialized
-
-
-
-    // json deserialization is done in reverse, so this has to be done after all keybinds are already made
-    void IJsonOnDeserialized.OnDeserialized()
-    {
-        foreach (var (vk, keybind) in _keybinds)
-            keybind.AttachUnbindSelf(() => UnbindKey(vk));
     }
 
 
@@ -98,7 +83,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public bool TryBindKey(ushort vk, KeybindModel keybind)
+    public bool TryBindKey(ushort vk, BindableModel keybind)
     {
         if (_keybinds.ContainsKey(vk))
         {
@@ -112,9 +97,8 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
 
 
 
-    private void BindKey(ushort vk, KeybindModel keybind)
+    private void BindKey(ushort vk, BindableModel keybind)
     {
-        keybind.AttachUnbindSelf(() => UnbindKey(vk));
         _keybinds.Add(vk, keybind);
         KeyBound?.Invoke(vk, keybind);
     }

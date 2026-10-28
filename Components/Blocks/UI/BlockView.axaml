@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.BlockView"
+             x:DataType="ui:BlockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+             xmlns:configurator="using:StreamAssist.Components.Blocks.UI.Configurator">
+
+    <!-- block card -->
+
+    <Border Classes="Panel Bound"
+            Classes.Triggered="{Binding IsTriggered}"
+            Classes.Disabled="{Binding IsDisabled}"
+            HorizontalAlignment="Left">
+        <Grid>
+
+            <StackPanel Margin="5">
+
+                <TextBlock Classes="Title" Text="{Binding Name}" Margin="5"/>
+                <TextBlock Classes="Description" Text="{Binding Description}" Margin="5,0,5,5"/>
+
+                <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
+
+                <ItemsControl ItemsSource="{Binding Configurators}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
+                            <ContentControl Content="{Binding}" Margin="5,0,5,5"
+                                            ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- nested slots (each becomes a BlockSlotView or BlockSlotListView through the ViewLocator) -->
+
+                <ItemsControl ItemsSource="{Binding Slots}" Margin="5,0,5,5">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="5"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+            </StackPanel>
+
+            <ui:EditButtons/>
+
+        </Grid>
+    </Border>
+
+</UserControl>

@@ -1,5 +1,4 @@
 using StreamAssist.Core.Mvvm;
-using StreamAssist.Components.AppAction.UI;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Shell;
@@ -33,10 +32,8 @@ public partial class KeyboardComponentViewModel : ViewModelBase
 
     public static KeyboardComponentViewModel ActivateTab(KeyboardComponentModel model, KeyboardComponentManager manager, PanelViewModel sidePanel, PanelViewModel bottomPanel)
     {
-        // set side and bottom panel content
-        if (sidePanel.Content is not ActionListViewModel)
-            sidePanel.TransferContent(new ActionListViewModel());
-
+        // no side panel, the block list lives in the bottom panel next to the editor
+        sidePanel.TransferContent(null);
         bottomPanel.TransferContent(null);
 
         return new(model, manager, bottomPanel);

@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
-using StreamAssist.Components.AppAction.UI;
+using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Keyboard.Model;
 
@@ -12,7 +10,7 @@ namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-// view model to modify a KeybindModel object
+// bottom panel for the keyboard tab: the selected key's block editor, plus the block list
 public partial class KeybindViewModel : ViewModelBase
 {
     // private
@@ -20,13 +18,15 @@ public partial class KeybindViewModel : ViewModelBase
 
 
     private KeyViewModel? _key;
-    private KeybindModel? _keybind;
     private KeybindConfigModel? _config;
 
-    private ObservableCollection<ViewModelTabItem> _tabs;
-    [ObservableProperty] private ViewModelTabItem _selectedTab;
-    [ObservableProperty] private ViewModelBase? _activeContent;
+    // the bindable being edited, either the key's real one or a draft that isn't saved yet
+    private BindableModel? _bindable;
+    private bool _isDraft;
 
+    private readonly BlockPaletteViewModel _palette;
+
+    [ObservableProperty] private BlockSlotViewModel? _rootSlot;
     [ObservableProperty] private bool _isKeySelected;
     [ObservableProperty] private string _label;
 
@@ -36,7 +36,7 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    public ObservableCollection<ViewModelTabItem> Tabs => _tabs;
+    public BlockPaletteViewModel Palette => _palette;
 
 
 
@@ -47,28 +47,16 @@ public partial class KeybindViewModel : ViewModelBase
     public KeybindViewModel()
     {
         _key = null;
-        _keybind = null;
         _config = null;
+        _bindable = null;
+        _isDraft = false;
 
-        _tabs = [
-            new("On Pressed", () => new ActionGroupViewModel(_keybind!.OnPressed, g => _keybind!.TryBindTrigger(KeybindModel.TriggerType.OnPressed, g))),
-            new("On Released", () => new ActionGroupViewModel(_keybind!.OnReleased, g => _keybind!.TryBindTrigger(KeybindModel.TriggerType.OnReleased, g))),
-            new("On Repeated", () => new ActionGroupViewModel(_keybind!.OnRepeated, g => _keybind!.TryBindTrigger(KeybindModel.TriggerType.OnRepeated, g))),
-        ];
-        _selectedTab = _tabs[0];
-        _activeContent = null;
+        _palette = new();
 
+        _rootSlot = null;
         _isKeySelected = false;
         _label = "null";
     }
-
-
-
-    // ui events
-
-
-
-    partial void OnSelectedTabChanged(ViewModelTabItem value) => SetContent(value);
 
 
 
@@ -76,33 +64,39 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    private void OnKeyBound(ushort vk, KeybindModel keybind)
+    private void OnKeyBound(ushort vk, BindableModel bindable)
     {
         if (vk != _key?.VK) return;
 
-        // the selected key was just bound to a keybind
-        UnsubscribeFromKeybindModel(_keybind);
-        SubscribeToKeybindModel(keybind);
-        _keybind = keybind;
-        SetContent(SelectedTab);
+        // our own draft was just committed, keep editing it
+        if (bindable == _bindable) return;
+
+        // something else was bound to the selected key (e.g. a key dragged onto it)
+        ShowBindable(bindable, isDraft: false);
     }
 
 
 
-    private void OnKeyUnbound(ushort vk, KeybindModel keybind)
+    private void OnKeyUnbound(ushort vk, BindableModel _)
     {
         if (vk != _key?.VK) return;
 
-        // the selected key was just unbound
-        _keybind = new();
-        UnsubscribeFromKeybindModel(keybind);
-        SubscribeToKeybindModel(_keybind);
-        SetContent(SelectedTab);
+        // the selected key was cleared, go back to an unsaved default
+        ShowBindable(BindableModel.CreateDefault(), isDraft: true);
     }
 
 
 
-    private void OnFirstTriggerBound() => _config?.TryBindKey(_key!.VK, _keybind!);
+    // the first change to a draft saves it into the config
+    private void OnDraftChanged()
+    {
+        if (!_isDraft || _bindable == null || _key == null || _config == null) return;
+
+        _bindable.Changed -= OnDraftChanged;
+        _isDraft = false;
+
+        _config.TryBindKey(_key.VK, _bindable);
+    }
 
 
 
@@ -110,22 +104,21 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    public void SetSelectedKey(KeyViewModel key, KeybindModel? keybind, KeybindConfigModel config)
+    public void SetSelectedKey(KeyViewModel key, BindableModel? bindable, KeybindConfigModel config)
     {
         // a new key was selected
         UnsubscribeFromKeybindConfigModel(_config);
-        UnsubscribeFromKeybindModel(_keybind);
 
         _key?.IsSelected = false;
 
         _key = key;
-        _keybind = keybind ?? new();
         _config = config;
 
-        SubscribeToKeybindConfigModel(config);
-        SubscribeToKeybindModel(keybind);
+        SubscribeToKeybindConfigModel(_config);
 
-        SetContent(SelectedTab);
+        if (bindable == null) ShowBindable(BindableModel.CreateDefault(), isDraft: true);
+        else ShowBindable(bindable, isDraft: false);
+
         Label = $"Key: {key.Label.Replace('\n', '-')}     Config: {_config.Name}";
         IsKeySelected = true;
     }
@@ -138,20 +131,52 @@ public partial class KeybindViewModel : ViewModelBase
 
         // the selected key was just deselected
         UnsubscribeFromKeybindConfigModel(_config);
-        UnsubscribeFromKeybindModel(_keybind);
+        ClearBindable();
 
         IsKeySelected = false;
-        SetContent(null);
 
         _key?.IsSelected = false;
         _key = null;
-        _keybind = null;
         _config = null;
     }
 
 
 
     // helpers
+
+
+
+    private void ShowBindable(BindableModel bindable, bool isDraft)
+    {
+        ClearBindable();
+
+        _bindable = bindable;
+        _isDraft = isDraft;
+
+        if (_isDraft)
+            _bindable.Changed += OnDraftChanged;
+
+        RootSlot = new BlockSlotViewModel(_bindable.Root);
+    }
+
+
+
+    private void ClearBindable()
+    {
+        var oldSlot = RootSlot;
+        RootSlot = null;
+        oldSlot?.Dispose();
+
+        // a draft that was never changed is thrown away, a real bindable belongs to the config
+        if (_bindable != null && _isDraft)
+        {
+            _bindable.Changed -= OnDraftChanged;
+            _bindable.Dispose();
+        }
+
+        _bindable = null;
+        _isDraft = false;
+    }
 
 
 
@@ -171,29 +196,6 @@ public partial class KeybindViewModel : ViewModelBase
 
 
 
-    private void SubscribeToKeybindModel(KeybindModel? keybind)
-    {
-        keybind?.FirstTriggerBound += OnFirstTriggerBound;
-    }
-
-
-
-    private void UnsubscribeFromKeybindModel(KeybindModel? keybind)
-    {
-        keybind?.FirstTriggerBound -= OnFirstTriggerBound;
-    }
-
-
-
-    private void SetContent(ViewModelTabItem? content)
-    {
-        ViewModelBase? oldContent = ActiveContent;
-        ActiveContent = content?.CreateTabViewModel();
-        oldContent?.Dispose();
-    }
-
-
-
     // disposal
 
 
@@ -201,8 +203,8 @@ public partial class KeybindViewModel : ViewModelBase
     public override void Dispose()
     {
         UnsubscribeFromKeybindConfigModel(_config);
-        UnsubscribeFromKeybindModel(_keybind);
-        
-        ActiveContent?.Dispose();
+        ClearBindable();
+
+        _palette.Dispose();
     }
 }

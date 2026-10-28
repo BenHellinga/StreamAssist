@@ -3,24 +3,24 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Core.Dragging;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.AppAction.UI;
+using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Components.OutputConsole.Model;
 using System.Collections.Generic;
-using StreamAssist.Components.AppAction.Model;
+using StreamAssist.Components.Blocks.Model;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-// view model to modify a KeyboardSlotModel object
-public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
+// view model for one key on the keyboard display
+public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 {
     // private
 
 
 
     private KeybindConfigModel? _config;
-    private KeybindModel? _keybind;
+    private BindableModel? _keybind;
     private KeybindViewModel? _keyConfigurator;
 
     private string _label;
@@ -120,63 +120,33 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
-    public bool CanAcceptDropPayload(object payload) => payload is ActionDragPayload or KeybindDragPayload;
+    // a key is a binding slot: it only takes whole bindings, and only when it doesn't already have one
+    // (blocks are placed in the editor, not dropped on keys)
+    public bool CanAcceptDropPayload(object payload) =>
+        payload is BindableDragPayload bindablePayload
+        && _config != null
+        && bindablePayload.Bindable != _keybind
+        && !IsBound;
 
 
 
     public void OnDroppedOn(object payload, object? zoneContext)
     {
-        if (payload is ActionDragPayload actionPayload)
-            OnActionDroppedOn(actionPayload);
+        if (payload is not BindableDragPayload bindablePayload) return;
+        if (_config == null) return;
 
-        else if (payload is KeybindDragPayload keybindPayload)
-            OnKeybindDroppedOn(keybindPayload);
-    }
+        // a saved-but-empty bindable (grey key) is replaced
+        if (_keybind != null) _config.UnbindKey(_vk);
 
-
-
-    private void OnActionDroppedOn(ActionDragPayload payload)
-    {
-        if (_config == null)
+        var copy = BindableModel.DeepCopy(bindablePayload.Bindable);
+        if (!_config.TryBindKey(_vk, copy))
         {
-            AppLog.WriteError("Could not bind action to key - no config selected");
+            copy.Dispose();
             return;
         }
 
-        var copy = ActionModel.DeepCopy(payload.Action);
-
-        if (_keybind == null)
-        {
-            var keybind = new KeybindModel();
-            var group = new ActionGroupModel();
-            group.AddAction(copy);
-            keybind.TryBindTrigger(KeybindModel.TriggerType.OnPressed, group);
-            _config.TryBindKey(_vk, keybind);
-        }
-        else if (_keybind.OnPressed == null)
-        {
-            var group = new ActionGroupModel();
-            group.AddAction(copy);
-            _keybind.TryBindTrigger(KeybindModel.TriggerType.OnPressed, group);
-        }
-        else _keybind.OnPressed.AddAction(copy);
-
-        payload.Callback?.Invoke();
-    }
-
-
-
-    private void OnKeybindDroppedOn(KeybindDragPayload payload)
-    {
-        if (_config == null)
-        {
-            AppLog.WriteError("Could not bind action to key - no config selected");
-            return;
-        }
-
-        var copy = KeybindModel.DeepCopy(payload.Keybind);
-        _config.TryBindKey(_vk, copy);
-        payload.RemoveFromSource?.Invoke();
+        // only remove the original once the copy is safely bound
+        bindablePayload.RemoveFromSource?.Invoke();
     }
 
 
@@ -184,7 +154,9 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
     public object? GetDragPayload()
     {
         if (_config == null || _keybind == null) return null;
-        return new KeybindDragPayload(_keybind, () => _config.UnbindKey(_vk));
+
+        var config = _config;
+        return new BindableDragPayload(_keybind, () => config.UnbindKey(_vk));
     }
 
 
@@ -193,7 +165,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
-    private void OnKeyBound(ushort vk, KeybindModel keybind)
+    private void OnKeyBound(ushort vk, BindableModel keybind)
     {
         if (vk != _vk) return;
         SetKeybind(keybind);
@@ -201,7 +173,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
-    private void OnKeyUnbound(ushort vk, KeybindModel _)
+    private void OnKeyUnbound(ushort vk, BindableModel _)
     {
         if (vk != _vk) return;
         SetKeybind(null);
@@ -210,6 +182,10 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
     private void OnDisabledChanged(bool isDisabled) => IsDisabled = isDisabled;
+
+
+
+    private void OnKeybindChanged() => UpdateIsBound();
 
 
 
@@ -258,31 +234,38 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IActionUIButtons
 
 
 
-    private void SubscribeToKeybindModel(KeybindModel? keybind)
+    private void SubscribeToKeybindModel(BindableModel? keybind)
     {
         keybind?.IsDisabledChanged += OnDisabledChanged;
+        keybind?.Changed += OnKeybindChanged;
     }
 
 
 
-    private void UnsubscribeFromKeybindModel(KeybindModel? keybind)
+    private void UnsubscribeFromKeybindModel(BindableModel? keybind)
     {
         keybind?.IsDisabledChanged -= OnDisabledChanged;
+        keybind?.Changed -= OnKeybindChanged;
     }
 
 
 
-    private void SetKeybind(KeybindModel? keybind)
+    private void SetKeybind(BindableModel? keybind)
     {
         UnsubscribeFromKeybindModel(_keybind);
 
         _keybind = keybind;
-        
-        IsBound = _keybind != null;
+
+        UpdateIsBound();
         IsDisabled = _keybind?.IsDisabled ?? false;
 
         SubscribeToKeybindModel(_keybind);
     }
+
+
+
+    // a key shows as bound when its slot has a block in it
+    private void UpdateIsBound() => IsBound = _keybind?.HasBlock ?? false;
 
 
 

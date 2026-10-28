@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.BlockSlotListView"
+             x:DataType="ui:BlockSlotListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- list slot -->
+
+    <StackPanel Spacing="5">
+
+        <TextBlock Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+
+        <ItemsControl ItemsSource="{Binding Blocks}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="5"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <!-- drop zone above each block -->
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ui:BlockViewModel">
+                    <StackPanel Spacing="5">
+
+                        <Border Classes="Panel Droppable DropZone"
+                                DragDrop.DragOver="OnZoneDragOver"
+                                DragDrop.DragLeave="OnZoneDragLeave"
+                                DragDrop.Drop="OnZoneDrop">
+                            <TextBlock Text="+"/>
+                        </Border>
+
+                        <ui:BlockView/>
+
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- drop zone at the end -->
+
+        <Border Classes="Panel Droppable DropZone"
+                DragDrop.DragOver="OnZoneDragOver"
+                DragDrop.DragLeave="OnZoneDragLeave"
+                DragDrop.Drop="OnZoneDrop">
+            <TextBlock Text="+"/>
+        </Border>
+
+    </StackPanel>
+
+</UserControl>
