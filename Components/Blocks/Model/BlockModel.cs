@@ -88,12 +88,7 @@ public abstract class BlockModel : ModelBase
     public bool ContainsSlot(BlockSlotBase slot)
     {
         foreach (var ownSlot in Slots)
-        {
-            if (ownSlot == slot) return true;
-
-            foreach (var child in ownSlot.Blocks)
-                if (child.ContainsSlot(slot)) return true;
-        }
+            if (ownSlot.ContainsSlot(slot)) return true;
 
         return false;
     }

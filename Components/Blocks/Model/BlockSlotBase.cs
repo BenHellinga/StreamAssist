@@ -23,7 +23,8 @@ public abstract class BlockSlotBase : IDisposable
 
     public string Label => _label;
     public Type AcceptedType => _acceptedType;
-    public abstract IReadOnlyList<BlockModel> Blocks { get; }
+    public abstract IReadOnlyList<BlockModel> Blocks { get; } // blocks directly in this slot
+    public virtual IReadOnlyList<BlockSlotBase> InnerSlots => []; // slots directly in this slot (e.g. an if's branches)
 
 
 
@@ -53,6 +54,22 @@ public abstract class BlockSlotBase : IDisposable
 
 
     public bool Accepts(BlockModel block) => _acceptedType.IsInstanceOfType(block);
+
+
+
+    // true if the slot is this one or anywhere inside it
+    public bool ContainsSlot(BlockSlotBase slot)
+    {
+        if (this == slot) return true;
+
+        foreach (var inner in InnerSlots)
+            if (inner.ContainsSlot(slot)) return true;
+
+        foreach (var block in Blocks)
+            if (block.ContainsSlot(slot)) return true;
+
+        return false;
+    }
 
 
 

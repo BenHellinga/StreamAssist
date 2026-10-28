@@ -62,6 +62,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
             {
                 BlockSlot single => new BlockSlotViewModel(single),
                 BlockSlotList list => new BlockSlotListViewModel(list),
+                BlockBranchList branches => new BlockBranchListViewModel(branches),
                 _ => null
             };
 
