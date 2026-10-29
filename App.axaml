@@ -36,6 +36,7 @@
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/Border.axaml"/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/Button.axaml"/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/TabStrip.axaml"/>
+        <StyleInclude Source="avares://StreamAssist/Styles/Controls/ScrollViewer.axaml"/>
     </Application.Styles>
 
 </Application>

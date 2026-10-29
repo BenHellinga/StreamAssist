@@ -18,6 +18,13 @@
                 IsVisible="{Binding CanCollapse}"
                 ToolTip.Tip="Collapse"/>
 
+        <!-- toggle disable -->
+
+        <Button Classes="Square Small ToggleEnabled"
+                Content="+"
+                Command="{Binding ToggleButtonPressedCommand}"
+                ToolTip.Tip="Enable/disable this"/>
+
         <!-- drag handle (same size as the Small buttons next to it) -->
 
         <Border Classes="Panel Draggable"
@@ -25,13 +32,6 @@
                 PointerPressed="OnHandlePointerPressed">
             <TextBlock Text="⠿" HorizontalAlignment="Center"/>
         </Border>
-
-        <!-- toggle disable -->
-
-        <Button Classes="Square Small ToggleEnabled"
-                Content="+"
-                Command="{Binding ToggleButtonPressedCommand}"
-                ToolTip.Tip="Enable/disable this"/>
 
         <!-- remove -->
 

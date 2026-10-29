@@ -10,13 +10,13 @@
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="100"/>
-            <ColumnDefinition Width="10"/>
+            <ColumnDefinition Width="{StaticResource SplitterLength}"/>
             <ColumnDefinition Width="{Binding BlockListWidth, Mode=TwoWay}" MinWidth="100"/>
         </Grid.ColumnDefinitions>
 
         <!-- editor -->
 
-        <Grid Grid.Column="0" Margin="{StaticResource PanelGapRight}">
+        <Grid Grid.Column="0">
 
             <!-- nothing selected -->
 
@@ -33,7 +33,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Margin="{StaticResource HeaderMargin}"
+                <TextBlock Grid.Row="0" Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}"
                            Classes="Label"
                            Text="{Binding Label}"/>
 
@@ -44,15 +44,17 @@
                 <ScrollViewer Grid.Row="2"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Auto"
-                              AllowAutoHide="False"
-                              Margin="0,5">
-                    <ContentControl Content="{Binding RootSlot}" Margin="5,0,10,200"/>
+                              Classes="Gapped">
+                    <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
+                    <Border Padding="{StaticResource ScrollEndPadding}">
+                        <ContentControl Content="{Binding RootSlot}" Margin="5,5,10,0"/>
+                    </Border>
                 </ScrollViewer>
 
             </Grid>
         </Grid>
 
-        <GridSplitter Grid.Column="1" Margin="{StaticResource PanelGapRight}" Classes="ColumnSplitter"/>
+        <GridSplitter Grid.Column="1" Margin="{StaticResource ColumnSplitterMargin}" Classes="ColumnSplitter"/>
 
         <!-- block list -->
 

@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Core.Connections;
 
 namespace StreamAssist.Components.Audio.Background;
 
 
 
+// talks to Voicemeeter, connecting/disconnecting when the audio model says so (Connections tab, or connect on startup)
 public sealed class VoicemeeterManager : IDisposable
 {
     // constants
@@ -24,6 +27,7 @@ public sealed class VoicemeeterManager : IDisposable
 
 
 
+    private readonly AudioComponentModel _model;
     private bool _connected;
     private Dictionary<StereoInputTarget, InputState> _states;
 
@@ -43,16 +47,46 @@ public sealed class VoicemeeterManager : IDisposable
 
     public enum StereoInputTarget { All, Misc, Obs }
 
+    public ConnectionStatus Status { get; private set; }
+
+
+
+    // events
+
+
+
+    public event Action? StatusChanged;
+
 
 
     // constructor
 
 
 
-    public VoicemeeterManager()
+    public VoicemeeterManager(AudioComponentModel model)
     {
+        _model = model;
         _connected = false;
         _states = [];
+        Status = ConnectionStatus.NotConnected;
+
+        _model.VoicemeeterConnectionChanged += OnConnectionChanged;
+
+        if (_model.IsVoicemeeterEnabled) TryConnect();
+    }
+
+
+
+    // model callbacks
+
+
+
+    // connect, disconnect, or reconnect (a retry), whatever the model now says
+    private void OnConnectionChanged()
+    {
+        if (_connected) TryDisconnect();
+        if (_model.IsVoicemeeterEnabled) TryConnect();
+        else SetStatus(ConnectionStatus.NotConnected);
     }
 
 
@@ -91,17 +125,20 @@ public sealed class VoicemeeterManager : IDisposable
         catch (Exception ex)
         {
             AppLog.WriteError($"Could not connect to Voicemeeter - failed to load VoicemeeterRemote64.dll ({ex.Message}).");
+            SetStatus(ConnectionStatus.Failed);
             return false;
         }
 
         if (result != 0 && result != 1)
         {
             AppLog.WriteError($"Could not connect to Voicemeeter - code {result}.");
+            SetStatus(ConnectionStatus.Failed);
             return false;
         }
 
         _connected = true;
         InitState();
+        SetStatus(ConnectionStatus.Connected);
         return true;
     }
 
@@ -117,6 +154,7 @@ public sealed class VoicemeeterManager : IDisposable
 
         _ = Voicemeeter64.VBVMR_Logout();
         _connected = false;
+        SetStatus(ConnectionStatus.NotConnected);
         return true;
     }
 
@@ -229,6 +267,16 @@ public sealed class VoicemeeterManager : IDisposable
 
 
 
+    private void SetStatus(ConnectionStatus status)
+    {
+        if (status == Status) return;
+
+        Status = status;
+        StatusChanged?.Invoke();
+    }
+
+
+
     private static string ParamName(StereoInputTarget target, string parameter)
     {
         return target switch
@@ -248,6 +296,7 @@ public sealed class VoicemeeterManager : IDisposable
 
     public void Dispose()
     {
+        _model.VoicemeeterConnectionChanged -= OnConnectionChanged;
         if (_connected) TryDisconnect();
     }
 }

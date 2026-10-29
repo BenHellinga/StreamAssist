@@ -8,7 +8,7 @@ namespace StreamAssist.Components.Chatbot.Model;
 
 
 // the rows of a Match Text block: there's always exactly one empty row at the end (typing in it adds the next),
-// and a row disappears once both its pattern and its slot are empty
+// and a row disappears once its pattern is empty and it has no binding or block after it
 public sealed class MatchTextRowList : BlockSlotBase
 {
     // private
@@ -25,7 +25,7 @@ public sealed class MatchTextRowList : BlockSlotBase
 
     public IReadOnlyList<MatchTextRow> Rows => _rows;
     public override IReadOnlyList<BlockModel> Blocks => [];
-    public override IReadOnlyList<BlockSlotBase> InnerSlots => _rows.Select(r => (BlockSlotBase)r.Child).ToList();
+    public override IReadOnlyList<BlockSlotBase> InnerSlots => _rows.Select(r => (BlockSlotBase)r.Target).ToList();
 
 
 
@@ -97,7 +97,7 @@ public sealed class MatchTextRowList : BlockSlotBase
     public override void RemoveBlock(BlockModel block)
     {
         foreach (var row in _rows.ToArray())
-            row.Child.RemoveBlock(block);
+            row.Target.RemoveBlock(block);
     }
 
 
@@ -114,7 +114,7 @@ public sealed class MatchTextRowList : BlockSlotBase
 
 
 
-    private void OnRowChildChanged(BlockModel? _, BlockModel? __) => Normalize();
+    private void OnRowTargetContentsChanged() => Normalize();
 
 
 
@@ -129,8 +129,8 @@ public sealed class MatchTextRowList : BlockSlotBase
     private void SubscribeToRow(MatchTextRow row)
     {
         row.PatternChanged += OnRowPatternChanged;
-        row.Child.BlockChanged += OnRowChildChanged;
-        row.Child.Changed += OnRowSlotChanged;
+        row.Target.ContentsChanged += OnRowTargetContentsChanged;
+        row.Target.Changed += OnRowSlotChanged;
     }
 
 
@@ -138,8 +138,8 @@ public sealed class MatchTextRowList : BlockSlotBase
     private void UnsubscribeFromRow(MatchTextRow row)
     {
         row.PatternChanged -= OnRowPatternChanged;
-        row.Child.BlockChanged -= OnRowChildChanged;
-        row.Child.Changed -= OnRowSlotChanged;
+        row.Target.ContentsChanged -= OnRowTargetContentsChanged;
+        row.Target.Changed -= OnRowSlotChanged;
     }
 
 

@@ -1,0 +1,27 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- a panel's scroll area: its scrollbars count as lines (see Spacing.axaml), so the ScrollViewer runs to the
+         panel's edges, the content stops before the scrollbar instead of running underneath it, and the content
+         adds its own ContentInset. Only for ScrollViewers marked Gapped, not the ones inside text boxes, combo boxes
+         and tab strips. Use the default thin, auto-hiding bars (no AllowAutoHide="False"): they stay on screen as a
+         thin line and widen when hovered -->
+
+    <Style Selector="ScrollViewer.Gapped /template/ ScrollContentPresenter#PART_ContentPresenter">
+        <Setter Property="Grid.ColumnSpan" Value="1"/>
+        <Setter Property="Grid.RowSpan" Value="1"/>
+    </Style>
+
+    <!-- the bar takes 16px, but thin it's a 2px line drawn 2px from its outer edge: take back the 12px of empty bar
+         and keep a 5px gap (5 - 12 = -7), so the content ends 10px from the thin line, like from a splitter.
+         Hovered, the wide bar overlaps that gap -->
+
+    <Style Selector="ScrollViewer.Gapped /template/ ScrollBar#PART_VerticalScrollBar">
+        <Setter Property="Margin" Value="-7,0,0,0"/>
+    </Style>
+
+    <Style Selector="ScrollViewer.Gapped /template/ ScrollBar#PART_HorizontalScrollBar">
+        <Setter Property="Margin" Value="0,-7,0,0"/>
+    </Style>
+
+</Styles>

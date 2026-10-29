@@ -60,6 +60,7 @@ public class BindableModel : ModelBase
 
     public event Action<bool>? IsDisabledChanged;
     public event Action? Changed; // anything in this bindable changed (used for saving)
+    public event Action? Triggered; // it just ran (e.g. so the UI can flash it)
 
 
 
@@ -113,6 +114,7 @@ public class BindableModel : ModelBase
         if (_isDisabled) return;
         if (_root.Block is not ExecutableBlock root) return;
 
+        Triggered?.Invoke();
         _ = root.SafeRunAsync(new TriggerContext(phase, _cancellation.Token, parameters));
     }
 

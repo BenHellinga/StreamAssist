@@ -15,7 +15,7 @@ public class ParameterChatBlock : ChatBlock
 
 
     [JsonIgnore] public override string Name => "Parameter";
-    [JsonIgnore] public override string Description => "Reads the next part of the message into a parameter with this name, then continues into the blocks inside. The pattern decides how much: \\S+ is one word, .* is the rest of the message.";
+    [JsonIgnore] public override string Description => "Reads the next part of the message into a parameter with this name, then runs its binding or continues into the block next to it. The pattern decides how much: \\S+ is one word, .* is the rest of the message.";
 
 
 
@@ -26,7 +26,7 @@ public class ParameterChatBlock : ChatBlock
     private string _parameterName;
     private string _pattern;
     private readonly ChatPattern _compiled;
-    private readonly BlockSlotList _children;
+    private readonly ChatTarget _target;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -49,7 +49,7 @@ public class ParameterChatBlock : ChatBlock
         set => SetParameter(ref _pattern, value);
     }
 
-    [JsonIgnore] public BlockSlotList Children => _children;
+    [JsonIgnore] public ChatTarget Target => _target;
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
 
@@ -58,11 +58,11 @@ public class ParameterChatBlock : ChatBlock
 
 
 
-    [JsonInclude] [JsonPropertyName("children")]
-    private List<PendingBlockData> JsonChildren
+    [JsonInclude] [JsonPropertyName("target")]
+    private ChatTargetData JsonTarget
     {
-        get => _children.GetData();
-        set => _children.LoadData(value);
+        get => _target.GetData();
+        set => _target.LoadData(value);
     }
 
 
@@ -76,8 +76,8 @@ public class ParameterChatBlock : ChatBlock
         _parameterName = "";
         _pattern = @"\S+";
         _compiled = new();
-        _children = new("", typeof(ChatBlock));
-        _slots = [_children];
+        _target = new();
+        _slots = [_target];
 
         TrackSlots();
     }
@@ -99,6 +99,6 @@ public class ParameterChatBlock : ChatBlock
         if (!string.IsNullOrWhiteSpace(_parameterName))
             parameters.Add(new(_parameterName.Trim(), match.Value));
 
-        return TryMatchList(_children, state.Advance(match.Length, parameters));
+        return _target.TryMatch(state.Advance(match.Length, parameters));
     }
 }

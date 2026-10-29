@@ -1,4 +1,5 @@
 using StreamAssist.Components.Audio.Background;
+using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Keyboard.Background;
@@ -15,6 +16,8 @@ public static class GlobalContext
     public static KeyboardInputManager? KeyboardInputManager { get; set; } // which keys are held right now
 
     public static VoicemeeterManager? VoicemeeterManager {get; set; }
+
+    public static AudioComponentModel? AudioComponentModel { get; set; } // e.g. to connect/disconnect Voicemeeter
 
     public static WindowLayoutModel? WindowLayoutModel { get; set; }
 

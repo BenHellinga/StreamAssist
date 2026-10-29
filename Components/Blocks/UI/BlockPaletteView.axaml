@@ -7,24 +7,28 @@
 
     <!-- search box | block list -->
 
-    <DockPanel Margin="5">
+    <DockPanel>
 
-        <!-- search (filters as you type, after a short pause) -->
+        <!-- search (filters as you type, after a short pause), a header row like a tab strip so its divider lines up
+             with the one beside it -->
 
         <TextBox DockPanel.Dock="Top"
-                 Margin="{StaticResource PanelGapBottom}"
+                 Margin="{StaticResource HeaderMargin}"
+                 Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"
                  Text="{Binding SearchText}"
                  PlaceholderText="Search blocks…"/>
 
-        <TextBlock DockPanel.Dock="Top"
+        <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+        <TextBlock DockPanel.Dock="Top" Margin="5,5,5,0"
                    Classes="Description"
                    Text="No matching blocks"
                    IsVisible="{Binding !HasResults}"/>
 
         <!-- a heading per category, its cards below (each card is a BlockCardView through the ViewLocator) -->
 
-        <ScrollViewer>
-            <ItemsControl ItemsSource="{Binding Categories}">
+        <ScrollViewer Classes="Gapped">
+            <ItemsControl ItemsSource="{Binding Categories}" Margin="5,5,5,5">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="10"/>

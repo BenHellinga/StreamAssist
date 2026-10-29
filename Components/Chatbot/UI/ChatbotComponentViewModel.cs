@@ -1,11 +1,7 @@
-using System.Collections.Generic;
-using Avalonia.Controls;
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Blocks.UI;
-using StreamAssist.Components.Chatbot.Background;
-using StreamAssist.Components.Chatbot.Blocks;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Shell;
@@ -14,8 +10,9 @@ namespace StreamAssist.Components.Chatbot.UI;
 
 
 
-// the chatbot tab: twitch app credentials, the two account logins, the chat block tree and the chat block list
-// clicking a Bindable chat block opens its bindable in the shared editor in the bottom panel
+// the Chatbot and Events tabs: one page (the chat command tree, or alerts + redeems) and the shared editor in the bottom panel
+// clicking a bind box opens its binding in the editor (an unsaved draft if it has none, like a key)
+// the twitch logins are in the Connections tab
 public partial class ChatbotComponentViewModel : ViewModelBase
 {
     // private
@@ -23,20 +20,14 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
     private readonly ChatbotComponentModel _model;
-    private readonly ChatbotManager _manager;
-    private readonly WindowLayoutModel _layout;
     private readonly BindableEditorViewModel _editor; // lives in the bottom panel, which disposes it
-    private readonly BlockSlotViewModel _root;
-    private readonly BlockPaletteViewModel _chatPalette;
-    private BindableChatBlock? _selected;
+    private readonly ViewModelBase _page; // ChatCommandsViewModel or ChatEventsViewModel
+    private ChatTarget? _selected;
 
-    [ObservableProperty] private string _clientIdInput;
-    [ObservableProperty] private string _clientSecretInput;
-    [ObservableProperty] private bool _isStreamerLoggedIn; // connected or connecting
-    [ObservableProperty] private bool _isBotLoggedIn;
-    [ObservableProperty] private string _streamerStatus;
-    [ObservableProperty] private string _botStatus;
-    [ObservableProperty] private GridLength _chatBlockListWidth; // bound two-way to the chat block list column
+    // the binding being edited, either the target's real one or a draft that isn't saved yet
+    private BindableModel? _bindable;
+    private bool _isDraft;
+
 
 
 
@@ -44,35 +35,35 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    public BlockSlotViewModel Root => _root;
-    public BlockPaletteViewModel ChatPalette => _chatPalette;
+    public ViewModelBase Page => _page;
 
 
 
-    // static constructor
+    // activators
 
 
 
-    // Match Text blocks have their own kind of slot (rows of pattern + block), tell the block editor how to show it
-    static ChatbotComponentViewModel()
+    // the chat command tree (with its own chat block list)
+    public static ChatbotComponentViewModel ActivateChatTab(ChatbotComponentModel model, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel) =>
+        Activate(model, layout, sidePanel, bottomPanel, "No command selected", m => new ChatCommandsViewModel(m, layout));
+
+
+
+    // alerts (sub, raid, ...) and channel point redeems
+    public static ChatbotComponentViewModel ActivateEventsTab(ChatbotComponentModel model, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel) =>
+        Activate(model, layout, sidePanel, bottomPanel, "No event selected", m => new ChatEventsViewModel(m));
+
+
+
+    // the bottom panel edits the selected bind box's binding
+    private static ChatbotComponentViewModel Activate(ChatbotComponentModel model, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel,
+        string emptyText, Func<ChatbotComponentModel, ViewModelBase> createPage)
     {
-        BlockViewModel.RegisterSlotViewModel<MatchTextRowList>(rows => new MatchTextRowListViewModel(rows));
-    }
-
-
-
-    // activator
-
-
-
-    public static ChatbotComponentViewModel ActivateTab(ChatbotComponentModel model, ChatbotManager manager, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel)
-    {
-        // the chat block list is part of this tab, the bottom panel edits the selected Bindable's blocks
-        var editor = new BindableEditorViewModel(layout, "No bindable selected, click a Bindable chat block to edit it");
+        var editor = new BindableEditorViewModel(layout, emptyText);
         sidePanel.TransferContent(null);
         bottomPanel.TransferContent(editor);
 
-        return new(model, manager, layout, editor);
+        return new(model, editor, createPage);
     }
 
 
@@ -81,44 +72,26 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    public ChatbotComponentViewModel(ChatbotComponentModel model, ChatbotManager manager, WindowLayoutModel layout, BindableEditorViewModel editor)
+    public ChatbotComponentViewModel(ChatbotComponentModel model, BindableEditorViewModel editor, Func<ChatbotComponentModel, ViewModelBase> createPage)
     {
         _model = model;
-        _manager = manager;
-        _layout = layout;
         _editor = editor;
-        _root = new(_model.Root);
-        _chatPalette = new(("Chat Blocks", BlockCategory.Chat));
         _selected = null;
+        _bindable = null;
+        _isDraft = false;
 
-        _clientIdInput = "";
-        _clientSecretInput = "";
-        _streamerStatus = "";
-        _botStatus = "";
-        _chatBlockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.ChatBlockListPanel, 200));
+        // a fresh tab starts with nothing open (before the tree is built, so no bind box starts selected)
+        ChatTargetSelection.Set(null);
 
-        OnConnectionChanged();
-        UpdateStatus();
+        // chat blocks have their own kinds of slot (rows of pattern + target, slot + bind box), tell the block editor how to show them
+        // registered per tab rather than once, because bind boxes show their command and so need this model
+        BlockViewModel.RegisterSlotViewModel<MatchTextRowList>(rows => new MatchTextRowListViewModel(rows, _model));
+        BlockViewModel.RegisterSlotViewModel<ChatTarget>(target => new ChatTargetViewModel(target, _model));
 
-        _model.ConnectionChanged += OnConnectionChanged;
+        _page = createPage(_model);
+
         _model.Changed += OnModelChanged;
-        _manager.StatusChanged += OnStatusChanged;
-        _layout.PanelSizeChanged += OnLayoutPanelSizeChanged;
-    }
-
-
-
-    // public api
-
-
-
-    // opens a Bindable chat block's bindable in the bottom panel editor
-    public void SelectBindable(BindableChatBlock block)
-    {
-        if (block == _selected) return;
-
-        _selected = block;
-        _editor.ShowBindable(block.Bindable, DescribePath(block));
+        ChatTargetSelection.Changed += OnSelectionChanged;
     }
 
 
@@ -127,40 +100,17 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    // streamer: logging in = connecting (it asks for a code the first time)
-    [RelayCommand] private void OnStreamerLogInPressed()
+    // a bind box anywhere in the tree was clicked (or the selection was cleared)
+    private void OnSelectionChanged()
     {
-        _model.SetCredentials(ClientIdInput, ClientSecretInput);
-        _model.SetIsEnabled(true);
-    }
+        _selected?.BindableChanged -= OnSelectedBindableChanged;
+        ClearEditor();
 
+        _selected = ChatTargetSelection.Selected;
+        if (_selected == null) return;
 
-
-    // streamer: logging out disconnects and forgets the login
-    [RelayCommand] private void OnStreamerLogOutPressed()
-    {
-        _model.SetIsEnabled(false);
-        _manager.LogOut(TwitchAccount.Streamer);
-    }
-
-
-
-    [RelayCommand] private void OnBotLogInPressed()
-    {
-        _model.SetCredentials(ClientIdInput, ClientSecretInput);
-        _manager.StartBotLogin();
-    }
-
-
-
-    [RelayCommand] private void OnBotLogOutPressed() => _manager.LogOut(TwitchAccount.Bot);
-
-
-
-    // the chat block list splitter was dragged
-    partial void OnChatBlockListWidthChanged(GridLength value)
-    {
-        if (value.IsAbsolute) _layout.SetPanelSize(WindowLayoutModel.ChatBlockListPanel, value.Value);
+        _selected.BindableChanged += OnSelectedBindableChanged;
+        ShowSelected();
     }
 
 
@@ -169,46 +119,52 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    private void OnConnectionChanged()
-    {
-        ClientIdInput = _model.ClientId;
-        ClientSecretInput = _model.ClientSecret;
-        IsStreamerLoggedIn = _model.IsEnabled;
-    }
-
-
-
-    // the tree changed: drop the selection if its block was removed, otherwise refresh its path (a pattern may have changed)
+    // something changed: close the editor if the bind box is gone (row removed, or a block went after it instead),
+    // otherwise refresh its header (a pattern or title may have changed)
     private void OnModelChanged()
     {
         if (_selected == null) return;
 
-        var path = new List<string>();
-        if (FindPath(_model.Root.Block, _selected, path))
+        if (_selected.Child.Block == null && _model.Describe(_selected) != null)
         {
-            _editor.Label = FormatPath(path);
+            _editor.Label = FormatLabel(_selected);
             return;
         }
 
-        _selected = null;
-        _editor.ClearBindable();
+        ChatTargetSelection.Set(null);
     }
 
 
 
-    // something else (e.g. an action) changed the chat block list width
-    private void OnLayoutPanelSizeChanged(string panel, double size)
+    // the selected target was bound or unbound from somewhere else (e.g. a binding dropped on it, or its blocks all removed)
+    private void OnSelectedBindableChanged()
     {
-        if (panel == WindowLayoutModel.ChatBlockListPanel) ChatBlockListWidth = new(size);
+        // our own draft was just committed, keep editing it
+        if (_selected == null || _selected.Bindable == _bindable) return;
+
+        ShowSelected();
     }
 
 
 
-    // background events
+    // the first change to a draft binds it to the target
+    private void OnDraftChanged()
+    {
+        if (!_isDraft || _bindable == null || _selected == null) return;
 
+        // e.g. the default On Pressed was deleted, there's still nothing worth saving
+        if (!_bindable.HasBlock) return;
 
+        _bindable.Changed -= OnDraftChanged;
+        _isDraft = false;
 
-    private void OnStatusChanged() => UpdateStatus();
+        // couldn't bind (already logged), close the editor, which throws the draft away
+        if (!_selected.TryBind(_bindable))
+        {
+            _isDraft = true;
+            ChatTargetSelection.Set(null);
+        }
+    }
 
 
 
@@ -216,65 +172,46 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    private void UpdateStatus()
+    // shows the selected target's binding, or a fresh unsaved draft if it has none
+    private void ShowSelected()
     {
-        StreamerStatus = _manager.StatusMessage;
-        BotStatus = _manager.BotStatusMessage;
-        IsBotLoggedIn = _manager.BotLogin != null;
+        if (_selected == null) return;
+        ClearEditor();
+
+        _isDraft = _selected.Bindable == null;
+        _bindable = _selected.Bindable ?? BindableModel.CreateDefault();
+        if (_isDraft) _bindable.Changed += OnDraftChanged;
+
+        _editor.ShowBindable(_bindable, FormatLabel(_selected));
     }
 
 
 
-    // the editor header, e.g. "Chat command: ! › lurk\b"
-    private string DescribePath(BindableChatBlock block)
+    private void ClearEditor()
     {
-        var path = new List<string>();
-        FindPath(_model.Root.Block, block, path);
-        return FormatPath(path);
-    }
+        _editor.ClearBindable();
 
-
-
-    private static string FormatPath(List<string> path) =>
-        path.Count == 0 ? "Chat command: (any message)" : $"Chat command: {string.Join(" › ", path)}";
-
-
-
-    // walks the tree collecting each Match Text row pattern / Parameter name on the way down to the block
-    private static bool FindPath(BlockSlotList list, BlockModel target, List<string> path)
-    {
-        foreach (var block in list.Blocks)
-            if (FindPath(block, target, path)) return true;
-
-        return false;
-    }
-
-
-
-    private static bool FindPath(BlockModel? block, BlockModel target, List<string> path)
-    {
-        if (block == null) return false;
-        if (block == target) return true;
-
-        switch (block)
+        // a draft that was never changed is thrown away, a real binding belongs to the target
+        if (_bindable != null && _isDraft)
         {
-            case MatchTextChatBlock match:
-                foreach (var row in match.Rows.Rows)
-                {
-                    path.Add(row.Pattern);
-                    if (FindPath(row.Child.Block, target, path)) return true;
-                    path.RemoveAt(path.Count - 1);
-                }
-                break;
-
-            case ParameterChatBlock parameter:
-                path.Add($"<{parameter.ParameterName}>");
-                if (FindPath(parameter.Children, target, path)) return true;
-                path.RemoveAt(path.Count - 1);
-                break;
+            _bindable.Changed -= OnDraftChanged;
+            _bindable.Dispose();
         }
 
-        return false;
+        _bindable = null;
+        _isDraft = false;
+    }
+
+
+
+    // the editor header, e.g. "Chat command: !pay {user} {amount}", "Redeem: Hydrate" or "Event: Raid"
+    private string FormatLabel(ChatTarget target)
+    {
+        var description = _model.Describe(target);
+        if (description == null) return "";
+
+        var (kind, text) = description.Value;
+        return text == "" && kind == "Chat command" ? "Chat command: (any message)" : $"{kind}: {text}";
     }
 
 
@@ -285,12 +222,14 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
     public override void Dispose()
     {
-        _model.ConnectionChanged -= OnConnectionChanged;
         _model.Changed -= OnModelChanged;
-        _manager.StatusChanged -= OnStatusChanged;
-        _layout.PanelSizeChanged -= OnLayoutPanelSizeChanged;
+        ChatTargetSelection.Changed -= OnSelectionChanged;
 
-        _root.Dispose();
-        _chatPalette.Dispose();
+        _selected?.BindableChanged -= OnSelectedBindableChanged;
+        _selected = null;
+        ClearEditor();
+        ChatTargetSelection.Set(null);
+
+        _page.Dispose();
     }
 }

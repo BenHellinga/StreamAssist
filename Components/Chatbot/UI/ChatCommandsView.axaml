@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Chatbot.UI.ChatCommandsView"
+             x:DataType="ui:ChatCommandsViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- chat command tree | chat block list -->
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="100"/>
+            <ColumnDefinition Width="{StaticResource SplitterLength}"/>
+            <ColumnDefinition Width="{Binding ChatBlockListWidth, Mode=TwoWay}" MinWidth="100"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- the root chat block slot (a BlockSlotView through the ViewLocator), clicking a bind box opens its binding below -->
+
+        <ScrollViewer Grid.Column="0" Classes="Gapped"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto">
+            <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
+            <Border Padding="{StaticResource ScrollEndPadding}">
+                <ContentControl Content="{Binding Root}" Margin="5,5,10,0"/>
+            </Border>
+        </ScrollViewer>
+
+        <GridSplitter Grid.Column="1" Margin="{StaticResource ColumnSplitterMargin}" Classes="ColumnSplitter"/>
+
+        <!-- chat block list -->
+
+        <blocks:BlockPaletteView Grid.Column="2" DataContext="{Binding ChatPalette}"/>
+
+    </Grid>
+
+</UserControl>

@@ -15,6 +15,7 @@ public class MatchTextRowListViewModel : ViewModelBase
 
 
     private readonly MatchTextRowList _list;
+    private readonly ChatbotComponentModel _model; // the rows' bind boxes show their command
     private readonly ObservableCollection<MatchTextRowViewModel> _rows;
 
 
@@ -31,13 +32,14 @@ public class MatchTextRowListViewModel : ViewModelBase
 
 
 
-    public MatchTextRowListViewModel(MatchTextRowList list)
+    public MatchTextRowListViewModel(MatchTextRowList list, ChatbotComponentModel model)
     {
         _list = list;
+        _model = model;
         _rows = [];
 
         foreach (var row in _list.Rows)
-            _rows.Add(new(row));
+            _rows.Add(new(row, _model));
 
         _list.RowInserted += OnRowInserted;
         _list.RowRemoved += OnRowRemoved;
@@ -49,7 +51,7 @@ public class MatchTextRowListViewModel : ViewModelBase
 
 
 
-    private void OnRowInserted(MatchTextRow row, int index) => _rows.Insert(index, new(row));
+    private void OnRowInserted(MatchTextRow row, int index) => _rows.Insert(index, new(row, _model));
 
 
 

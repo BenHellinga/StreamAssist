@@ -3,82 +3,10 @@
              x:Class="StreamAssist.Components.Chatbot.UI.ChatbotComponentView"
              x:DataType="ui:ChatbotComponentViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
-             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
 
-    <!-- connection + chat block tree | chat block list -->
+    <!-- the page (ChatCommandsView or ChatEventsView through the ViewLocator) -->
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="100"/>
-            <ColumnDefinition Width="10"/>
-            <ColumnDefinition Width="{Binding ChatBlockListWidth, Mode=TwoWay}" MinWidth="100"/>
-        </Grid.ColumnDefinitions>
-
-        <Grid Grid.Column="0" Margin="{StaticResource PanelGapRight}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <!-- the twitch app both accounts log in through (hidden, the eye button shows them, safe to have on stream) -->
-
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="5,5,5,10">
-                <TextBlock Classes="Label" Text="Client ID"/>
-                <TextBox Text="{Binding ClientIdInput}" Width="260"
-                         PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From dev.twitch.tv"/>
-                <TextBlock Classes="Label" Text="Client Secret"/>
-                <TextBox Text="{Binding ClientSecretInput}" Width="260"
-                         PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From dev.twitch.tv"/>
-            </StackPanel>
-
-            <!-- accounts: name, log in/out, status -->
-
-            <Grid Grid.Row="1" Margin="5,0,5,10" RowSpacing="5" ColumnSpacing="10"
-                  ColumnDefinitions="Auto,Auto,*" RowDefinitions="Auto,Auto">
-
-                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="Streamer"/>
-                <Panel Grid.Row="0" Grid.Column="1">
-                    <Button Content="Log in" Command="{Binding StreamerLogInPressedCommand}" IsVisible="{Binding !IsStreamerLoggedIn}"
-                            ToolTip.Tip="Connects to your chat, the first time it shows a code to enter at twitch.tv/activate"/>
-                    <Button Content="Log out" Command="{Binding StreamerLogOutPressedCommand}" IsVisible="{Binding IsStreamerLoggedIn}"
-                            ToolTip.Tip="Disconnects and forgets the login"/>
-                </Panel>
-                <TextBlock Grid.Row="0" Grid.Column="2" Classes="Description" Text="{Binding StreamerStatus}"/>
-
-                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Bot"/>
-                <Panel Grid.Row="1" Grid.Column="1">
-                    <Button Content="Log in" Command="{Binding BotLogInPressedCommand}" IsVisible="{Binding !IsBotLoggedIn}"
-                            ToolTip.Tip="Shows a code, enter it in a private browser window logged in as the bot"/>
-                    <Button Content="Log out" Command="{Binding BotLogOutPressedCommand}" IsVisible="{Binding IsBotLoggedIn}"
-                            ToolTip.Tip="Forgets the bot login, chat is sent as the streamer"/>
-                </Panel>
-                <TextBlock Grid.Row="1" Grid.Column="2" Classes="Description" Text="{Binding BotStatus}"/>
-
-            </Grid>
-
-            <Border Grid.Row="2" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
-
-            <!-- the root chat block slot (a BlockSlotView through the ViewLocator), clicking a Bindable opens it below -->
-
-            <ScrollViewer Grid.Row="3" x:Name="ChatTree"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Auto"
-                          AllowAutoHide="False"
-                          Margin="0,5">
-                <ContentControl Content="{Binding Root}" Margin="5,0,10,200"/>
-            </ScrollViewer>
-
-        </Grid>
-
-        <GridSplitter Grid.Column="1" Margin="{StaticResource PanelGapRight}" Classes="ColumnSplitter"/>
-
-        <!-- chat block list -->
-
-        <blocks:BlockPaletteView Grid.Column="2" DataContext="{Binding ChatPalette}"/>
-
-    </Grid>
+    <ContentControl Content="{Binding Page}"/>
 
 </UserControl>

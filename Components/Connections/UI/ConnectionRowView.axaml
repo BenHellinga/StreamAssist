@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Connections.UI.ConnectionRowView"
+             x:DataType="ui:ConnectionRowViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Connections.UI">
+
+    <!-- name | status | connect/disconnect/retry | connect on startup -->
+
+    <StackPanel Orientation="Horizontal" Spacing="10">
+
+        <TextBlock Classes="Label" Text="{Binding Label}" Width="100"/>
+
+        <!-- green = connected, red = failed, grey otherwise (details in the tooltip and the console) -->
+
+        <Border Classes="Panel"
+                Classes.Bound="{Binding IsConnected}"
+                Classes.Disabled="{Binding IsFailed}"
+                Width="130" Height="25"
+                ToolTip.Tip="{Binding Detail}">
+            <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center"/>
+        </Border>
+
+        <Button Content="{Binding ButtonText}" Command="{Binding ButtonPressedCommand}" Width="100"
+                HorizontalContentAlignment="Center"/>
+
+        <TextBlock Classes="Label" Text="Connect on startup"/>
+        <CheckBox IsChecked="{Binding ConnectOnStartup}" VerticalAlignment="Center"/>
+
+    </StackPanel>
+
+</UserControl>

@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Chatbot.UI.ChatEventsView"
+             x:DataType="ui:ChatEventsViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
+
+    <!-- alerts, then redeems (one left-aligned column), test panel below
+         each section's content is inset, the dividers between sections run edge to edge -->
+
+    <Grid RowDefinitions="*,Auto">
+
+        <ScrollViewer Grid.Row="0" Classes="Gapped" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
+            <Border Padding="{StaticResource ScrollEndPadding}">
+                <StackPanel Spacing="10" Margin="0,5,0,0">
+
+                    <!-- stream events: one bind box each -->
+
+                    <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
+                        <TextBlock Classes="Title" Text="Alerts"/>
+
+                        <ItemsControl ItemsSource="{Binding Events}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="5"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:ChatEventSlotViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <ContentControl Content="{Binding Target}"/>
+
+                                        <Button Content="Test" VerticalAlignment="Top"
+                                                Command="{Binding TestPressedCommand}"
+                                                IsVisible="{Binding ShowTest}"
+                                                ToolTip.Tip="Runs this alert's binding with the test values below"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+                    <!-- channel point redeems: one row per reward title, like Match Text rows -->
+
+                    <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
+                        <TextBlock Classes="Title" Text="Redeems"/>
+
+                        <ItemsControl ItemsSource="{Binding Redeems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="5"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:RedeemRowViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBox Width="200" VerticalAlignment="Top"
+                                                 Text="{Binding Title}" PlaceholderText="Reward title…"/>
+
+                                        <!-- bind box (a ChatTargetView through the ViewLocator), once the row has a title -->
+                                        <ContentControl Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>
+
+                                        <Button Content="Test" VerticalAlignment="Top"
+                                                Command="{Binding TestPressedCommand}"
+                                                ToolTip.Tip="Runs this redeem's binding with the test values below">
+                                            <Button.IsVisible>
+                                                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                    <Binding Path="ShowTest"/>
+                                                    <Binding Path="ShowTarget"/>
+                                                </MultiBinding>
+                                            </Button.IsVisible>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <!-- test panel: closed it's one small button, open it shows the made-up values and a Test button on every row -->
+
+        <StackPanel Grid.Row="1" Spacing="5" Margin="0,0,0,5">
+            <Border Classes="Divider"/>
+
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="{StaticResource ContentInset}">
+                <Button Command="{Binding TestTogglePressedCommand}" VerticalAlignment="Center"
+                        ToolTip.Tip="Try bindings without waiting for a real redeem, sub, raid, ...">
+                    <Panel>
+                        <TextBlock Text="Test ▸" IsVisible="{Binding !IsTestOpen}"/>
+                        <TextBlock Text="Test ▾" IsVisible="{Binding IsTestOpen}"/>
+                    </Panel>
+                </Button>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsTestOpen}">
+                    <TextBlock Classes="Label" Text="User"/>
+                    <TextBox Width="120" Text="{Binding TestUser}"/>
+                    <TextBlock Classes="Label" Text="Amount"
+                               ToolTip.Tip="Used as the months (Sub), count (Gift Subs), bits (Cheer), viewers (Raid) or cost (redeems)"/>
+                    <TextBox Width="70" Text="{Binding TestAmount}"/>
+                    <TextBlock Classes="Label" Text="Tier"/>
+                    <TextBox Width="40" Text="{Binding TestTier}"/>
+                    <TextBlock Classes="Label" Text="Text"
+                               ToolTip.Tip="Used as the message (Sub, Cheer) or the viewer's input (redeems)"/>
+                    <TextBox Width="200" Text="{Binding TestText}"/>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

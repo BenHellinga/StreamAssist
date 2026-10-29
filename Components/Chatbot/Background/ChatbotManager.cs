@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Core.Connections;
 
 namespace StreamAssist.Components.Chatbot.Background;
 
@@ -30,7 +30,6 @@ public class ChatbotManager : IDisposable
     private CancellationTokenSource? _run;
     private CancellationTokenSource? _botLogin;
     private bool _restartQueued;
-    private string? _lastLoggedError; // so the same connection error isn't repeated on every retry
 
     private TwitchSession? _streamer;
     private TwitchSession? _bot;
@@ -62,6 +61,16 @@ public class ChatbotManager : IDisposable
     public ChatbotStatus Status { get; private set; }
     public string StatusMessage { get; private set; } // the streamer connection
     public string BotStatusMessage { get; private set; }
+    public ConnectionStatus BotConnection { get; private set; }
+
+    // the streamer's status as the Connections tab shows it
+    public ConnectionStatus StreamerConnection => Status switch
+    {
+        ChatbotStatus.Connected => ConnectionStatus.Connected,
+        ChatbotStatus.Connecting or ChatbotStatus.WaitingForLogin => ConnectionStatus.Connecting,
+        ChatbotStatus.Error => ConnectionStatus.Failed,
+        _ => ConnectionStatus.NotConnected,
+    };
     public string? StreamerLogin => _streamer?.Login;
     public string? BotLogin => _bot?.Login;
     public string? BotUserId => _bot?.UserId;
@@ -92,13 +101,15 @@ public class ChatbotManager : IDisposable
         Status = ChatbotStatus.Disconnected;
         StatusMessage = "Not connected";
         BotStatusMessage = "Not connected";
+        BotConnection = ConnectionStatus.NotConnected;
 
         _model.ConnectionChanged += OnConnectionChanged;
+        _model.BotConnectionChanged += OnBotConnectionChanged;
         _model.CredentialsChanged += OnCredentialsChanged;
         _auth.LoginCodeReady += OnLoginCodeReady;
 
         if (_model.IsEnabled) Start();
-        ResumeBot();
+        if (_model.IsBotEnabled) ResumeBot();
     }
 
 
@@ -130,44 +141,6 @@ public class ChatbotManager : IDisposable
 
 
 
-    // logs the bot account in (shows a code to enter in a private browser window, logged in as the bot)
-    public void StartBotLogin()
-    {
-        if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret))
-        {
-            AppLog.WriteError("Could not log in bot - enter the Client ID and Client Secret first");
-            return;
-        }
-
-        _botLogin?.Cancel();
-        _botLogin = new CancellationTokenSource();
-        SetBotStatus("Logging in...");
-        _ = LogInBotAsync(_model.ClientId, _model.ClientSecret, interactive: true, _botLogin.Token);
-    }
-
-
-
-    // forget an account's saved login
-    public void LogOut(TwitchAccount account)
-    {
-        _auth.LogOut(account);
-
-        if (account == TwitchAccount.Bot)
-        {
-            _botLogin?.Cancel();
-            _bot = null;
-            SetBotStatus("Not connected");
-        }
-        else if (_model.IsEnabled) Restart();
-        else
-        {
-            _streamer = null;
-            RaiseStatusChanged();
-        }
-    }
-
-
-
     // model callbacks
 
 
@@ -187,13 +160,20 @@ public class ChatbotManager : IDisposable
 
 
 
+    // the bot was connected/disconnected, or a reconnect was asked for
+    private void OnBotConnectionChanged()
+    {
+        DropBot();
+        if (_model.IsBotEnabled) ConnectBot();
+    }
+
+
+
     // the app changed: drop the old bot login and quietly use a saved one for the new app if there is one
     private void OnCredentialsChanged()
     {
-        _botLogin?.Cancel();
-        _bot = null;
-        SetBotStatus("Not connected");
-        ResumeBot();
+        DropBot();
+        if (_model.IsBotEnabled) ResumeBot();
     }
 
 
@@ -202,14 +182,42 @@ public class ChatbotManager : IDisposable
 
 
 
-    // uses the bot's saved login without asking for a code (the Log in button does that)
+    // logs the bot in, using its saved login or showing a code to enter in a private browser window, logged in as the bot
+    private void ConnectBot()
+    {
+        if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret))
+        {
+            SetBotStatus(ConnectionStatus.Failed, "Not connected");
+            AppLog.WriteError("Could not connect bot - enter the Client ID and Client Secret first");
+            return;
+        }
+
+        _botLogin = new CancellationTokenSource();
+        SetBotStatus(ConnectionStatus.Connecting, "Logging in...");
+        _ = LogInBotAsync(_model.ClientId, _model.ClientSecret, interactive: true, _botLogin.Token);
+    }
+
+
+
+    // uses the bot's saved login without asking for a code (at startup, or after the credentials changed)
     private void ResumeBot()
     {
         if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret)) return;
 
-        _botLogin?.Cancel();
         _botLogin = new CancellationTokenSource();
+        SetBotStatus(ConnectionStatus.Connecting, "Logging in...");
         _ = LogInBotAsync(_model.ClientId, _model.ClientSecret, interactive: false, _botLogin.Token);
+    }
+
+
+
+    // stops using the bot (its saved login is kept), chat is sent as the streamer
+    private void DropBot()
+    {
+        _botLogin?.Cancel();
+        _botLogin = null;
+        _bot = null;
+        SetBotStatus(ConnectionStatus.NotConnected, "Not connected");
     }
 
 
@@ -246,7 +254,8 @@ public class ChatbotManager : IDisposable
 
 
 
-    // connects, and keeps reconnecting (waiting longer each time) until stopped
+    // connects once and stays connected until stopped; if it fails (or the connection drops later) it's logged
+    // and left failed, the user retries from the Connections tab
     private async Task RunAsync(string clientId, string clientSecret, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
@@ -255,35 +264,40 @@ public class ChatbotManager : IDisposable
             return;
         }
 
-        var retryDelay = TimeSpan.FromSeconds(5);
-
-        while (!ct.IsCancellationRequested)
+        try
         {
-            try
-            {
-                await ConnectOnceAsync(clientId, clientSecret, ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (TwitchUnauthorizedException ex)
-            {
-                // the saved login stopped working, the next attempt logs in again
-                _auth.LogOut(TwitchAccount.Streamer);
-                SetStatus(ChatbotStatus.Error, "Reconnecting...", $"Could not connect to Twitch - login expired ({ex.Message}), logging in again");
-            }
-            catch (Exception ex)
-            {
-                SetStatus(ChatbotStatus.Error, "Reconnecting...", $"Could not connect to Twitch - {ex.Message}, retrying in {retryDelay.TotalSeconds:0}s");
-            }
+            await ConnectOnceAsync(clientId, clientSecret, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (TwitchUnauthorizedException ex)
+        {
+            // the saved login stopped working, forget it so Retry logs in again
+            _auth.LogOut(TwitchAccount.Streamer);
+            ClearStreamer(ct);
+            SetStatus(ChatbotStatus.Error, "Login expired", $"Could not connect to Twitch - login expired ({ex.Message}), press Retry to log in again");
+        }
+        catch (Exception ex)
+        {
+            if (ct.IsCancellationRequested) return;
 
-            try { await Task.Delay(retryDelay, ct); }
-            catch (OperationCanceledException) { return; }
-
-            retryDelay = TimeSpan.FromSeconds(Math.Min(retryDelay.TotalSeconds * 2, 60));
+            ClearStreamer(ct);
+            SetStatus(ChatbotStatus.Error, "Not connected", $"Could not connect to Twitch - {ex.Message}");
         }
     }
+
+
+
+    // the failed connection's session can't be used to send chat any more
+    private void ClearStreamer(CancellationToken ct) => Dispatcher.UIThread.Post(() =>
+    {
+        if (ct.IsCancellationRequested) return; // a newer connection owns it now
+
+        _streamer = null;
+        RaiseStatusChanged();
+    });
 
 
 
@@ -353,22 +367,33 @@ public class ChatbotManager : IDisposable
                 ? await _auth.LogInAsync(TwitchAccount.Bot, clientId, clientSecret, ct)
                 : await _auth.TryResumeAsync(TwitchAccount.Bot, clientId, clientSecret, ct);
 
-            if (bot == null || ct.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) return;
+
+            // no saved login to resume, the Connect button asks for a code
+            if (bot == null)
+            {
+                SetBotStatus(ConnectionStatus.NotConnected, "Not connected");
+                return;
+            }
 
             Dispatcher.UIThread.Post(() =>
             {
+                if (ct.IsCancellationRequested) return;
+
                 _bot = bot;
                 if (bot.UserId == _streamer?.UserId)
-                    AppLog.WriteWarning("Could not use a separate bot account - the bot was approved as the streamer, log the bot out and log in again in a private browser window as the bot");
+                    AppLog.WriteWarning("Could not use a separate bot account - the bot was approved as the streamer, log in again in a private browser window as the bot");
 
-                SetBotStatus($"Connected as {bot.Login}");
+                SetBotStatus(ConnectionStatus.Connected, $"Connected as {bot.Login}");
             });
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            SetBotStatus("Login failed");
-            AppLog.WriteError($"Could not log in bot - {ex.Message}");
+            if (ct.IsCancellationRequested) return;
+
+            SetBotStatus(ConnectionStatus.Failed, "Login failed");
+            AppLog.WriteError($"Could not connect bot - {ex.Message}");
         }
     }
 
@@ -384,7 +409,7 @@ public class ChatbotManager : IDisposable
         if (account == TwitchAccount.Bot)
         {
             // the default browser is probably logged in as the streamer, so the bot needs a private window
-            SetBotStatus("Waiting for login code");
+            SetBotStatus(ConnectionStatus.Connecting, "Waiting for login code");
             AppLog.WriteLine($"Bot login - in a private/incognito browser window logged in as the bot, go to {url} and authorize");
             return;
         }
@@ -410,10 +435,7 @@ public class ChatbotManager : IDisposable
     {
         Dispatcher.UIThread.Post(() =>
         {
-            // the retry delay changes every attempt, compare without it so a long outage is reported once
-            var logKey = log == null ? null : Regex.Replace(log, @"retrying in \d+s", "");
-            if (logKey != null && logKey != _lastLoggedError) AppLog.WriteError(log!);
-            _lastLoggedError = status == ChatbotStatus.Connected ? null : logKey ?? _lastLoggedError;
+            if (log != null) AppLog.WriteError(log);
 
             if (status == Status && message == StatusMessage) return;
 
@@ -426,12 +448,13 @@ public class ChatbotManager : IDisposable
 
 
     // can be called from any thread, listeners always get it on the UI thread
-    private void SetBotStatus(string message)
+    private void SetBotStatus(ConnectionStatus status, string message)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            if (message == BotStatusMessage) return;
+            if (status == BotConnection && message == BotStatusMessage) return;
 
+            BotConnection = status;
             BotStatusMessage = message;
             StatusChanged?.Invoke();
         });
@@ -450,6 +473,7 @@ public class ChatbotManager : IDisposable
     public void Dispose()
     {
         _model.ConnectionChanged -= OnConnectionChanged;
+        _model.BotConnectionChanged -= OnBotConnectionChanged;
         _model.CredentialsChanged -= OnCredentialsChanged;
         _auth.LoginCodeReady -= OnLoginCodeReady;
 

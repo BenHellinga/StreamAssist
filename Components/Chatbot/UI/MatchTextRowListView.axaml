@@ -5,7 +5,7 @@
 
              xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
 
-    <!-- one row per pattern: text box | the chat block that continues after it -->
+    <!-- one row per pattern: text box | bind box or the chat block that continues after it -->
 
     <ItemsControl ItemsSource="{Binding Rows}">
         <ItemsControl.ItemsPanel>
@@ -21,8 +21,8 @@
                     <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top"
                              Text="{Binding Pattern}" PlaceholderText="Text or regex…"/>
 
-                    <!-- the slot (a BlockSlotView through the ViewLocator), only once the row has text -->
-                    <ContentControl Grid.Column="1" Content="{Binding Child}" IsVisible="{Binding ShowSlot}"/>
+                    <!-- bind box + slot (a ChatTargetView through the ViewLocator), only once the row has text -->
+                    <ContentControl Grid.Column="1" Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>
 
                 </Grid>
             </DataTemplate>

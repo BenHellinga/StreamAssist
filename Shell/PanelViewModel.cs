@@ -72,7 +72,7 @@ public partial class PanelViewModel : ViewModelBase
         {
             Length = _oldLength;
             MinLength = 100;
-            SplitterLength = new(10);
+            SplitterLength = new(15); // gap, 5px splitter, gap (Spacing.axaml SplitterLength)
             SplitterMinLength = 5;
         }
         else

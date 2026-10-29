@@ -1,16 +1,33 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- layout spacing shared across views, use with Margin="{StaticResource Name}" -->
+    <!-- layout spacing shared across views, use with Margin="{StaticResource Name}"
 
-    <!-- gap between two side-by-side or stacked panels (applied to the left/top one) -->
-    <Thickness x:Key="PanelGapRight">0,0,5,0</Thickness>
-    <Thickness x:Key="PanelGapBottom">0,0,0,5</Thickness>
+         the rule: lines (dividers, splitters) run edge to edge across their panel, with a 5px gap to the next line,
+         and content sits another 5px inside (so 10px from a splitter or the window edge to content) -->
 
-    <!-- header row (tab strip, title + buttons) that sits above a divider -->
+    <!-- a splitter's own 5px gap on each side (the splitter column/row is 15: gap, 5px line, gap), so a hidden
+         panel's splitter takes its gaps with it -->
+    <Thickness x:Key="ColumnSplitterMargin">5,0,5,0</Thickness>
+    <Thickness x:Key="RowSplitterMargin">0,5,0,5</Thickness>
+    <GridLength x:Key="SplitterLength">15</GridLength>
+
+    <!-- content inside a panel, where the panel's lines still go edge to edge (wrap the content, not the dividers)
+         scrollbars count as lines: a panel's ScrollViewer gets Classes="Gapped" (Styles/Controls/ScrollViewer.axaml)
+         and no margin of its own, its content gets the inset -->
+    <Thickness x:Key="ContentInset">5,0,5,0</Thickness>
+
+    <!-- header row (tab strip, title + buttons) that sits above a divider, every header is the same height
+         so dividers under side-by-side headers line up (the height of a tab strip tab) -->
     <Thickness x:Key="HeaderMargin">5,5,5,10</Thickness>
+    <x:Double x:Key="HeaderHeight">29</x:Double>
 
-    <!-- divider under a header -->
+    <!-- extra room below a tab's scrolled content, so the last row can be scrolled up to a comfortable spot
+         (Padding on a Border wrapping the content of each tab's main scroll area and the bottom editor;
+         a ScrollViewer's own Padding doesn't add scroll room) -->
+    <Thickness x:Key="ScrollEndPadding">0,0,0,200</Thickness>
+
+    <!-- divider under a header (or between sections) -->
     <Thickness x:Key="DividerMargin">0,0,0,5</Thickness>
 
 </ResourceDictionary>

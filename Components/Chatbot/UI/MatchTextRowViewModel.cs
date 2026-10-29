@@ -1,6 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Core.Mvvm;
 
@@ -8,7 +6,7 @@ namespace StreamAssist.Components.Chatbot.UI;
 
 
 
-// one Match Text row: the pattern's text box, and the chat block slot to its right (once there's text or a block)
+// one Match Text row: the pattern's text box, and the bind box + chat block slot to its right (once there's text or something after it)
 public partial class MatchTextRowViewModel : ViewModelBase
 {
     // private
@@ -16,10 +14,10 @@ public partial class MatchTextRowViewModel : ViewModelBase
 
 
     private readonly MatchTextRow _row;
-    private readonly BlockSlotViewModel _child;
+    private readonly ChatTargetViewModel _target;
 
     [ObservableProperty] private string _pattern;
-    [ObservableProperty] private bool _showSlot;
+    [ObservableProperty] private bool _showTarget;
 
 
 
@@ -27,7 +25,7 @@ public partial class MatchTextRowViewModel : ViewModelBase
 
 
 
-    public BlockSlotViewModel Child => _child;
+    public ChatTargetViewModel Target => _target;
 
 
 
@@ -35,16 +33,16 @@ public partial class MatchTextRowViewModel : ViewModelBase
 
 
 
-    public MatchTextRowViewModel(MatchTextRow row)
+    public MatchTextRowViewModel(MatchTextRow row, ChatbotComponentModel model)
     {
         _row = row;
-        _child = new(_row.Child);
+        _target = new(_row.Target, model);
 
         _pattern = _row.Pattern;
-        _showSlot = !_row.IsEmpty;
+        _showTarget = !_row.IsEmpty;
 
         _row.PatternChanged += OnRowPatternChanged;
-        _row.Child.BlockChanged += OnRowChildChanged;
+        _row.Target.ContentsChanged += OnRowTargetContentsChanged;
     }
 
 
@@ -73,12 +71,12 @@ public partial class MatchTextRowViewModel : ViewModelBase
     private void OnRowPatternChanged()
     {
         Pattern = _row.Pattern;
-        ShowSlot = !_row.IsEmpty;
+        ShowTarget = !_row.IsEmpty;
     }
 
 
 
-    private void OnRowChildChanged(BlockModel? _, BlockModel? __) => ShowSlot = !_row.IsEmpty;
+    private void OnRowTargetContentsChanged() => ShowTarget = !_row.IsEmpty;
 
 
 
@@ -89,7 +87,7 @@ public partial class MatchTextRowViewModel : ViewModelBase
     public override void Dispose()
     {
         _row.PatternChanged -= OnRowPatternChanged;
-        _row.Child.BlockChanged -= OnRowChildChanged;
-        _child.Dispose();
+        _row.Target.ContentsChanged -= OnRowTargetContentsChanged;
+        _target.Dispose();
     }
 }

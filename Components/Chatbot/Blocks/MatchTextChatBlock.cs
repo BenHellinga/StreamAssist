@@ -8,8 +8,8 @@ namespace StreamAssist.Components.Chatbot.Blocks;
 
 
 
-// a list of patterns, each with the chat block that continues after it
-// rows are tried top to bottom, the first one that matches and leads to a Bindable wins
+// a list of patterns, each with the binding it runs or the chat block that continues after it
+// rows are tried top to bottom, the first one that matches and leads to a binding wins
 public class MatchTextChatBlock : ChatBlock
 {
     // info
@@ -17,7 +17,7 @@ public class MatchTextChatBlock : ChatBlock
 
 
     [JsonIgnore] public override string Name => "Match Text";
-    [JsonIgnore] public override string Description => "Each row matches some text (or a regex) right after what's already matched, then continues into the block next to it. Spaces aren't added for you, case is ignored, named groups like (?<name>...) become parameters.";
+    [JsonIgnore] public override string Description => "Each row matches some text (or a regex) right after what's already matched, then runs its binding or continues into the block next to it. Spaces aren't added for you, case is ignored, named groups like (?<name>...) become parameters.";
 
 
 
@@ -85,8 +85,7 @@ public class MatchTextChatBlock : ChatBlock
             if (!anyRowMatched) RaiseTriggered();
             anyRowMatched = true;
 
-            if (row.Child.Block is not ChatBlock child || child.IsDisabled) continue;
-            if (child.TryMatch(state.Advance(match.Length, row.Compiled.NamedGroups(match)))) return true;
+            if (row.Target.TryMatch(state.Advance(match.Length, row.Compiled.NamedGroups(match)))) return true;
         }
 
         return false;

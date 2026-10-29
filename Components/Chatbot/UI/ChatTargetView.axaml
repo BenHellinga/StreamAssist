@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Chatbot.UI.ChatTargetView"
+             x:DataType="ui:ChatTargetViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- the chat block slot | bind box, filling one hides the other -->
+
+    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Top">
+
+        <!-- keep matching into another chat block (a BlockSlotView through the ViewLocator) -->
+
+        <ContentControl Content="{Binding Child}" IsVisible="{Binding ShowSlot}"/>
+
+        <!-- bind box: shows the command that reaches it (grey preview until bound), click to edit its binding below,
+             green = bound, red = disabled, buttons inside when open -->
+
+        <Border Classes="Panel Droppable Clickable"
+                Classes.Bound="{Binding IsBound}"
+                Classes.Disabled="{Binding IsDisabled}"
+                Classes.Triggered="{Binding IsTriggered}"
+                MinWidth="100" MaxWidth="300" Height="25" VerticalAlignment="Top"
+                IsVisible="{Binding ShowBindBox}"
+                ToolTip.Tip="{Binding Command}"
+                DragDrop.AllowDrop="True"
+                DragDrop.DragOver="OnDragOver"
+                DragDrop.DragLeave="OnDragLeave"
+                DragDrop.Drop="OnDrop"
+                PointerPressed="OnBindBoxPointerPressed">
+
+            <!-- text on the left, an invisible copy of the buttons on the right keeps exactly enough room for them,
+                 so the text doesn't move when the real buttons appear -->
+
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding Command}"
+                           Classes.Placeholder="{Binding !IsBound}"
+                           Margin="6,0,0,0" TextTrimming="CharacterEllipsis"/>
+
+                <Panel Grid.Column="1">
+                    <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
+                    <blocks:EditButtons IsVisible="{Binding IsSelected}"/>
+                </Panel>
+            </Grid>
+        </Border>
+
+    </StackPanel>
+
+</UserControl>

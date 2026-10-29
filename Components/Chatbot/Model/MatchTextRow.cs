@@ -6,7 +6,7 @@ namespace StreamAssist.Components.Chatbot.Model;
 
 
 
-// one row of a Match Text block: a pattern, and the chat block that continues after it matches
+// one row of a Match Text block: a pattern, and what happens when it matches (a binding, or another chat block)
 public sealed class MatchTextRow : IDisposable
 {
     // private
@@ -14,7 +14,7 @@ public sealed class MatchTextRow : IDisposable
 
 
     private string _pattern;
-    private readonly BlockSlot _child;
+    private readonly ChatTarget _target;
     private readonly ChatPattern _compiled;
 
 
@@ -24,9 +24,9 @@ public sealed class MatchTextRow : IDisposable
 
 
     public string Pattern => _pattern;
-    public BlockSlot Child => _child;
+    public ChatTarget Target => _target;
     public ChatPattern Compiled => _compiled;
-    public bool IsEmpty => _pattern == "" && _child.Block == null;
+    public bool IsEmpty => _pattern == "" && _target.IsEmpty;
 
 
 
@@ -45,7 +45,7 @@ public sealed class MatchTextRow : IDisposable
     public MatchTextRow()
     {
         _pattern = "";
-        _child = new("", typeof(ChatBlock));
+        _target = new();
         _compiled = new();
     }
 
@@ -69,14 +69,18 @@ public sealed class MatchTextRow : IDisposable
 
 
 
-    public MatchTextRowData GetData() => new() { Pattern = _pattern, Child = _child.GetData() };
+    public MatchTextRowData GetData()
+    {
+        var target = _target.GetData();
+        return new() { Pattern = _pattern, Bindable = target.Bindable, Child = target.Child };
+    }
 
 
 
     public void LoadData(MatchTextRowData data)
     {
         _pattern = data.Pattern;
-        _child.LoadData(data.Child);
+        _target.LoadData(new() { Bindable = data.Bindable, Child = data.Child });
     }
 
 
@@ -85,7 +89,7 @@ public sealed class MatchTextRow : IDisposable
 
 
 
-    public void Dispose() => _child.Dispose();
+    public void Dispose() => _target.Dispose();
 }
 
 
@@ -95,6 +99,9 @@ public class MatchTextRowData
 {
     [JsonPropertyName("pattern")]
     public string Pattern { get; set; } = "";
+
+    [JsonPropertyName("bindable")]
+    public BindableModel? Bindable { get; set; }
 
     [JsonPropertyName("child")]
     public PendingBlockData? Child { get; set; }

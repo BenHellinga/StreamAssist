@@ -26,6 +26,10 @@ public abstract class BlockSlotBase : IDisposable
     public abstract IReadOnlyList<BlockModel> Blocks { get; } // blocks directly in this slot
     public virtual IReadOnlyList<BlockSlotBase> InnerSlots => []; // slots directly in this slot (e.g. an if's branches)
 
+    // set by an owner that sometimes forbids blocks here, returns why (e.g. "this row already runs a binding") or null if allowed
+    public Func<string?>? Lock { get; set; }
+    public string? LockReason => Lock?.Invoke();
+
 
 
     // events
@@ -53,7 +57,8 @@ public abstract class BlockSlotBase : IDisposable
 
 
 
-    public bool Accepts(BlockModel block) => _acceptedType.IsInstanceOfType(block);
+    // the right kind of block, and the slot isn't locked right now (drag and drop asks this too)
+    public bool Accepts(BlockModel block) => _acceptedType.IsInstanceOfType(block) && LockReason == null;
 
 
 

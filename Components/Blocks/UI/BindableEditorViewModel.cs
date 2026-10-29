@@ -18,11 +18,11 @@ public partial class BindableEditorViewModel : ViewModelBase
 
     private readonly WindowLayoutModel _layout;
     private readonly BlockPaletteViewModel _palette;
-    private readonly string _emptyText;
 
     [ObservableProperty] private BlockSlotViewModel? _rootSlot;
     [ObservableProperty] private bool _hasBindable;
     [ObservableProperty] private string _label;
+    [ObservableProperty] private string _emptyText; // shown when nothing is being edited, e.g. "No key selected"
     [ObservableProperty] private GridLength _blockListWidth; // bound two-way to the block list column
 
 
@@ -32,7 +32,6 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
     public BlockPaletteViewModel Palette => _palette;
-    public string EmptyText => _emptyText; // shown when nothing is being edited, e.g. "No key selected"
 
 
 

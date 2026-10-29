@@ -8,6 +8,8 @@ using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.OutputConsole.UI;
 using StreamAssist.Components.Audio.Background;
+using StreamAssist.Components.Audio.Model;
+using StreamAssist.Components.Connections.UI;
 using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Chatbot.UI;
@@ -22,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private WindowLayoutModel _windowLayoutModel;
     private KeyboardComponentModel _keyboardComponentModel;
     private ChatbotComponentModel _chatbotComponentModel;
+    private AudioComponentModel _audioComponentModel;
 
     // managers
     private WindowLayoutSaveManager _windowLayoutSaveManager;
@@ -29,6 +32,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private ChatbotSaveManager _chatbotSaveManager;
     private ChatbotManager _chatbotManager;
     private ChatCommandManager _chatCommandManager;
+    private ChatEventManager _chatEventManager;
+    private AudioSaveManager _audioSaveManager;
 
     private VoicemeeterManager _voicemeeterManager; // this should go in an AudioComponentManager
 
@@ -64,6 +69,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _windowLayoutModel = WindowLayoutSaveManager.Load();
         _keyboardComponentModel = JsonFileStore.Load<KeyboardComponentModel>("keyboard");
         _chatbotComponentModel = ChatbotSaveManager.Load();
+        _audioComponentModel = AudioSaveManager.Load();
 
         // managers
 
@@ -72,15 +78,17 @@ public partial class MainWindowViewModel : ViewModelBase
         _chatbotSaveManager = new(_chatbotComponentModel);
         _chatbotManager = new(_chatbotComponentModel);
         _chatCommandManager = new(_chatbotComponentModel, _chatbotManager);
+        _chatEventManager = new(_chatbotComponentModel, _chatbotManager);
 
-        _voicemeeterManager = new();
-        _voicemeeterManager.TryConnect();
+        _audioSaveManager = new(_audioComponentModel);
+        _voicemeeterManager = new(_audioComponentModel); // connects if connect on startup is ticked
 
         // global context
 
         GlobalContext.KeyboardComponentModel = _keyboardComponentModel;
         GlobalContext.KeyboardInputManager = _keyboardComponentManager.GetInputManager();
         GlobalContext.VoicemeeterManager = _voicemeeterManager;
+        GlobalContext.AudioComponentModel = _audioComponentModel;
         GlobalContext.WindowLayoutModel = _windowLayoutModel;
         GlobalContext.ChatbotComponentModel = _chatbotComponentModel;
         GlobalContext.ChatbotManager = _chatbotManager;
@@ -95,7 +103,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // tab
         _tabs = [
             new("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
-            new("Chatbot", () => ChatbotComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))
+            new("Chatbot", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
+            new("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
+            new("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _sidePanelViewModel, _bottomPanelViewModel)),
         ];
 
         // reopen the last selected tab (set through the field so the content is only created once)
@@ -146,8 +156,10 @@ public partial class MainWindowViewModel : ViewModelBase
         _outputConsolePanelViewModel.Dispose();
 
         _voicemeeterManager.Dispose();
+        _audioSaveManager.Dispose();
 
         _chatCommandManager.Dispose();
+        _chatEventManager.Dispose();
         _chatbotManager.Dispose();
         _chatbotSaveManager.Dispose();
         _keyboardComponentManager.Dispose();

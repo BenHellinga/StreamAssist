@@ -55,7 +55,7 @@ public sealed class BlockSlotList : BlockSlotBase
     {
         if (!Accepts(block))
         {
-            AppLog.WriteError($"Could not place '{block.Name}' - it doesn't fit in this list");
+            AppLog.WriteError($"Could not place '{block.Name}' - {LockReason ?? "it doesn't fit in this list"}");
             return false;
         }
 

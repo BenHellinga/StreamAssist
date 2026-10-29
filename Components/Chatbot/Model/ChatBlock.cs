@@ -23,15 +23,15 @@ public sealed record ChatMatchState(string Text, int Position, IReadOnlyDictiona
 
 
 
-// base for the blocks in the chatbot's command tree (match text, parameter, bindable)
-// they reuse the block system for slots, saving and the editor, but only go in chat block lists
+// base for the blocks in the chatbot's command tree (match text, parameter)
+// they reuse the block system for slots, saving and the editor, but only go in chat block slots
 public abstract class ChatBlock : BlockModel
 {
     [JsonIgnore] public override BlockCategory Category => BlockCategory.Chat;
 
 
 
-    // tries to match the message from state.Position, returns true once a bindable has been run (the search stops)
+    // tries to match the message from state.Position, returns true once a binding has been run (the search stops)
     public abstract bool TryMatch(ChatMatchState state);
 
 
@@ -39,16 +39,4 @@ public abstract class ChatBlock : BlockModel
     // starts matching at the block in a slot (e.g. the chatbot's root), an empty or disabled slot matches nothing
     public static bool TryMatchSlot(BlockSlot slot, ChatMatchState state) =>
         slot.Block is ChatBlock chatBlock && !chatBlock.IsDisabled && chatBlock.TryMatch(state);
-
-
-
-    // the first block in the list (top to bottom) that leads to a bindable wins, disabled blocks are skipped
-    // a block that matches but whose children don't lead anywhere just moves on to the next sibling
-    public static bool TryMatchList(BlockSlotList list, ChatMatchState state)
-    {
-        foreach (var block in list.Blocks.ToArray())
-            if (block is ChatBlock chatBlock && !chatBlock.IsDisabled && chatBlock.TryMatch(state)) return true;
-
-        return false;
-    }
 }
