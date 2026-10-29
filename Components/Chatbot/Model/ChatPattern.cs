@@ -58,6 +58,21 @@ public sealed class ChatPattern
 
 
 
+    // the named groups a pattern has, e.g. (?<amount>\d+) -> amount, without matching anything (none if it's invalid)
+    public static IReadOnlyList<string> GroupNames(string pattern)
+    {
+        try
+        {
+            return new Regex(pattern).GetGroupNames().Where(name => !int.TryParse(name, out _)).ToList();
+        }
+        catch (ArgumentException)
+        {
+            return [];
+        }
+    }
+
+
+
     // helpers
 
 

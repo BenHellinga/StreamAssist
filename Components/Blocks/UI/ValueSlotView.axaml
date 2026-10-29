@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.ValueSlotView"
+             x:DataType="ui:ValueSlotViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- label | typed value (a drop target for value blocks) or the placed value block's card -->
+
+    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+
+        <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+
+        <!-- empty or typed: the placeholder says what fits, e.g. "+ int" (the border lights up when a block can be dropped) -->
+
+        <Border Grid.Column="1" Classes="Droppable ValueDrop"
+                IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNull}}"
+                DragDrop.AllowDrop="True"
+                DragDrop.DragOver="OnDragOver"
+                DragDrop.DragLeave="OnDragLeave"
+                DragDrop.Drop="OnDrop">
+            <TextBox Text="{Binding Text}" PlaceholderText="{Binding Placeholder}" MinWidth="100"
+                     AcceptsReturn="{Binding IsText}" AcceptsTab="False" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- a value block placed here (a BlockView through the ViewLocator) -->
+
+        <ContentControl Grid.Column="1" Content="{Binding Block}"
+                        IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+
+    </Grid>
+
+    <UserControl.Styles>
+        <Style Selector="Border.ValueDrop">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="3"/>
+        </Style>
+    </UserControl.Styles>
+
+</UserControl>

@@ -58,6 +58,7 @@ public sealed class BlockSlot : BlockSlotBase
             return false;
         }
 
+        if (block != null) Adapt(block);
         SetBlock(block);
         return true;
     }
@@ -100,8 +101,7 @@ public sealed class BlockSlot : BlockSlotBase
 
 
     // an empty condition slot counts as false
-    public Task<bool> EvaluateAsync(TriggerContext context) =>
-        (_block as ConditionBlock)?.EvaluateAsync(context) ?? Task.FromResult(false);
+    public Task<bool> EvaluateAsync(TriggerContext context) => ConditionBlock.EvaluateConditionAsync(_block, context);
 
 
 

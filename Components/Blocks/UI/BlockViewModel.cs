@@ -25,6 +25,8 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
         [typeof(BlockSlot)] = slot => new BlockSlotViewModel((BlockSlot)slot),
         [typeof(BlockSlotList)] = slot => new BlockSlotListViewModel((BlockSlotList)slot),
         [typeof(BlockBranchList)] = slot => new BlockBranchListViewModel((BlockBranchList)slot),
+        [typeof(ValueSlot)] = slot => new ValueSlotViewModel((ValueSlot)slot), // every ValueSlot<T> and AnyValueSlot
+        [typeof(ValueSlotList)] = slot => new ValueSlotListViewModel((ValueSlotList)slot),
     };
 
     private readonly BlockModel _block;
@@ -69,8 +71,8 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
         foreach (var slot in _block.Slots)
         {
-            if (SlotViewModelFactories.TryGetValue(slot.GetType(), out var createViewModel))
-                _slots.Add(createViewModel(slot));
+            var createViewModel = FindSlotViewModelFactory(slot.GetType());
+            if (createViewModel != null) _slots.Add(createViewModel(slot));
         }
 
         SubscribeToBlockModel(_block);
@@ -81,6 +83,17 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     // lets a component show its own kind of slot (e.g. the chatbot's Match Text rows)
     public static void RegisterSlotViewModel<TSlot>(Func<TSlot, ViewModelBase> create) where TSlot : BlockSlotBase =>
         SlotViewModelFactories[typeof(TSlot)] = slot => create((TSlot)slot);
+
+
+
+    // the slot's own type, or the nearest base type registered (so ValueSlot<int> uses ValueSlot's)
+    private static Func<BlockSlotBase, ViewModelBase>? FindSlotViewModelFactory(Type? type)
+    {
+        for (; type != null; type = type.BaseType)
+            if (SlotViewModelFactories.TryGetValue(type, out var create)) return create;
+
+        return null;
+    }
 
 
 

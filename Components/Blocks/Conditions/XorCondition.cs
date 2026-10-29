@@ -72,8 +72,8 @@ public class XorCondition : ConditionBlock
         var result = false;
 
         // every condition has to be checked, each true one flips the result
-        foreach (var condition in _conditions.Blocks.OfType<ConditionBlock>().ToArray())
-            if (await condition.EvaluateAsync(context)) result = !result;
+        foreach (var condition in _conditions.Blocks.Where(ConditionBlock.IsCondition).ToArray())
+            if (await EvaluateConditionAsync(condition, context)) result = !result;
 
         return result;
     }

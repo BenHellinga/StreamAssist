@@ -251,10 +251,25 @@ public class ChatbotComponentModel : ModelBase
 
     // the steps leading to a target, one per Match Text row (its raw pattern) or Parameter ({name}),
     // e.g. ["!", "pay ", "{user}", " ", "{amount}"], or null if the target isn't in the tree
-    public List<string>? FindCommandSteps(ChatTarget target)
+    public List<string>? FindCommandSteps(ChatTarget target) => FindPath(target)?.Select(step => step.Text).ToList();
+
+
+
+    // the parameters a bind box's binding gets (the editor's Parameters list), null if it's not in the chatbot:
+    // a chat command gets the chat ones, rest, and whatever the Parameter blocks and regex groups on its path capture
+    public IReadOnlyList<ParameterInfo>? FindParameters(ChatTarget target)
     {
-        var steps = new List<string>();
-        return FindCommandSteps(_root.Block, target, steps) ? steps : null;
+        if (FindPath(target) is { } path)
+        {
+            var captured = path.SelectMany(step => step.Captured).ToList();
+            var builtIn = ChatEvents.Chat.Append(ChatEvents.Rest).Where(p => captured.All(c => c.Name != p.Name));
+            return [.. captured, .. builtIn]; // a capture with a built-in name replaces it, like it does when matching
+        }
+
+        if (_redeems.Rows.Any(r => r.Target == target)) return ChatEvents.Redeem;
+
+        var slot = _events.FirstOrDefault(e => e.Target == target);
+        return slot == null ? null : ChatEvents.Parameters(slot.Key);
     }
 
 
@@ -291,18 +306,40 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    private static bool FindCommandSteps(BlockModel? block, ChatTarget target, List<string> steps)
+    // one step on the way down to a bind box: its text in the command, and the parameters it captures
+    private sealed record PathStep(string Text, IReadOnlyList<ParameterInfo> Captured);
+
+
+
+    private List<PathStep>? FindPath(ChatTarget target)
+    {
+        var path = new List<PathStep>();
+        return FindPath(_root.Block, target, path) ? path : null;
+    }
+
+
+
+    private static bool FindPath(BlockModel? block, ChatTarget target, List<PathStep> path)
     {
         switch (block)
         {
             case MatchTextChatBlock match:
                 foreach (var row in match.Rows.Rows)
-                    if (FindCommandSteps(row.Pattern, row.Target, target, steps)) return true;
+                {
+                    var groups = ChatPattern.GroupNames(row.Pattern)
+                        .Select(g => new ParameterInfo(g, ValueKind.Text, $"captured by the (?<{g}>...) group in '{row.Pattern}'"));
+                    if (FindPath(new(row.Pattern, groups.ToList()), row.Target, target, path)) return true;
+                }
                 break;
 
             case ParameterChatBlock parameter:
                 var name = parameter.ParameterName.Trim();
-                if (FindCommandSteps($"{{{(name == "" ? "?" : name)}}}", parameter.Target, target, steps)) return true;
+                var captured = ChatPattern.GroupNames(parameter.Pattern)
+                    .Select(g => new ParameterInfo(g, ValueKind.Text, $"captured by the (?<{g}>...) group in the Parameter block's pattern"))
+                    .ToList();
+                if (name != "") captured.Insert(0, new(name, ValueKind.Text, $"captured by the Parameter block (pattern {parameter.Pattern})"));
+
+                if (FindPath(new($"{{{(name == "" ? "?" : name)}}}", captured), parameter.Target, target, path)) return true;
                 break;
         }
 
@@ -311,12 +348,12 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    private static bool FindCommandSteps(string step, ChatTarget current, ChatTarget target, List<string> steps)
+    private static bool FindPath(PathStep step, ChatTarget current, ChatTarget target, List<PathStep> path)
     {
-        steps.Add(step);
-        if (current == target || FindCommandSteps(current.Child.Block, target, steps)) return true;
+        path.Add(step);
+        if (current == target || FindPath(current.Child.Block, target, path)) return true;
 
-        steps.RemoveAt(steps.Count - 1);
+        path.RemoveAt(path.Count - 1);
         return false;
     }
 

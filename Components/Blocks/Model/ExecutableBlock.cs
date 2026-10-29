@@ -37,6 +37,10 @@ public abstract class ExecutableBlock : BlockModel
         {
             // stopped on purpose (e.g. the bind was removed), not an error
         }
+        catch (BlockFailedException)
+        {
+            // the block that failed already logged why
+        }
         catch (Exception ex)
         {
             AppLog.WriteError($"Could not run block '{Name}' - {ex.Message}");

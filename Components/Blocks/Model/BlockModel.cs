@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Blocks.Model;
@@ -8,7 +9,8 @@ namespace StreamAssist.Components.Blocks.Model;
 
 
 // which heading a block is listed under in the block list (Chat blocks only appear in the chatbot's list)
-public enum BlockCategory { Container, Condition, Action, Chat }
+// value blocks are listed by the type they return: Condition (bool), Text, Int, Double, Char, or Any (they can return any)
+public enum BlockCategory { Container, Condition, Action, Chat, Text, Int, Double, Char, Any }
 
 
 
@@ -34,6 +36,7 @@ public abstract class BlockModel : ModelBase
     [JsonIgnore] public virtual IReadOnlyList<BlockSlotBase> Slots => [];
     [JsonIgnore] public bool IsDisabled => _isDisabled;
     [JsonIgnore] public bool IsCollapsed => _isCollapsed; // shown as a small box in the editor
+    [JsonIgnore] public BlockSlotBase? ParentSlot { get; internal set; } // the slot it's placed in (set by the slot)
 
 
 
@@ -134,7 +137,20 @@ public abstract class BlockModel : ModelBase
     protected void TrackSlots()
     {
         foreach (var slot in Slots)
+        {
+            slot.Owner = this;
             slot.Changed += RaiseChanged;
+        }
+    }
+
+
+
+    // logs why this block can't go on (here, where the most is known about it) and returns the exception to throw,
+    // e.g. throw Fail("there's no parameter 'viewers'"), the run stops and the root doesn't log it again
+    protected BlockFailedException Fail(string reason)
+    {
+        AppLog.WriteError($"Could not run '{Name}' - {reason}");
+        return new BlockFailedException(reason);
     }
 
 

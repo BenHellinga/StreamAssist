@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Blocks.Model;
@@ -14,7 +15,7 @@ public class ConsoleMessageAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Console Message";
-    [JsonIgnore] public override string Description => "Prints the configured message to the console ({name} is replaced with a parameter, e.g. {user}).";
+    [JsonIgnore] public override string Description => "Prints the message to the console (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block).";
 
 
 
@@ -22,7 +23,8 @@ public class ConsoleMessageAction : ActionBlock
 
 
 
-    private string _message;
+    private readonly ValueSlot<string> _message;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -30,11 +32,19 @@ public class ConsoleMessageAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Message", ConfiguratorType.Text)] [JsonPropertyName("message")]
-    public string Message
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("message")]
+    private ValueSlotData JsonMessage
     {
-        get => _message;
-        set => SetParameter(ref _message, value);
+        get => _message.GetData();
+        set => _message.LoadData(value);
     }
 
 
@@ -45,7 +55,10 @@ public class ConsoleMessageAction : ActionBlock
 
     public ConsoleMessageAction()
     {
-        _message = "";
+        _message = new("Message");
+        _slots = [_message];
+
+        TrackSlots();
     }
 
 
@@ -54,9 +67,8 @@ public class ConsoleMessageAction : ActionBlock
 
 
 
-    protected override Task ExecuteAsync(TriggerContext context)
+    protected override async Task ExecuteAsync(TriggerContext context)
     {
-        AppLog.WriteLine(context.Format(_message));
-        return Task.CompletedTask;
+        AppLog.WriteLine(await _message.EvaluateAsync(context));
     }
 }

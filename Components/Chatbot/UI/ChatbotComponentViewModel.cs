@@ -128,6 +128,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
         if (_selected.Child.Block == null && _model.Describe(_selected) != null)
         {
             _editor.Label = FormatLabel(_selected);
+            _editor.SetParameters(_model.FindParameters(_selected));
             return;
         }
 
@@ -182,7 +183,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
         _bindable = _selected.Bindable ?? BindableModel.CreateDefault();
         if (_isDraft) _bindable.Changed += OnDraftChanged;
 
-        _editor.ShowBindable(_bindable, FormatLabel(_selected));
+        _editor.ShowBindable(_bindable, FormatLabel(_selected), _model.FindParameters(_selected));
     }
 
 

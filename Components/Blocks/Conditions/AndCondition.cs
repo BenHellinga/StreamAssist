@@ -69,11 +69,11 @@ public class AndCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        var conditions = _conditions.Blocks.OfType<ConditionBlock>().ToArray();
+        var conditions = _conditions.Blocks.Where(ConditionBlock.IsCondition).ToArray();
         if (conditions.Length == 0) return false;
 
         foreach (var condition in conditions)
-            if (!await condition.EvaluateAsync(context)) return false;
+            if (!await EvaluateConditionAsync(condition, context)) return false;
 
         return true;
     }

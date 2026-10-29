@@ -30,6 +30,16 @@ public abstract class BlockSlotBase : IDisposable
     public Func<string?>? Lock { get; set; }
     public string? LockReason => Lock?.Invoke();
 
+    // set by an owner that only takes some blocks of the accepted type (e.g. a value slot: only kinds that convert)
+    public Func<BlockModel, bool>? Filter { get; set; }
+
+    // the block this slot belongs to (set by TrackSlots), so its errors can name it
+    public virtual BlockModel? Owner { get; set; }
+
+    // the value kind blocks here should give: Bool for condition slots, the slot's kind for value slots, null otherwise
+    // an "any type" block (Convert, Get Parameter) placed here switches to it if it doesn't already fit
+    public ValueKind? WantedKind { get; set; }
+
 
 
     // events
@@ -49,6 +59,7 @@ public abstract class BlockSlotBase : IDisposable
     {
         _label = label;
         _acceptedType = acceptedType;
+        WantedKind = acceptedType == typeof(ConditionBlock) ? ValueKind.Bool : null;
     }
 
 
@@ -57,8 +68,16 @@ public abstract class BlockSlotBase : IDisposable
 
 
 
-    // the right kind of block, and the slot isn't locked right now (drag and drop asks this too)
-    public bool Accepts(BlockModel block) => _acceptedType.IsInstanceOfType(block) && LockReason == null;
+    // the right kind of block (as it is, or once an "any type" block switches kind), and the slot isn't locked right now
+    // (drag and drop asks this too)
+    public bool Accepts(BlockModel block) => LockReason == null && (Fits(block) || FitsOnceAdapted(block));
+
+
+
+    // the block as it is: the accepted type (condition slots take any bool value block) and the owner's filter
+    public bool Fits(BlockModel block) =>
+        (_acceptedType.IsInstanceOfType(block) || (_acceptedType == typeof(ConditionBlock) && ConditionBlock.IsCondition(block)))
+        && (Filter?.Invoke(block) ?? true);
 
 
 
@@ -86,11 +105,39 @@ public abstract class BlockSlotBase : IDisposable
 
 
 
-    protected void Attach(BlockModel block) => block.Changed += RaiseChanged;
+    // slots call this just before placing a block Accepts said yes to: an "any type" block switches to the wanted kind
+    protected void Adapt(BlockModel block)
+    {
+        if (block is AdaptableValueBlock adaptable && !Fits(block) && WantedKind is { } kind)
+            adaptable.SetKindForPlacement(kind);
+    }
 
 
 
-    protected void Detach(BlockModel block) => block.Changed -= RaiseChanged;
+    protected void Attach(BlockModel block)
+    {
+        block.Changed += RaiseChanged;
+        block.ParentSlot = this;
+    }
+
+
+
+    protected void Detach(BlockModel block)
+    {
+        block.Changed -= RaiseChanged;
+        if (block.ParentSlot == this) block.ParentSlot = null;
+    }
+
+
+
+    // helpers
+
+
+
+    // a not-yet-placed "any type" block that would fit once it switches to the wanted kind
+    private bool FitsOnceAdapted(BlockModel block) =>
+        block is AdaptableValueBlock adaptable && adaptable.ParentSlot == null && WantedKind is { } kind
+        && adaptable.CanBe(kind) && adaptable.WithKind(kind, () => Fits(block));
 
 
 

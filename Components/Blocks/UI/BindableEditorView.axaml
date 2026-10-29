@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.Blocks.UI.BindableEditorView"
              x:DataType="ui:BindableEditorViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+             xmlns:model="using:StreamAssist.Components.Blocks.Model">
 
     <!-- editor | block list -->
 
@@ -30,18 +31,54 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}"
-                           Classes="Label"
-                           Text="{Binding Label}"/>
+                <!-- header: what's being edited | the Parameters toggle (only when the trigger has parameters) -->
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15"
+                            Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}">
+                    <TextBlock Classes="Label" Text="{Binding Label}"/>
+
+                    <Button Command="{Binding ParametersTogglePressedCommand}" IsVisible="{Binding HasParameters}"
+                            Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center"
+                            ToolTip.Tip="The parameters this has, for Get Parameter or {name} in typed text">
+                        <Panel>
+                            <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
+                            <TextBlock Text="Parameters ▾" IsVisible="{Binding IsParametersOpen}"/>
+                        </Panel>
+                    </Button>
+                </StackPanel>
 
                 <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
 
+                <!-- parameters: name | type | what it is, then a divider before the blocks -->
+
+                <StackPanel Grid.Row="2" Spacing="5" IsVisible="{Binding IsParametersOpen}">
+                    <ItemsControl ItemsSource="{Binding Parameters}" Margin="5,5,5,0" Grid.IsSharedSizeScope="True">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="model:ParameterInfo">
+                                <Grid ColumnSpacing="31">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="name"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="kind"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <SelectableTextBlock Grid.Column="0" Text="{Binding Name}"/>
+                                    <TextBlock Grid.Column="1" Classes="Description" Text="{Binding Kind}"/>
+                                    <TextBlock Grid.Column="2" Classes="Description" Text="{Binding Description}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                </StackPanel>
+
                 <!-- the bindable's single slot (a BlockSlotView through the ViewLocator) -->
 
-                <ScrollViewer Grid.Row="2"
+                <ScrollViewer Grid.Row="3"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Auto"
                               Classes="Gapped">

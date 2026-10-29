@@ -65,6 +65,7 @@ public sealed class BlockSlotList : BlockSlotBase
             return false;
         }
 
+        Adapt(block);
         InsertBlock(block, index);
         return true;
     }

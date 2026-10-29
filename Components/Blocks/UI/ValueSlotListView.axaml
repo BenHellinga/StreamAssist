@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.ValueSlotListView"
+             x:DataType="ui:ValueSlotListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- one value slot per item (a ValueSlotView through the ViewLocator), the last one is always empty -->
+
+    <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Spacing="5"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+    </ItemsControl>
+
+</UserControl>

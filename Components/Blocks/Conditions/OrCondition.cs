@@ -69,8 +69,8 @@ public class OrCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        foreach (var condition in _conditions.Blocks.OfType<ConditionBlock>().ToArray())
-            if (await condition.EvaluateAsync(context)) return true;
+        foreach (var condition in _conditions.Blocks.Where(ConditionBlock.IsCondition).ToArray())
+            if (await EvaluateConditionAsync(condition, context)) return true;
 
         return false;
     }
