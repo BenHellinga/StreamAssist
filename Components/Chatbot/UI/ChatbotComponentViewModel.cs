@@ -24,12 +24,6 @@ public partial class ChatbotComponentViewModel : ViewModelBase
     private readonly ViewModelBase _page; // ChatCommandsViewModel or ChatEventsViewModel
     private ChatTarget? _selected;
 
-    // the binding being edited, either the target's real one or a draft that isn't saved yet
-    private BindableModel? _bindable;
-    private bool _isDraft;
-
-
-
 
     // public
 
@@ -77,8 +71,6 @@ public partial class ChatbotComponentViewModel : ViewModelBase
         _model = model;
         _editor = editor;
         _selected = null;
-        _bindable = null;
-        _isDraft = false;
 
         // a fresh tab starts with nothing open (before the tree is built, so no bind box starts selected)
         ChatTargetSelection.Set(null);
@@ -104,7 +96,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
     private void OnSelectionChanged()
     {
         _selected?.BindableChanged -= OnSelectedBindableChanged;
-        ClearEditor();
+        _editor.ClearBindable();
 
         _selected = ChatTargetSelection.Selected;
         if (_selected == null) return;
@@ -140,31 +132,10 @@ public partial class ChatbotComponentViewModel : ViewModelBase
     // the selected target was bound or unbound from somewhere else (e.g. a binding dropped on it, or its blocks all removed)
     private void OnSelectedBindableChanged()
     {
-        // our own draft was just committed, keep editing it
-        if (_selected == null || _selected.Bindable == _bindable) return;
+        // our own draft was just saved, keep editing it
+        if (_selected == null || _selected.Bindable == _editor.Bindable) return;
 
         ShowSelected();
-    }
-
-
-
-    // the first change to a draft binds it to the target
-    private void OnDraftChanged()
-    {
-        if (!_isDraft || _bindable == null || _selected == null) return;
-
-        // e.g. the default On Pressed was deleted, there's still nothing worth saving
-        if (!_bindable.HasBlock) return;
-
-        _bindable.Changed -= OnDraftChanged;
-        _isDraft = false;
-
-        // couldn't bind (already logged), close the editor, which throws the draft away
-        if (!_selected.TryBind(_bindable))
-        {
-            _isDraft = true;
-            ChatTargetSelection.Set(null);
-        }
     }
 
 
@@ -173,39 +144,22 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    // shows the selected target's binding, or a fresh unsaved draft if it has none
+    // shows the selected target's binding, or a fresh empty draft (bound to it on its first change) if it has none
     private void ShowSelected()
     {
         if (_selected == null) return;
-        ClearEditor();
 
-        _isDraft = _selected.Bindable == null;
-        _bindable = _selected.Bindable ?? BindableModel.CreateDefault();
-        if (_isDraft) _bindable.Changed += OnDraftChanged;
+        var target = _selected;
+        var label = FormatLabel(target);
+        var parameters = _model.FindParameters(target);
 
-        _editor.ShowBindable(_bindable, FormatLabel(_selected), _model.FindParameters(_selected));
+        if (target.Bindable != null) _editor.ShowBindable(target.Bindable, label, parameters);
+        else _editor.ShowDraft(label, target.TryBind, parameters, startWithOnPressed: false); // chat triggers just fire once
     }
 
 
 
-    private void ClearEditor()
-    {
-        _editor.ClearBindable();
-
-        // a draft that was never changed is thrown away, a real binding belongs to the target
-        if (_bindable != null && _isDraft)
-        {
-            _bindable.Changed -= OnDraftChanged;
-            _bindable.Dispose();
-        }
-
-        _bindable = null;
-        _isDraft = false;
-    }
-
-
-
-    // the editor header, e.g. "Chat command: !pay {user} {amount}", "Redeem: Hydrate" or "Event: Raid"
+    // the editor header, e.g. "Chat command: !pay {user} {amount}", "Redeem: Hydrate" or "Alert: Raid"
     private string FormatLabel(ChatTarget target)
     {
         var description = _model.Describe(target);
@@ -228,7 +182,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
         _selected?.BindableChanged -= OnSelectedBindableChanged;
         _selected = null;
-        ClearEditor();
+        _editor.ClearBindable();
         ChatTargetSelection.Set(null);
 
         _page.Dispose();

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
@@ -33,7 +32,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     private readonly Action? _removeFromSource;
     private readonly ObservableCollection<ConfigurableParameterViewModel> _configurators;
     private readonly ObservableCollection<ViewModelBase> _slots;
-    private IDisposable? _triggerTimer;
+    private readonly Flash _flash; // lights up IsTriggered when it runs
 
     [ObservableProperty] private bool _isDisabled;
     [ObservableProperty] private bool _isCollapsed;
@@ -51,6 +50,10 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     public ObservableCollection<ConfigurableParameterViewModel> Configurators => _configurators;
     public ObservableCollection<ViewModelBase> Slots => _slots; // BlockSlotViewModel or BlockSlotListViewModel
 
+    // where the slots go in the card: under the settings, or beside them (e.g. Parse Parameter)
+    public int SlotsRow => _block.SlotsBesideSettings ? 0 : 1;
+    public int SlotsColumn => _block.SlotsBesideSettings ? 1 : 0;
+
 
 
     // constructor
@@ -63,7 +66,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
         _removeFromSource = removeFromSource;
         _configurators = ConfiguratorListBuilder.Build(block);
         _slots = [];
-        _triggerTimer = null;
+        _flash = new(isOn => IsTriggered = isOn);
 
         _isDisabled = _block.IsDisabled;
         _isCollapsed = _block.IsCollapsed;
@@ -135,7 +138,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
 
-    private void OnTriggered() => Dispatcher.UIThread.Post(FlashTriggered);
+    private void OnTriggered() => _flash.Trigger();
 
 
 
@@ -169,20 +172,6 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
 
-    private void FlashTriggered()
-    {
-        IsTriggered = true;
-
-        _triggerTimer?.Dispose();
-        _triggerTimer = DispatcherTimer.RunOnce(() =>
-        {
-            _triggerTimer = null;
-            IsTriggered = false;
-        }, TimeSpan.FromMilliseconds(50));
-    }
-
-
-
     // disposal
 
 
@@ -190,7 +179,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     public override void Dispose()
     {
         UnsubscribeFromBlockModel(_block);
-        _triggerTimer?.Dispose();
+        _flash.Dispose();
 
         foreach (var slot in _slots)
             slot.Dispose();

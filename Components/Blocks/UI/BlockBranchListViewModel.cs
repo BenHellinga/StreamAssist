@@ -8,7 +8,8 @@ namespace StreamAssist.Components.Blocks.UI;
 
 
 
-// view model for an if's branches: a condition drop zone above each branch and one at the end
+// view model for an if's branches: dropping a condition on a branch starts a new branch before it (the zone at the end
+// adds one last)
 public class BlockBranchListViewModel : ViewModelBase, IDroppable
 {
     // private
@@ -57,7 +58,7 @@ public class BlockBranchListViewModel : ViewModelBase, IDroppable
 
 
 
-    // zoneContext is the branch the drop zone sits above, or null for the zone at the end
+    // zoneContext is the branch it was dropped on, or null for the zone at the end
     public void OnDroppedOn(object payload, object? zoneContext)
     {
         if (payload is not BlockDragPayload blockPayload) return;

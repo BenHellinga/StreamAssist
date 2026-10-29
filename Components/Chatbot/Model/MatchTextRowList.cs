@@ -2,20 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Chatbot.Model;
 
 
 
 // the rows of a Match Text block: there's always exactly one empty row at the end (typing in it adds the next),
-// and a row disappears once its pattern is empty and it has no binding or block after it
+// and a row disappears once its pattern is empty and it has no binding or block after it (see GrowingList)
 public sealed class MatchTextRowList : BlockSlotBase
 {
     // private
 
 
 
-    private readonly List<MatchTextRow> _rows;
+    private readonly GrowingList<MatchTextRow> _rows;
 
 
 
@@ -23,9 +24,9 @@ public sealed class MatchTextRowList : BlockSlotBase
 
 
 
-    public IReadOnlyList<MatchTextRow> Rows => _rows;
+    public IReadOnlyList<MatchTextRow> Rows => _rows.Items;
     public override IReadOnlyList<BlockModel> Blocks => [];
-    public override IReadOnlyList<BlockSlotBase> InnerSlots => _rows.Select(r => (BlockSlotBase)r.Target).ToList();
+    public override IReadOnlyList<BlockSlotBase> InnerSlots => _rows.Items.Select(r => (BlockSlotBase)r.Target).ToList();
 
 
 
@@ -33,8 +34,17 @@ public sealed class MatchTextRowList : BlockSlotBase
 
 
 
-    public event Action<MatchTextRow, int>? RowInserted;
-    public event Action<MatchTextRow>? RowRemoved;
+    public event Action<MatchTextRow, int>? RowInserted
+    {
+        add => _rows.ItemInserted += value;
+        remove => _rows.ItemInserted -= value;
+    }
+
+    public event Action<MatchTextRow>? RowRemoved
+    {
+        add => _rows.ItemRemoved += value;
+        remove => _rows.ItemRemoved -= value;
+    }
 
 
 
@@ -44,59 +54,41 @@ public sealed class MatchTextRowList : BlockSlotBase
 
     public MatchTextRowList(string label) : base(label, typeof(ChatBlock))
     {
-        _rows = [];
-        Normalize();
+        _rows = new(() => new MatchTextRow(), row => row.IsEmpty, SubscribeToRow, UnsubscribeFromRow);
+        _rows.Changed += RaiseChanged;
     }
 
 
 
-    // row management
+    // public api
 
 
 
-    // removes empty rows (except the last) and makes sure the last row is an empty one
-    private void Normalize()
+    // fills the empty row at the end with this pattern (a new empty one appears below it) and returns it
+    public MatchTextRow AddRow(string pattern)
     {
-        // the row just above the trailing one was emptied (e.g. backspacing a typo): drop the trailing row instead,
-        // so the row being typed in stays put and keeps its cursor
-        while (_rows.Count >= 2 && _rows[^1].IsEmpty && _rows[^2].IsEmpty)
-            RemoveRow(_rows[^1]);
-
-        for (int i = _rows.Count - 2; i >= 0; i--)
-            if (_rows[i].IsEmpty) RemoveRow(_rows[i]);
-
-        if (_rows.Count == 0 || !_rows[^1].IsEmpty)
-            InsertRow(new MatchTextRow(), _rows.Count);
+        var row = _rows.Items[^1];
+        row.SetPattern(pattern);
+        return row;
     }
 
 
 
-    private void InsertRow(MatchTextRow row, int index)
+    // removes a row along with its binding or the block after it
+    public void RemoveRow(MatchTextRow row)
     {
-        _rows.Insert(index, row);
-        SubscribeToRow(row);
+        if (!_rows.Items.Contains(row)) return;
 
-        RowInserted?.Invoke(row, index);
-        RaiseChanged();
-    }
-
-
-
-    private void RemoveRow(MatchTextRow row)
-    {
-        if (!_rows.Remove(row)) return;
-        UnsubscribeFromRow(row);
-
-        RowRemoved?.Invoke(row);
-        RaiseChanged();
-        row.Dispose();
+        row.SetPattern("");
+        row.Target.Unbind();
+        if (row.Target.Child.Block is { } child) row.Target.RemoveBlock(child); // the now empty row disappears
     }
 
 
 
     public override void RemoveBlock(BlockModel block)
     {
-        foreach (var row in _rows.ToArray())
+        foreach (var row in _rows.Items.ToArray())
             row.Target.RemoveBlock(block);
     }
 
@@ -109,16 +101,16 @@ public sealed class MatchTextRowList : BlockSlotBase
     private void OnRowPatternChanged()
     {
         RaiseChanged();
-        Normalize();
+        _rows.Normalize();
     }
 
 
 
-    private void OnRowTargetContentsChanged() => Normalize();
+    private void OnRowTargetContentsChanged() => _rows.Normalize();
 
 
 
-    private void OnRowSlotChanged() => RaiseChanged();
+    private void OnRowTargetChanged() => RaiseChanged();
 
 
 
@@ -130,7 +122,7 @@ public sealed class MatchTextRowList : BlockSlotBase
     {
         row.PatternChanged += OnRowPatternChanged;
         row.Target.ContentsChanged += OnRowTargetContentsChanged;
-        row.Target.Changed += OnRowSlotChanged;
+        row.Target.Changed += OnRowTargetChanged;
     }
 
 
@@ -139,7 +131,7 @@ public sealed class MatchTextRowList : BlockSlotBase
     {
         row.PatternChanged -= OnRowPatternChanged;
         row.Target.ContentsChanged -= OnRowTargetContentsChanged;
-        row.Target.Changed -= OnRowSlotChanged;
+        row.Target.Changed -= OnRowTargetChanged;
     }
 
 
@@ -149,26 +141,16 @@ public sealed class MatchTextRowList : BlockSlotBase
 
 
     // the trailing empty row isn't saved, it's added back on load
-    public List<MatchTextRowData> GetData() => _rows.Where(r => !r.IsEmpty).Select(r => r.GetData()).ToList();
+    public List<MatchTextRowData> GetData() => _rows.NonEmptyItems.Select(r => r.GetData()).ToList();
 
 
 
-    public void LoadData(List<MatchTextRowData> data)
+    public void LoadData(List<MatchTextRowData> data) => _rows.Load(data.Select(item =>
     {
-        foreach (var row in _rows.ToArray())
-            RemoveRow(row);
-
-        foreach (var item in data)
-        {
-            var row = new MatchTextRow();
-            row.LoadData(item);
-
-            if (row.IsEmpty) row.Dispose();
-            else InsertRow(row, _rows.Count);
-        }
-
-        Normalize();
-    }
+        var row = new MatchTextRow();
+        row.LoadData(item);
+        return row;
+    }));
 
 
 
@@ -178,7 +160,7 @@ public sealed class MatchTextRowList : BlockSlotBase
 
     public override void Dispose()
     {
-        foreach (var row in _rows)
-            row.Dispose();
+        _rows.Changed -= RaiseChanged;
+        _rows.Dispose();
     }
 }

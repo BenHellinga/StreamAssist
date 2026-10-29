@@ -27,6 +27,9 @@
          a ScrollViewer's own Padding doesn't add scroll room) -->
     <Thickness x:Key="ScrollEndPadding">0,0,0,200</Thickness>
 
+    <!-- the label column beside slots (an if's "else if" / "then" / "else"), fixed so every row's slot lines up -->
+    <x:Double x:Key="SlotLabelWidth">70</x:Double>
+
     <!-- divider under a header (or between sections) -->
     <Thickness x:Key="DividerMargin">0,0,0,5</Thickness>
 

@@ -5,15 +5,22 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- single slot -->
+    <!-- single slot: its label (if any) in the fixed label column beside it, so it lines up with an if's branches -->
 
-    <StackPanel Spacing="5">
+    <Grid VerticalAlignment="Top">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <TextBlock Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+        <Panel Grid.Column="0" Width="{StaticResource SlotLabelWidth}" IsVisible="{Binding HasLabel}">
+            <TextBlock Classes="Label SlotLabel" Text="{Binding Label}"/>
+        </Panel>
 
         <!-- empty: drop zone -->
 
-        <ui:DropZone IsCondition="{Binding IsConditionSlot}"
+        <ui:DropZone Grid.Column="1"
+                     IsCondition="{Binding IsConditionSlot}"
                      IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNull}}"
                      DragDrop.DragOver="OnZoneDragOver"
                      DragDrop.DragLeave="OnZoneDragLeave"
@@ -21,9 +28,9 @@
 
         <!-- filled: the block's card (a BlockView through the ViewLocator) -->
 
-        <ContentControl Content="{Binding Block}"
+        <ContentControl Grid.Column="1" Content="{Binding Block}"
                         IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
-    </StackPanel>
+    </Grid>
 
 </UserControl>

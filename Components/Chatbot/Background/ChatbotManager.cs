@@ -24,8 +24,17 @@ public class ChatbotManager : IDisposable
 
 
 
+    // at most one twitch action (chat message, timeout, ban, delete) this often, so busy chat can't make us spam twitch
+    private static readonly TimeSpan ActionInterval = TimeSpan.FromSeconds(1);
+
+    // twitch won't post the same message twice in a row, this (a space and an invisible combining grapheme joiner,
+    // U+034F) at the end makes a repeat different without changing how it looks
+    private const string DuplicateSuffix = " \u034F";
+
     private readonly ChatbotComponentModel _model;
     private readonly TwitchAuthManager _auth;
+    private readonly TwitchActionQueue _actions;
+    private string? _lastSentMessage; // exactly what went out last (only touched inside the action queue, one at a time)
 
     private CancellationTokenSource? _run;
     private CancellationTokenSource? _botLogin;
@@ -94,6 +103,7 @@ public class ChatbotManager : IDisposable
     {
         _model = model;
         _auth = new();
+        _actions = new(ActionInterval);
         _run = null;
         _botLogin = null;
         _restartQueued = false;
@@ -118,26 +128,46 @@ public class ChatbotManager : IDisposable
 
 
 
-    // sends a message to the streamer's channel, as the bot if one is logged in, otherwise as the streamer
-    public async Task<bool> TrySendChatMessageAsync(string message)
-    {
-        if (_streamer == null)
-        {
-            AppLog.WriteError("Could not send chat message - chatbot not connected");
-            return false;
-        }
+    // twitch actions: each waits its turn in the queue, is done as the bot if one is logged in (otherwise as the
+    // streamer), and logs why if it fails (false), so the block that asked doesn't have to
 
-        try
+
+
+    // sends a message to the streamer's channel (a repeat of the last one gets an invisible character so twitch posts it)
+    public Task<bool> TrySendChatMessageAsync(string message, CancellationToken ct = default) =>
+        TryRunActionAsync("send chat message", async (account, channelId, token) =>
         {
-            await TwitchApi.SendChatMessageAsync(_bot ?? _streamer, _streamer.UserId, message, CancellationToken.None);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            AppLog.WriteError($"Could not send chat message - {ex.Message}");
-            return false;
-        }
-    }
+            var text = AvoidDuplicate(message, _lastSentMessage);
+            await TwitchApi.SendChatMessageAsync(account, channelId, text, token);
+            _lastSentMessage = text;
+        }, ct);
+
+
+
+    // the message, or the message + DuplicateSuffix if it's the same as what was last sent, so repeats alternate
+    // (yo, yo + suffix, yo, ...) and each one differs from the one before it
+    public static string AvoidDuplicate(string message, string? lastSent) =>
+        lastSent != null && message.Trim() == lastSent.Trim() ? message + DuplicateSuffix : message;
+
+
+
+    // user is a login name (an @ in front is fine), the account doing it has to be a moderator
+    public Task<bool> TryTimeOutUserAsync(string user, int seconds, string reason, CancellationToken ct = default) =>
+        TryRunActionAsync($"time out '{user}'", async (account, channelId, token) =>
+            await TwitchApi.BanUserAsync(account, channelId, await FindUserIdAsync(account, user, token), seconds, reason, token), ct);
+
+
+
+    public Task<bool> TryBanUserAsync(string user, string reason, CancellationToken ct = default) =>
+        TryRunActionAsync($"ban '{user}'", async (account, channelId, token) =>
+            await TwitchApi.BanUserAsync(account, channelId, await FindUserIdAsync(account, user, token), null, reason, token), ct);
+
+
+
+    // messageId is the chat message's id, e.g. the {messageId} parameter of a chat command
+    public Task<bool> TryDeleteChatMessageAsync(string messageId, CancellationToken ct = default) =>
+        TryRunActionAsync("delete chat message", (account, channelId, token) =>
+            TwitchApi.DeleteChatMessageAsync(account, channelId, messageId, token), ct);
 
 
 
@@ -422,6 +452,50 @@ public class ChatbotManager : IDisposable
 
     // runs on the UI thread
     private void OnEventReceived(TwitchEvent e) => EventReceived?.Invoke(e);
+
+
+
+    // actions
+
+
+
+    // the connection is checked when it's the action's turn (it may have changed while it waited)
+    private async Task<bool> TryRunActionAsync(string what, Func<TwitchSession, string, CancellationToken, Task> action, CancellationToken ct) =>
+        await _actions.RunAsync(async () =>
+        {
+            var streamer = _streamer;
+            if (streamer == null)
+            {
+                AppLog.WriteError($"Could not {what} - chatbot not connected");
+                return false;
+            }
+
+            try
+            {
+                await action(_bot ?? streamer, streamer.UserId, ct);
+                return true;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                AppLog.WriteError($"Could not {what} - {ex.Message}");
+                return false;
+            }
+        }, ct);
+
+
+
+    private static async Task<string> FindUserIdAsync(TwitchSession account, string user, CancellationToken ct)
+    {
+        var login = user.Trim().TrimStart('@').ToLowerInvariant();
+        if (login == "") throw new Exception("no user given");
+
+        var found = await TwitchApi.GetUserAsync(account, login, ct);
+        return found?.Id ?? throw new Exception($"there's no twitch user '{login}'");
+    }
 
 
 

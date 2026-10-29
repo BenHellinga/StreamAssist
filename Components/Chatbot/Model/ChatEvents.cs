@@ -56,7 +56,7 @@ public static class ChatEvents
         new("userId", ValueKind.Text, $"{who}'s twitch id"),
     ];
 
-    // a chat message (chat commands add rest, and whatever their Parameter blocks and regex groups capture)
+    // a chat message (chat commands add rest, and whatever their Parse Parameter blocks and regex groups capture)
     public static readonly IReadOnlyList<ParameterInfo> Chat =
     [
         .. User("the chatter"),
@@ -181,6 +181,11 @@ public static class ChatEvents
 
 
     // a made-up chat message's parameters for the chat command test panel (the same names TwitchEvent.ChatParameters gives)
+    // a run that a chat message started (a chat command, or the test panel), e.g. so its failures stay quiet
+    public static bool IsFromChat(IReadOnlyDictionary<string, string> parameters) => parameters.ContainsKey("messageId");
+
+
+
     public static Dictionary<string, string> SampleChatParameters(string user, string message, bool isModerator, bool isVip, bool isSubscriber)
     {
         var badges = new List<string>();

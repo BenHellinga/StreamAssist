@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
@@ -14,8 +13,17 @@ public class ParameterChatBlock : ChatBlock
 
 
 
-    [JsonIgnore] public override string Name => "Parameter";
-    [JsonIgnore] public override string Description => "Reads the next part of the message into a parameter with this name, then runs its binding or continues into the block next to it. The pattern decides how much: \\S+ is one word, .* is the rest of the message.";
+    [JsonIgnore] public override string Name => "Parse Parameter"; // the class keeps its old name, it's the save file's key
+    [JsonIgnore] public override string Description => "Reads the next word, or the rest of the message, into a parameter with this name, then runs its binding or continues into the block next to it (after the rest of the message there's nothing left, so only a binding). Spaces before it are skipped, but it won't read the end of a word that's already partly matched.";
+
+
+
+    // constants
+
+
+
+    public const string NextWord = "Next word";
+    public const string RestOfMessage = "Rest of message";
 
 
 
@@ -24,8 +32,7 @@ public class ParameterChatBlock : ChatBlock
 
 
     private string _parameterName;
-    private string _pattern;
-    private readonly ChatPattern _compiled;
+    private string _reads;
     private readonly ChatTarget _target;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -42,15 +49,20 @@ public class ParameterChatBlock : ChatBlock
         set => SetParameter(ref _parameterName, value);
     }
 
-    [ConfigurableParameter("Pattern", ConfiguratorType.Text)] [JsonPropertyName("pattern")]
-    public string Pattern
+    [ConfigurableParameter("Reads", ConfiguratorType.Menu)] [JsonPropertyName("reads")]
+    public string Reads
     {
-        get => _pattern;
-        set => SetParameter(ref _pattern, value);
+        get => _reads;
+        set
+        {
+            SetParameter(ref _reads, value);
+            _target.SetEndsHere(_reads == RestOfMessage); // nothing is left to match, so it ends in a binding
+        }
     }
 
     [JsonIgnore] public ChatTarget Target => _target;
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+    [JsonIgnore] public override bool SlotsBesideSettings => true; // name: [name] [block slot] [bind box], reads below
 
 
 
@@ -74,13 +86,20 @@ public class ParameterChatBlock : ChatBlock
     public ParameterChatBlock()
     {
         _parameterName = "";
-        _pattern = @"\S+";
-        _compiled = new();
+        _reads = NextWord;
         _target = new();
         _slots = [_target];
 
         TrackSlots();
     }
+
+
+
+    // public
+
+
+
+    public static List<string> GetReadsMenuItems() => [NextWord, RestOfMessage];
 
 
 
@@ -90,15 +109,36 @@ public class ParameterChatBlock : ChatBlock
 
     public override bool TryMatch(ChatMatchState state)
     {
-        var match = _compiled.MatchAt(_pattern, ignoreCase: false, state.Text, state.Position, Name);
-        if (match == null) return false;
+        var text = state.Text;
+        var position = state.Position;
 
-        RaiseTriggered(); // its pattern matched, flashes like a pressed key (even if nothing after it does)
+        // skip the spaces before it, but don't start in the middle of a word (e.g. "!sofoo" after a "!so" row)
+        var start = position;
+        while (start < text.Length && char.IsWhiteSpace(text[start])) start++;
+        var separated = start > position || position == 0 || char.IsWhiteSpace(text[position - 1]);
+        if (!separated && start < text.Length) return false;
 
-        var parameters = _compiled.NamedGroups(match).ToList();
+        int end;
+        string value;
+        if (_reads == RestOfMessage)
+        {
+            end = text.Length;
+            value = text[start..].TrimEnd(); // can be empty
+        }
+        else
+        {
+            end = start;
+            while (end < text.Length && !char.IsWhiteSpace(text[end])) end++;
+            if (end == start) return false; // no word left
+            value = text[start..end];
+        }
+
+        RaiseTriggered(); // it read something, flashes like a pressed key (even if nothing after it matches)
+
+        var parameters = new List<KeyValuePair<string, string>>();
         if (!string.IsNullOrWhiteSpace(_parameterName))
-            parameters.Add(new(_parameterName.Trim(), match.Value));
+            parameters.Add(new(_parameterName.Trim(), value));
 
-        return _target.TryMatch(state.Advance(match.Length, parameters));
+        return _target.TryMatch(state.Advance(end - position, parameters));
     }
 }

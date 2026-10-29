@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,6 +13,8 @@ namespace StreamAssist.Components.Blocks.UI;
 
 // the bottom panel block editor: one bindable's block tree on the left, the block list on the right
 // every tab that edits bindables uses this (the keyboard's KeybindViewModel builds on it, the chatbot uses it directly)
+// something with no binding yet (an unbound key or bind box) gets a draft: an unsaved binding that's only saved
+// (by the owner's save callback) on its first change, and thrown away if nothing was changed
 public partial class BindableEditorViewModel : ViewModelBase
 {
     // private
@@ -20,6 +23,8 @@ public partial class BindableEditorViewModel : ViewModelBase
 
     private readonly WindowLayoutModel _layout;
     private readonly BlockPaletteViewModel _palette;
+    private BindableModel? _bindable; // what's being edited, a saved binding or a draft
+    private Func<BindableModel, bool>? _saveDraft; // set while it's a draft
 
     [ObservableProperty] private BlockSlotViewModel? _rootSlot;
     [ObservableProperty] private bool _hasBindable;
@@ -37,6 +42,7 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
     public BlockPaletteViewModel Palette => _palette;
+    public BindableModel? Bindable => _bindable;
 
 
 
@@ -59,6 +65,8 @@ public partial class BindableEditorViewModel : ViewModelBase
             ("Double", BlockCategory.Double),
             ("Char", BlockCategory.Char));
 
+        _bindable = null;
+        _saveDraft = null;
         _rootSlot = null;
         _hasBindable = false;
         _label = "";
@@ -76,18 +84,18 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
 
-    // starts editing a bindable, label is the header text (e.g. which key or command it belongs to),
+    // starts editing a saved binding, label is the header text (e.g. which key or command it belongs to),
     // parameters are what its trigger passes (none for keys)
-    public void ShowBindable(BindableModel bindable, string label, IReadOnlyList<ParameterInfo>? parameters = null)
-    {
-        var oldSlot = RootSlot;
-        RootSlot = new BlockSlotViewModel(bindable.Root);
-        oldSlot?.Dispose();
+    public void ShowBindable(BindableModel bindable, string label, IReadOnlyList<ParameterInfo>? parameters = null) =>
+        Show(bindable, label, parameters, saveDraft: null);
 
-        Label = label;
-        SetParameters(parameters);
-        HasBindable = true;
-    }
+
+
+    // starts editing a fresh unsaved binding for something with no binding yet, its first change that leaves it
+    // with a block calls saveDraft (e.g. bind it to the key), which returns false if it couldn't (it stays a draft)
+    // keys start with an On Pressed (they have a press and a release), things that just fire once start empty
+    public void ShowDraft(string label, Func<BindableModel, bool> saveDraft, IReadOnlyList<ParameterInfo>? parameters = null, bool startWithOnPressed = true) =>
+        Show(startWithOnPressed ? BindableModel.CreateDefault() : new BindableModel(), label, parameters, saveDraft);
 
 
 
@@ -100,13 +108,21 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
 
-    // stops editing (the bindable itself isn't touched)
+    // stops editing, a draft that was never changed is thrown away (a saved binding isn't touched)
     public void ClearBindable()
     {
         var oldSlot = RootSlot;
         RootSlot = null;
         oldSlot?.Dispose();
 
+        if (_bindable != null && _saveDraft != null)
+        {
+            _bindable.Changed -= OnDraftChanged;
+            _bindable.Dispose();
+        }
+
+        _bindable = null;
+        _saveDraft = null;
         HasBindable = false;
     }
 
@@ -132,10 +148,50 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
 
+    // the first change to a draft saves it
+    private void OnDraftChanged()
+    {
+        // e.g. the default On Pressed was deleted, there's still nothing worth saving
+        if (_bindable == null || _saveDraft == null || !_bindable.HasBlock) return;
+
+        var save = _saveDraft;
+        _bindable.Changed -= OnDraftChanged;
+        _saveDraft = null;
+
+        // couldn't save it (already logged), it stays a draft
+        if (!save(_bindable))
+        {
+            _saveDraft = save;
+            _bindable.Changed += OnDraftChanged;
+        }
+    }
+
+
+
     // something else (e.g. an action) changed the block list width
     private void OnLayoutPanelSizeChanged(string panel, double size)
     {
         if (panel == WindowLayoutModel.BlockListPanel) BlockListWidth = new(size);
+    }
+
+
+
+    // helpers
+
+
+
+    private void Show(BindableModel bindable, string label, IReadOnlyList<ParameterInfo>? parameters, Func<BindableModel, bool>? saveDraft)
+    {
+        ClearBindable();
+
+        _bindable = bindable;
+        _saveDraft = saveDraft;
+        if (_saveDraft != null) _bindable.Changed += OnDraftChanged;
+
+        RootSlot = new BlockSlotViewModel(bindable.Root);
+        Label = label;
+        SetParameters(parameters);
+        HasBindable = true;
     }
 
 

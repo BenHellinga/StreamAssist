@@ -1,20 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Chatbot.Model;
 
 
 
 // the channel point rewards the chatbot reacts to: like Match Text rows, there's always exactly one empty row at the end
-// (typing in it adds the next), and a row disappears once its title is empty and it has no binding
+// (typing in it adds the next), and a row disappears once its title is empty and it has no binding (see GrowingList)
 public sealed class RedeemList : IDisposable
 {
     // private
 
 
 
-    private readonly List<RedeemRow> _rows;
+    private readonly GrowingList<RedeemRow> _rows;
 
 
 
@@ -22,7 +23,7 @@ public sealed class RedeemList : IDisposable
 
 
 
-    public IReadOnlyList<RedeemRow> Rows => _rows;
+    public IReadOnlyList<RedeemRow> Rows => _rows.Items;
 
 
 
@@ -30,8 +31,18 @@ public sealed class RedeemList : IDisposable
 
 
 
-    public event Action<RedeemRow, int>? RowInserted;
-    public event Action<RedeemRow>? RowRemoved;
+    public event Action<RedeemRow, int>? RowInserted
+    {
+        add => _rows.ItemInserted += value;
+        remove => _rows.ItemInserted -= value;
+    }
+
+    public event Action<RedeemRow>? RowRemoved
+    {
+        add => _rows.ItemRemoved += value;
+        remove => _rows.ItemRemoved -= value;
+    }
+
     public event Action? Changed; // a title, binding or row changed (saved to chatbot.json)
 
 
@@ -42,8 +53,8 @@ public sealed class RedeemList : IDisposable
 
     public RedeemList()
     {
-        _rows = [];
-        Normalize();
+        _rows = new(() => new RedeemRow(), row => row.IsEmpty, SubscribeToRow, UnsubscribeFromRow);
+        _rows.Changed += OnRowsChanged;
     }
 
 
@@ -55,53 +66,10 @@ public sealed class RedeemList : IDisposable
     // runs the first row with this title whose binding is enabled, false if none did
     public bool TryRun(string rewardTitle, IReadOnlyDictionary<string, string> parameters)
     {
-        foreach (var row in _rows.ToArray())
+        foreach (var row in _rows.Items.ToArray())
             if (row.Matches(rewardTitle) && row.Target.TryRun(parameters)) return true;
 
         return false;
-    }
-
-
-
-    // row management
-
-
-
-    // removes empty rows (except the last) and makes sure the last row is an empty one
-    private void Normalize()
-    {
-        // the row just above the trailing one was emptied: drop the trailing row instead, so the edited row keeps its cursor
-        while (_rows.Count >= 2 && _rows[^1].IsEmpty && _rows[^2].IsEmpty)
-            RemoveRow(_rows[^1]);
-
-        for (int i = _rows.Count - 2; i >= 0; i--)
-            if (_rows[i].IsEmpty) RemoveRow(_rows[i]);
-
-        if (_rows.Count == 0 || !_rows[^1].IsEmpty)
-            InsertRow(new RedeemRow(), _rows.Count);
-    }
-
-
-
-    private void InsertRow(RedeemRow row, int index)
-    {
-        _rows.Insert(index, row);
-        SubscribeToRow(row);
-
-        RowInserted?.Invoke(row, index);
-        Changed?.Invoke();
-    }
-
-
-
-    private void RemoveRow(RedeemRow row)
-    {
-        if (!_rows.Remove(row)) return;
-        UnsubscribeFromRow(row);
-
-        RowRemoved?.Invoke(row);
-        Changed?.Invoke();
-        row.Dispose();
     }
 
 
@@ -110,15 +78,19 @@ public sealed class RedeemList : IDisposable
 
 
 
+    private void OnRowsChanged() => Changed?.Invoke();
+
+
+
     private void OnRowTitleChanged()
     {
         Changed?.Invoke();
-        Normalize();
+        _rows.Normalize();
     }
 
 
 
-    private void OnRowTargetContentsChanged() => Normalize();
+    private void OnRowTargetContentsChanged() => _rows.Normalize();
 
 
 
@@ -153,26 +125,16 @@ public sealed class RedeemList : IDisposable
 
 
     // the trailing empty row isn't saved, it's added back on load
-    public List<RedeemRowData> GetData() => _rows.Where(r => !r.IsEmpty).Select(r => r.GetData()).ToList();
+    public List<RedeemRowData> GetData() => _rows.NonEmptyItems.Select(r => r.GetData()).ToList();
 
 
 
-    public void LoadData(List<RedeemRowData> data)
+    public void LoadData(List<RedeemRowData> data) => _rows.Load(data.Select(item =>
     {
-        foreach (var row in _rows.ToArray())
-            RemoveRow(row);
-
-        foreach (var item in data)
-        {
-            var row = new RedeemRow();
-            row.LoadData(item);
-
-            if (row.IsEmpty) row.Dispose();
-            else InsertRow(row, _rows.Count);
-        }
-
-        Normalize();
-    }
+        var row = new RedeemRow();
+        row.LoadData(item);
+        return row;
+    }));
 
 
 
@@ -182,10 +144,7 @@ public sealed class RedeemList : IDisposable
 
     public void Dispose()
     {
-        foreach (var row in _rows)
-        {
-            UnsubscribeFromRow(row);
-            row.Dispose();
-        }
+        _rows.Changed -= OnRowsChanged;
+        _rows.Dispose();
     }
 }

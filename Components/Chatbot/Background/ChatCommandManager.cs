@@ -5,7 +5,7 @@ namespace StreamAssist.Components.Chatbot.Background;
 
 
 
-// runs every chat message through the chat block tree (starting at the root slot), the first path that reaches a bindable runs it
+// runs every chat message through the chat command trees (protected, then editable), the first path that reaches a binding runs it
 public class ChatCommandManager : IDisposable
 {
     // private
@@ -43,7 +43,7 @@ public class ChatCommandManager : IDisposable
         if (_manager.BotUserId != null && e.GetString("chatter_user_id") == _manager.BotUserId) return;
 
         var text = e.GetString("message", "text") ?? "";
-        ChatBlock.TryMatchSlot(_model.Root, new ChatMatchState(text, 0, e.ChatParameters()));
+        _model.TryMatchMessage(new ChatMatchState(text, 0, e.ChatParameters()));
     }
 
 

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Shell;
 
-namespace StreamAssist.Components.Blocks.Actions;
+namespace StreamAssist.Components.Chatbot.Actions;
 
 
 
@@ -15,7 +15,7 @@ public class SendChatMessageAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Send Chat Message";
-    [JsonIgnore] public override string Description => "Sends a message to your Twitch chat, as the bot if it's logged in (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block).";
+    [JsonIgnore] public override string Description => "Sends a message to your Twitch chat, as the bot if it's connected (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block). Twitch actions wait their turn, one per second.";
 
 
 
@@ -32,6 +32,7 @@ public class SendChatMessageAction : ActionBlock
 
 
 
+    [JsonIgnore] public ValueSlot<string> Message => _message;
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
 
@@ -75,6 +76,8 @@ public class SendChatMessageAction : ActionBlock
         var message = await _message.EvaluateAsync(context);
         if (string.IsNullOrWhiteSpace(message)) return;
 
-        await chatbot.TrySendChatMessageAsync(message);
+        // waits its turn in the twitch action queue, a failure is already logged there
+        if (!await chatbot.TrySendChatMessageAsync(message, context.CancellationToken))
+            throw new BlockFailedException("the message wasn't sent");
     }
 }

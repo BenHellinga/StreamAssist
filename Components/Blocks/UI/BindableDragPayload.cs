@@ -5,7 +5,7 @@ namespace StreamAssist.Components.Blocks.UI;
 
 
 
-// data class for a whole binding being dragged between binding slots (key to key, later key to chat command, ...)
+// data class for a whole binding being dragged between binding slots (keys, chat bind boxes, ...)
 // the target binds a copy, then calls removeFromSource
 public sealed class BindableDragPayload
 {

@@ -22,6 +22,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
     private readonly ChatbotComponentModel _model;
     private readonly WindowLayoutModel _layout;
     private readonly BlockSlotViewModel _root;
+    private readonly BlockSlotViewModel _editableRoot;
     private readonly BlockPaletteViewModel _chatPalette;
 
     [ObservableProperty] private GridLength _chatBlockListWidth; // bound two-way to the chat block list column
@@ -41,6 +42,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
 
 
     public BlockSlotViewModel Root => _root;
+    public BlockSlotViewModel EditableRoot => _editableRoot;
     public BlockPaletteViewModel ChatPalette => _chatPalette;
 
 
@@ -54,6 +56,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
         _model = model;
         _layout = layout;
         _root = new(model.Root);
+        _editableRoot = new(model.EditableRoot);
         _chatPalette = new(("Chat Blocks", BlockCategory.Chat));
         _chatBlockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.ChatBlockListPanel, 200));
 
@@ -82,7 +85,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
     [RelayCommand] private void OnSendTestPressed()
     {
         var parameters = ChatEvents.SampleChatParameters(TestUser, TestMessage, TestIsModerator, TestIsVip, TestIsSubscriber);
-        var ran = ChatBlock.TryMatchSlot(_model.Root, new ChatMatchState(TestMessage, 0, parameters));
+        var ran = _model.TryMatchMessage(new ChatMatchState(TestMessage, 0, parameters));
         TestResult = ran ? "Ran a command" : "No command matched";
     }
 
@@ -122,6 +125,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
         _layout.PanelSizeChanged -= OnLayoutPanelSizeChanged;
 
         _root.Dispose();
+        _editableRoot.Dispose();
         _chatPalette.Dispose();
     }
 }

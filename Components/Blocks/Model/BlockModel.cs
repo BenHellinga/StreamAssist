@@ -34,6 +34,7 @@ public abstract class BlockModel : ModelBase
     [JsonIgnore] public abstract string Description { get; }
     [JsonIgnore] public abstract BlockCategory Category { get; }
     [JsonIgnore] public virtual IReadOnlyList<BlockSlotBase> Slots => [];
+    [JsonIgnore] public virtual bool SlotsBesideSettings => false; // the editor shows the slots to the right of the settings, not under them
     [JsonIgnore] public bool IsDisabled => _isDisabled;
     [JsonIgnore] public bool IsCollapsed => _isCollapsed; // shown as a small box in the editor
     [JsonIgnore] public BlockSlotBase? ParentSlot { get; internal set; } // the slot it's placed in (set by the slot)

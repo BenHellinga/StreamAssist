@@ -17,14 +17,20 @@
 
         <Grid Grid.Column="0" RowDefinitions="*,Auto">
 
-            <!-- the root chat block slot (a BlockSlotView through the ViewLocator), clicking a bind box opens its binding below -->
+            <!-- the two root chat block slots (BlockSlotViews through the ViewLocator), in the order messages try them,
+                 clicking a bind box opens its binding below -->
 
             <ScrollViewer Grid.Row="0" Classes="Gapped"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Auto">
                 <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                 <Border Padding="{StaticResource ScrollEndPadding}">
-                    <ContentControl Content="{Binding Root}" Margin="5,5,10,0"/>
+                    <StackPanel Spacing="5" Margin="5,5,10,0">
+                        <TextBlock Classes="Title" Text="Protected"/>
+                        <ContentControl Content="{Binding Root}"/>
+                        <TextBlock Classes="Title" Text="Editable" Margin="0,10,0,0"/>
+                        <ContentControl Content="{Binding EditableRoot}"/>
+                    </StackPanel>
                 </Border>
             </ScrollViewer>
 

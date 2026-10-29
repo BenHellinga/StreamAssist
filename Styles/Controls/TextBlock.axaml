@@ -16,6 +16,12 @@
     <Style Selector="TextBlock.Label">
     </Style>
 
+    <!-- a slot's label beside it (an if's "if" / "then" / "else"), level with the first line of what's in the slot -->
+    <Style Selector="TextBlock.SlotLabel">
+        <Setter Property="VerticalAlignment" Value="Top"/>
+        <Setter Property="Margin" Value="0,4,0,0"/>
+    </Style>
+
     <Style Selector="TextBlock.Description">
         <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>

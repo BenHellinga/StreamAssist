@@ -6,7 +6,9 @@
              xmlns:ui="using:StreamAssist.Components.Blocks.UI"
              xmlns:configurator="using:StreamAssist.Components.Blocks.UI.Configurator">
 
-    <Panel HorizontalAlignment="Left">
+    <!-- top-left, never stretched to fill whatever it sits in (e.g. the editor's scroll area) -->
+
+    <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
 
         <!-- collapsed: a small box the size of a drop zone, same outline as the card, click to expand -->
 
@@ -38,11 +40,13 @@
                     <ui:EditButtons Grid.Column="1"/>
                 </Grid>
 
-                <StackPanel Margin="5,0,5,5">
+                <!-- settings, then the slots under them (or beside them, for blocks that ask) -->
+
+                <Grid Margin="5,0,5,5" ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto">
 
                     <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
 
-                    <ItemsControl ItemsSource="{Binding Configurators}">
+                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Configurators}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
                                 <ContentControl Content="{Binding}" Margin="5,0,5,5"
@@ -53,7 +57,8 @@
 
                     <!-- nested slots (each becomes a BlockSlotView or BlockSlotListView through the ViewLocator) -->
 
-                    <ItemsControl ItemsSource="{Binding Slots}" Margin="5,0,5,5">
+                    <ItemsControl Grid.Row="{Binding SlotsRow}" Grid.Column="{Binding SlotsColumn}"
+                                  ItemsSource="{Binding Slots}" Margin="5,0,5,5">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="5"/>
@@ -61,7 +66,7 @@
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
 
-                </StackPanel>
+                </Grid>
 
             </StackPanel>
         </Border>

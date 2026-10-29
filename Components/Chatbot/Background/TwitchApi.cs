@@ -125,7 +125,7 @@ public static class TwitchApi
 
 
 
-    // sends a chat message as the logged in account
+    // sends a chat message as the logged in account, throws if twitch accepted it but didn't post it (e.g. automod)
     public static async Task SendChatMessageAsync(TwitchSession session, string broadcasterId, string message, CancellationToken ct)
     {
         var body = new JsonObject
@@ -135,7 +135,38 @@ public static class TwitchApi
             ["message"] = message,
         };
 
-        await HelixAsync(session, HttpMethod.Post, "chat/messages", body, ct);
+        var result = await HelixAsync(session, HttpMethod.Post, "chat/messages", body, ct);
+
+        if (result.ValueKind == JsonValueKind.Object && result.TryGetProperty("data", out var data) && data.GetArrayLength() > 0
+            && data[0].TryGetProperty("is_sent", out var isSent) && !isSent.GetBoolean())
+        {
+            var reason = data[0].TryGetProperty("drop_reason", out var drop) && drop.ValueKind == JsonValueKind.Object
+                && drop.TryGetProperty("message", out var dropMessage) ? dropMessage.GetString() : null;
+            throw new Exception($"twitch didn't post it ({reason ?? "no reason given"})");
+        }
+    }
+
+
+
+    // bans a user, or times them out for this many seconds, as the logged in account (it has to be a moderator)
+    public static async Task BanUserAsync(TwitchSession session, string broadcasterId, string userId, int? timeoutSeconds, string reason, CancellationToken ct)
+    {
+        var data = new JsonObject { ["user_id"] = userId };
+        if (timeoutSeconds is { } seconds) data["duration"] = seconds;
+        if (!string.IsNullOrWhiteSpace(reason)) data["reason"] = reason;
+
+        var path = $"moderation/bans?broadcaster_id={Uri.EscapeDataString(broadcasterId)}&moderator_id={Uri.EscapeDataString(session.UserId)}";
+        await HelixAsync(session, HttpMethod.Post, path, new JsonObject { ["data"] = data }, ct);
+    }
+
+
+
+    // deletes one chat message by its id, as the logged in account (it has to be a moderator)
+    public static async Task DeleteChatMessageAsync(TwitchSession session, string broadcasterId, string messageId, CancellationToken ct)
+    {
+        var path = $"moderation/chat?broadcaster_id={Uri.EscapeDataString(broadcasterId)}&moderator_id={Uri.EscapeDataString(session.UserId)}"
+            + $"&message_id={Uri.EscapeDataString(messageId)}";
+        await HelixAsync(session, HttpMethod.Delete, path, null, ct);
     }
 
 

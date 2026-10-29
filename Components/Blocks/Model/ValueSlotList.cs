@@ -3,20 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Blocks.Model;
 
 
 
 // a growing list of text value slots (e.g. Join's parts): there's always one empty slot at the end (typing in it
-// or placing a block adds the next), and a slot disappears once it has no text and no block
+// or placing a block adds the next), and a slot disappears once it has no text and no block (see GrowingList)
 public sealed class ValueSlotList : BlockSlotBase
 {
     // private
 
 
 
-    private readonly List<ValueSlot<string>> _items;
+    private readonly GrowingList<ValueSlot<string>> _items;
     private BlockModel? _owner;
 
 
@@ -25,9 +26,9 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    public IReadOnlyList<ValueSlot<string>> Items => _items;
+    public IReadOnlyList<ValueSlot<string>> Items => _items.Items;
     public override IReadOnlyList<BlockModel> Blocks => [];
-    public override IReadOnlyList<BlockSlotBase> InnerSlots => _items;
+    public override IReadOnlyList<BlockSlotBase> InnerSlots => _items.Items;
 
     // the items' errors name the same block
     public override BlockModel? Owner
@@ -36,7 +37,7 @@ public sealed class ValueSlotList : BlockSlotBase
         set
         {
             _owner = value;
-            foreach (var item in _items) item.Owner = value;
+            foreach (var item in _items.Items) item.Owner = value;
         }
     }
 
@@ -46,8 +47,17 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    public event Action<ValueSlot<string>, int>? ItemInserted;
-    public event Action<ValueSlot<string>>? ItemRemoved;
+    public event Action<ValueSlot<string>, int>? ItemInserted
+    {
+        add => _items.ItemInserted += value;
+        remove => _items.ItemInserted -= value;
+    }
+
+    public event Action<ValueSlot<string>>? ItemRemoved
+    {
+        add => _items.ItemRemoved += value;
+        remove => _items.ItemRemoved -= value;
+    }
 
 
 
@@ -57,9 +67,9 @@ public sealed class ValueSlotList : BlockSlotBase
 
     public ValueSlotList(string label) : base(label, typeof(ValueBlock))
     {
-        _items = [];
         _owner = null;
-        Normalize();
+        _items = new(() => new ValueSlot<string>(""), IsEmpty, SubscribeToItem, UnsubscribeFromItem);
+        _items.Changed += RaiseChanged;
     }
 
 
@@ -72,7 +82,7 @@ public sealed class ValueSlotList : BlockSlotBase
     public async Task<string> EvaluateJoinedAsync(TriggerContext context)
     {
         var joined = new StringBuilder();
-        foreach (var item in _items.ToArray())
+        foreach (var item in _items.Items.ToArray())
             joined.Append(await item.EvaluateAsync(context));
 
         return joined.ToString();
@@ -82,56 +92,8 @@ public sealed class ValueSlotList : BlockSlotBase
 
     public override void RemoveBlock(BlockModel block)
     {
-        foreach (var item in _items.ToArray())
+        foreach (var item in _items.Items.ToArray())
             item.RemoveBlock(block);
-    }
-
-
-
-    // item management
-
-
-
-    private static bool IsEmpty(ValueSlot<string> item) => item.Text == "" && item.BlockSlot.Block == null;
-
-
-
-    // removes empty items (except the last) and makes sure the last item is an empty one
-    private void Normalize()
-    {
-        // the item above the trailing one was emptied: drop the trailing one instead, so the edited one keeps its cursor
-        while (_items.Count >= 2 && IsEmpty(_items[^1]) && IsEmpty(_items[^2]))
-            RemoveItem(_items[^1]);
-
-        for (int i = _items.Count - 2; i >= 0; i--)
-            if (IsEmpty(_items[i])) RemoveItem(_items[i]);
-
-        if (_items.Count == 0 || !IsEmpty(_items[^1]))
-            InsertItem(new ValueSlot<string>(""), _items.Count);
-    }
-
-
-
-    private void InsertItem(ValueSlot<string> item, int index)
-    {
-        item.Owner = _owner;
-        _items.Insert(index, item);
-        SubscribeToItem(item);
-
-        ItemInserted?.Invoke(item, index);
-        RaiseChanged();
-    }
-
-
-
-    private void RemoveItem(ValueSlot<string> item)
-    {
-        if (!_items.Remove(item)) return;
-        UnsubscribeFromItem(item);
-
-        ItemRemoved?.Invoke(item);
-        RaiseChanged();
-        item.Dispose();
     }
 
 
@@ -140,11 +102,11 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    private void OnItemTextChanged() => Normalize();
+    private void OnItemFilledOrEmptied() => _items.Normalize();
 
 
 
-    private void OnItemBlockChanged(BlockModel? _, BlockModel? __) => Normalize();
+    private void OnItemBlockChanged(BlockModel? _, BlockModel? __) => _items.Normalize();
 
 
 
@@ -156,9 +118,14 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
+    private static bool IsEmpty(ValueSlot<string> item) => item.Text == "" && item.BlockSlot.Block == null;
+
+
+
     private void SubscribeToItem(ValueSlot<string> item)
     {
-        item.TextChanged += OnItemTextChanged;
+        item.Owner = _owner;
+        item.TextChanged += OnItemFilledOrEmptied;
         item.BlockSlot.BlockChanged += OnItemBlockChanged;
         item.Changed += OnItemChanged;
     }
@@ -167,7 +134,7 @@ public sealed class ValueSlotList : BlockSlotBase
 
     private void UnsubscribeFromItem(ValueSlot<string> item)
     {
-        item.TextChanged -= OnItemTextChanged;
+        item.TextChanged -= OnItemFilledOrEmptied;
         item.BlockSlot.BlockChanged -= OnItemBlockChanged;
         item.Changed -= OnItemChanged;
     }
@@ -179,26 +146,16 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
     // the trailing empty item isn't saved, it's added back on load
-    public List<ValueSlotData> GetData() => _items.Where(i => !IsEmpty(i)).Select(i => i.GetData()).ToList();
+    public List<ValueSlotData> GetData() => _items.NonEmptyItems.Select(i => i.GetData()).ToList();
 
 
 
-    public void LoadData(List<ValueSlotData>? data)
+    public void LoadData(List<ValueSlotData>? data) => _items.Load((data ?? []).Select(itemData =>
     {
-        foreach (var item in _items.ToArray())
-            RemoveItem(item);
-
-        foreach (var itemData in data ?? [])
-        {
-            var item = new ValueSlot<string>("");
-            item.LoadData(itemData);
-
-            if (IsEmpty(item)) item.Dispose();
-            else InsertItem(item, _items.Count);
-        }
-
-        Normalize();
-    }
+        var item = new ValueSlot<string>("");
+        item.LoadData(itemData);
+        return item;
+    }));
 
 
 
@@ -208,10 +165,7 @@ public sealed class ValueSlotList : BlockSlotBase
 
     public override void Dispose()
     {
-        foreach (var item in _items)
-        {
-            UnsubscribeFromItem(item);
-            item.Dispose();
-        }
+        _items.Changed -= RaiseChanged;
+        _items.Dispose();
     }
 }

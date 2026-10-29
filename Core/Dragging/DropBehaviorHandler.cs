@@ -7,6 +7,8 @@ namespace StreamAssist.Core.Dragging;
 
 
 
+// the drop target nearest the pointer handles a drag (marked handled), so a target inside another (a block in a list,
+// a slot inside that block) never also drops into the outer one
 public static class DropBehaviorHandler
 {
     public static void OnDragOver(object? target, DragEventArgs e)
@@ -14,6 +16,7 @@ public static class DropBehaviorHandler
         e.DragEffects = DragDropEffects.None;
 
         if (FindDroppableBorder(e.Source) is not { } border) return;
+        e.Handled = true;
 
         var payload = e.DataTransfer.TryGetValue(DragDropPayload.Format);
         if (payload is null) return;
@@ -30,6 +33,7 @@ public static class DropBehaviorHandler
     public static void OnDragLeave(object? target, DragEventArgs e)
     {
         if (FindDroppableBorder(e.Source) is not { } border) return;
+        e.Handled = true;
 
         border.Classes.Set("Dragover", false);
     }
@@ -39,6 +43,7 @@ public static class DropBehaviorHandler
     public static void OnDrop(object? target, DragEventArgs e)
     {
         if (FindDroppableBorder(e.Source) is not { } border) return;
+        e.Handled = true;
 
         border.Classes.Set("Dragover", false);
         var payload = e.DataTransfer.TryGetValue(DragDropPayload.Format);

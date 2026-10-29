@@ -1,5 +1,4 @@
 using System;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
@@ -24,7 +23,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     private readonly ChatbotComponentModel _model;
     private readonly BlockSlotViewModel _child;
     private BindableModel? _bindable;
-    private IDisposable? _triggerTimer;
+    private readonly Flash _flash; // lights up IsTriggered when it runs
 
     [ObservableProperty] private bool _isBound;
     [ObservableProperty] private bool _isDisabled;
@@ -54,7 +53,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
         _model = model;
         _child = new(_target.Child);
         _bindable = null;
-        _triggerTimer = null;
+        _flash = new(isOn => IsTriggered = isOn);
 
         _isSelected = ChatTargetSelection.Selected == _target;
         _isTriggered = false;
@@ -159,7 +158,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
 
     // bindings run off the ui thread
-    private void OnBindableTriggered() => Dispatcher.UIThread.Post(FlashTriggered);
+    private void OnBindableTriggered() => _flash.Trigger();
 
 
 
@@ -187,27 +186,13 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     private void UpdateShown()
     {
         ShowBindBox = _target.Child.Block == null;
-        ShowSlot = _target.AllowsBlocks && _target.Bindable == null;
+        ShowSlot = _target.Child.Block != null || (_target.AllowsBlocks && !_target.EndsHere && _target.Bindable == null);
     }
 
 
 
     // the command that reaches it, or the redeem's title / the event's name
     private void UpdateCommand() => Command = _model.Describe(_target)?.Text ?? "";
-
-
-
-    private void FlashTriggered()
-    {
-        IsTriggered = true;
-
-        _triggerTimer?.Dispose();
-        _triggerTimer = DispatcherTimer.RunOnce(() =>
-        {
-            _triggerTimer = null;
-            IsTriggered = false;
-        }, TimeSpan.FromMilliseconds(50));
-    }
 
 
 
@@ -241,7 +226,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
         ChatTargetSelection.Changed -= OnSelectionChanged;
         UnsubscribeFromBindable(_bindable);
 
-        _triggerTimer?.Dispose();
+        _flash.Dispose();
         _child.Dispose();
     }
 }

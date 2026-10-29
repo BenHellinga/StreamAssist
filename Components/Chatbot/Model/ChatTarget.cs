@@ -19,6 +19,7 @@ public sealed class ChatTarget : BlockSlotBase
 
     private readonly BlockSlot _child;
     private readonly bool _allowsBlocks;
+    private bool _endsHere;
     private BindableModel? _bindable;
 
 
@@ -27,9 +28,10 @@ public sealed class ChatTarget : BlockSlotBase
 
 
 
-    public BlockSlot Child => _child; // continue matching here (another Match Text or a Parameter)
+    public BlockSlot Child => _child; // continue matching here (another Match Text or a Parse Parameter)
     public BindableModel? Bindable => _bindable; // or run this
     public bool AllowsBlocks => _allowsBlocks;
+    public bool EndsHere => _endsHere; // nothing is left to match (e.g. after the rest of the message), so no new blocks
     public bool IsEmpty => _child.Block == null && _bindable == null;
 
     public override IReadOnlyList<BlockModel> Blocks => [];
@@ -42,7 +44,7 @@ public sealed class ChatTarget : BlockSlotBase
 
 
     public event Action? BindableChanged; // bound, unbound, or a different binding
-    public event Action? ContentsChanged; // the binding or the child block came or went
+    public event Action? ContentsChanged; // the binding or the child block came or went, or EndsHere changed
 
 
 
@@ -54,11 +56,25 @@ public sealed class ChatTarget : BlockSlotBase
     {
         _child = new("", typeof(ChatBlock));
         _allowsBlocks = allowsBlocks;
-        _child.Lock = () => !_allowsBlocks ? "this only runs a binding" : _bindable != null ? "this row already runs a binding" : null;
+        _child.Lock = () => !_allowsBlocks ? "this only runs a binding"
+            : _endsHere ? "the rest of the message is already read"
+            : _bindable != null ? "this row already runs a binding" : null;
+        _endsHere = false;
         _bindable = null;
 
         _child.Changed += RaiseChanged;
         _child.BlockChanged += OnChildBlockChanged;
+    }
+
+
+
+    // set by the owner when nothing can be left to match after it, a block already there stays (it's never dropped quietly)
+    public void SetEndsHere(bool endsHere)
+    {
+        if (endsHere == _endsHere) return;
+
+        _endsHere = endsHere;
+        ContentsChanged?.Invoke();
     }
 
 

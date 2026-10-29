@@ -5,7 +5,8 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- list slot -->
+    <!-- list slot: dropping on a block puts the new one before it (a line above it lights up), the zone at the end adds
+         it last, so reordering is dragging a block onto the one it should go before -->
 
     <StackPanel Spacing="5">
 
@@ -18,20 +19,14 @@
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
-            <!-- drop zone above each block -->
-
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="ui:BlockViewModel">
-                    <StackPanel Spacing="5">
-
-                        <ui:DropZone IsCondition="{Binding $parent[ItemsControl].((ui:BlockSlotListViewModel)DataContext).IsConditionSlot}"
-                                     DragDrop.DragOver="OnZoneDragOver"
-                                     DragDrop.DragLeave="OnZoneDragLeave"
-                                     DragDrop.Drop="OnZoneDrop"/>
-
+                    <Border Classes="Droppable InsertBefore"
+                            DragDrop.DragOver="OnZoneDragOver"
+                            DragDrop.DragLeave="OnZoneDragLeave"
+                            DragDrop.Drop="OnZoneDrop">
                         <ui:BlockView/>
-
-                    </StackPanel>
+                    </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

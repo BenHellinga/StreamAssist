@@ -5,7 +5,8 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- if / else if branches -->
+    <!-- if / else if branches: the condition beside its "if" / "else if" and the then slot under it (lined up with the
+         block's "else"), dropping a condition on a branch starts a new branch before it -->
 
     <StackPanel Spacing="5">
 
@@ -16,34 +17,45 @@
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
-            <!-- condition drop zone above each branch, then the branch itself -->
-
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="ui:BlockBranchViewModel">
-                    <StackPanel Spacing="5">
+                    <Border Classes="Droppable InsertBefore"
+                            DragDrop.DragOver="OnZoneDragOver"
+                            DragDrop.DragLeave="OnZoneDragLeave"
+                            DragDrop.Drop="OnZoneDrop">
+                        <Grid RowDefinitions="Auto,Auto" RowSpacing="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                        <ui:DropZone IsCondition="True"
-                                     DragDrop.DragOver="OnZoneDragOver"
-                                     DragDrop.DragLeave="OnZoneDragLeave"
-                                     DragDrop.Drop="OnZoneDrop"/>
+                            <Panel Grid.Row="0" Grid.Column="0" Width="{StaticResource SlotLabelWidth}">
+                                <TextBlock Classes="Label SlotLabel" Text="{Binding Header}"/>
+                            </Panel>
+                            <ContentControl Grid.Row="0" Grid.Column="1" Content="{Binding Condition}"/>
 
-                        <TextBlock Classes="Label" Text="{Binding Header}"/>
-                        <ContentControl Content="{Binding Condition}"/>
-
-                        <TextBlock Classes="Label" Text="then"/>
-                        <ContentControl Content="{Binding Then}"/>
-
-                    </StackPanel>
+                            <!-- the then slot has no label, it sits under its condition in the slot column -->
+                            <ContentControl Grid.Row="1" Grid.Column="1" Content="{Binding Then}"/>
+                        </Grid>
+                    </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- condition drop zone at the end -->
+        <!-- condition drop zone at the end (a new last "else if"), lined up with the slots above -->
 
-        <ui:DropZone IsCondition="True"
-                     DragDrop.DragOver="OnZoneDragOver"
-                     DragDrop.DragLeave="OnZoneDragLeave"
-                     DragDrop.Drop="OnZoneDrop"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Panel Grid.Column="0" Width="{StaticResource SlotLabelWidth}"/>
+            <ui:DropZone Grid.Column="1" IsCondition="True"
+                         DragDrop.DragOver="OnZoneDragOver"
+                         DragDrop.DragLeave="OnZoneDragLeave"
+                         DragDrop.Drop="OnZoneDrop"/>
+        </Grid>
 
     </StackPanel>
 
