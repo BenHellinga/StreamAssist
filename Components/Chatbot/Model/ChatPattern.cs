@@ -43,7 +43,7 @@ public sealed class ChatPattern
         }
         catch (RegexMatchTimeoutException)
         {
-            AppLog.WriteWarning($"Could not match chat block '{blockName}' - pattern '{pattern}' took too long and was skipped");
+            AppLog.WriteWarning($"{blockName}: /{pattern}/ too slow, skipped");
             return null;
         }
     }
@@ -93,7 +93,7 @@ public sealed class ChatPattern
         }
         catch (ArgumentException ex)
         {
-            AppLog.WriteError($"Could not match chat block '{blockName}' - pattern '{pattern}' is invalid ({ex.Message})");
+            AppLog.WriteError($"{blockName}: bad regex /{pattern}/ ({ex.Message})");
         }
     }
 }

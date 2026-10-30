@@ -72,10 +72,10 @@ public class DeleteChatMessageAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("no chatbot in global context");
+        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
 
         var messageId = (await _messageId.EvaluateAsync(context)).Trim();
-        if (messageId == "" || messageId == "{messageId}") throw Fail("there's no message id (only chat commands have one)");
+        if (messageId == "" || messageId == "{messageId}") throw Fail("no message id, only chat has one");
 
         // waits its turn in the twitch action queue, a failure is already logged there
         if (!await chatbot.TryDeleteChatMessageAsync(messageId, context.CancellationToken))

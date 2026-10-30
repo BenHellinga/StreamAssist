@@ -71,7 +71,7 @@ public class SendChatMessageAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var chatbot = GlobalContext.ChatbotManager;
-        if (chatbot == null) throw Fail("no chatbot in global context");
+        if (chatbot == null) throw Fail("chatbot not set up");
 
         var message = await _message.EvaluateAsync(context);
         if (string.IsNullOrWhiteSpace(message)) return;

@@ -106,7 +106,7 @@ public class KeyboardSlotModel : ModelBase
         var config = _configs.FirstOrDefault(c => c.Name == _pendingConfigString);
         if (config == null)
         {
-            AppLog.WriteWarning($"The config '{_pendingConfigString}' could not be found");
+            AppLog.WriteWarning($"config '{_pendingConfigString}' not found");
             SetSelectedConfig(null);
             return; // pendingConfigString maintains its value until config is explicitly set
         }
@@ -125,7 +125,7 @@ public class KeyboardSlotModel : ModelBase
         var device = _devices.FirstOrDefault(d => d.DevicePath == _pendingDeviceString);
         if (device == null)
         {
-            AppLog.WriteWarning($"The device '{_pendingDeviceString}' could not be found");
+            AppLog.WriteWarning($"keyboard '{_pendingDeviceString}' not found");
             TrySetSelectedDevice(null);
             return; // pendingDeviceString maintains its value until device is explicitly set
         }
@@ -150,7 +150,7 @@ public class KeyboardSlotModel : ModelBase
 
         if (!_devices?.Contains(device) ?? false)
         {
-            AppLog.WriteError($"Could not select device '{device.DevicePath}' - device not found in list");
+            AppLog.WriteError($"keyboard '{device.DevicePath}' not found");
             return false;
         }
 
@@ -185,7 +185,7 @@ public class KeyboardSlotModel : ModelBase
         
         if (!_configs?.Contains(config) ?? false)
         {
-            AppLog.WriteError($"Could not select config '{config.Name}' - config not found in list");
+            AppLog.WriteError($"config '{config.Name}' not found");
             return false;
         }
     

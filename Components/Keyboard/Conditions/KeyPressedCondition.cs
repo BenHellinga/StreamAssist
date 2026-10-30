@@ -8,7 +8,7 @@ using StreamAssist.Components.Keyboard.UI;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Shell;
 
-namespace StreamAssist.Components.Blocks.Conditions;
+namespace StreamAssist.Components.Keyboard.Conditions;
 
 
 
@@ -95,13 +95,13 @@ public class KeyPressedCondition : ConditionBlock
         var inputManager = GlobalContext.KeyboardInputManager;
         if (inputManager == null)
         {
-            AppLog.WriteError("Could not check key - no keyboard input in global context");
+            AppLog.WriteError($"{Name}: keyboard input not set up");
             return Task.FromResult(false);
         }
 
         if (!DeviceDisplayHelper.TryParseKeyName(_key, out var vk))
         {
-            AppLog.WriteError($"Could not check key - '{_key}' is not a key name");
+            AppLog.WriteError($"{Name}: '{_key}' isn't a key");
             return Task.FromResult(false);
         }
 
@@ -111,7 +111,7 @@ public class KeyPressedCondition : ConditionBlock
         var device = KeyboardInputManager.Devices.FirstOrDefault(d => d.GetDisplayLabel() == _keyboard);
         if (device == null)
         {
-            AppLog.WriteWarning($"Could not check key - keyboard '{_keyboard}' is not connected");
+            AppLog.WriteWarning($"{Name}: keyboard '{_keyboard}' not connected");
             return Task.FromResult(false);
         }
 

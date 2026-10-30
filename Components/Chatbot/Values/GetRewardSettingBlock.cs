@@ -101,8 +101,8 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("no chatbot in global context");
-        var setting = RewardSettings.Find(_setting) ?? throw Fail($"'{_setting}' is not a reward setting");
+        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
+        var setting = RewardSettings.Find(_setting) ?? throw Fail($"unknown setting '{_setting}'");
         var reward = await _reward.EvaluateAsync(context);
 
         // waits its turn in the twitch action queue, a failure is already logged there

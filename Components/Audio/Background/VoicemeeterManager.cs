@@ -97,11 +97,7 @@ public sealed class VoicemeeterManager : IDisposable
 
     public bool TryConnect()
     {
-        if (_connected)
-        {
-            AppLog.WriteError("Could not try to connect to Voicemeeter - already connected.");
-            return true;
-        }
+        if (_connected) return true; // already what was asked for, nothing to say
 
         var paths = new List<string>
         {
@@ -124,14 +120,14 @@ public sealed class VoicemeeterManager : IDisposable
         }
         catch (Exception ex)
         {
-            AppLog.WriteError($"Could not connect to Voicemeeter - failed to load VoicemeeterRemote64.dll ({ex.Message}).");
+            AppLog.WriteError($"can't load voicemeeter dll ({ex.Message})");
             SetStatus(ConnectionStatus.Failed);
             return false;
         }
 
         if (result != 0 && result != 1)
         {
-            AppLog.WriteError($"Could not connect to Voicemeeter - code {result}.");
+            AppLog.WriteError($"can't connect to voicemeeter, code {result}");
             SetStatus(ConnectionStatus.Failed);
             return false;
         }
@@ -146,11 +142,7 @@ public sealed class VoicemeeterManager : IDisposable
 
     public bool TryDisconnect()
     {
-        if (!_connected)
-        {
-            AppLog.WriteError("Could not disconnect from Voicemeeter - not connected.");
-            return true;
-        }
+        if (!_connected) return true; // already what was asked for, nothing to say
 
         _ = Voicemeeter64.VBVMR_Logout();
         _connected = false;
@@ -164,7 +156,7 @@ public sealed class VoicemeeterManager : IDisposable
     {
         if (!_connected)
         {
-            AppLog.WriteError("Could not set mute - Voicemeeter not connected.");
+            AppLog.WriteError("can't set mute, voicemeeter not connected");
             return false;
         }
 
@@ -179,7 +171,7 @@ public sealed class VoicemeeterManager : IDisposable
     {
         if (!_connected)
         {
-            AppLog.WriteError("Could not toggle mute - Voicemeeter not connected.");
+            AppLog.WriteError("can't toggle mute, voicemeeter not connected");
             return false;
         }
 
@@ -195,7 +187,7 @@ public sealed class VoicemeeterManager : IDisposable
     {
         if (!_connected)
         {
-            AppLog.WriteError("Could not get mute - Voicemeeter not connected.");
+            AppLog.WriteError("can't read mute, voicemeeter not connected");
             muted = false;
             return false;
         }
@@ -210,14 +202,14 @@ public sealed class VoicemeeterManager : IDisposable
     {
         if (!_connected)
         {
-            AppLog.WriteError("Could not set gain - Voicemeeter not connected.");
+            AppLog.WriteError("can't set gain, voicemeeter not connected");
             return false;
         }
 
         var clamped = Math.Clamp(db, MIN_GAIN_DB, MAX_GAIN_DB);
 
         if (clamped != db)
-            AppLog.WriteWarning($"Target db too {(clamped < db ? "high" : "low")} - clamped to {clamped}");
+            AppLog.WriteWarning($"gain too {(clamped < db ? "high" : "low")}, clamped to {clamped}");
 
         _ = Voicemeeter64.VBVMR_SetParameterFloat(ParamName(target, "Gain"), clamped);
         _states[target].Gain = db;
@@ -230,7 +222,7 @@ public sealed class VoicemeeterManager : IDisposable
     {
         if (!_connected)
         {
-            AppLog.WriteError("Could not get gain - Voicemeeter not connected.");
+            AppLog.WriteError("can't read gain, voicemeeter not connected");
             db = 0;
             return false;
         }

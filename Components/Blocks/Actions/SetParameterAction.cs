@@ -82,8 +82,8 @@ public class SetParameterAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var name = _parameterName.Trim();
-        if (name == "") throw Fail("it needs a name");
-        if (!TriggerContext.IsValidName(name)) throw Fail($"'{name}' can't be a parameter name, use letters, digits and _");
+        if (name == "") throw Fail("needs a name");
+        if (!TriggerContext.IsValidName(name)) throw Fail($"'{name}' isn't a valid name, use letters, digits, _");
 
         var (_, value) = await _value.EvaluateRawAsync(context);
         context.SetParameter(name, ValueTypes.ToText(value));

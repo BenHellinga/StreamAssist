@@ -71,10 +71,10 @@ public class GetParameterBlock : AdaptableValueBlock
     {
         var name = _parameterName.Trim();
         if (!context.Parameters.TryGetValue(name, out var text))
-            throw Fail($"there's no parameter '{name}' (keys have no parameters, chat commands and events do)");
+            throw Fail($"no parameter '{name}'");
 
         if (!ValueTypes.TryParse(text, Kind, out var value))
-            throw Fail($"parameter '{name}' is '{text}', not {ValueTypes.Describe(Kind)}");
+            throw Fail($"{name} is '{text}', not {ValueTypes.Describe(Kind)}");
 
         return Task.FromResult(value);
     }

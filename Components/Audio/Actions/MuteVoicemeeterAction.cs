@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Shell;
 
-namespace StreamAssist.Components.Blocks.Actions;
+namespace StreamAssist.Components.Audio.Actions;
 
 
 
@@ -94,7 +94,7 @@ public class MuteVoicemeeterAction : ActionBlock
 
         if (_voicemeeterManager == null)
         {
-            AppLog.WriteLine("Could not set mute of input - no Voicemeeter reference in global context");
+            AppLog.WriteError($"{Name}: voicemeeter not set up");
             return Task.CompletedTask;
         }
 

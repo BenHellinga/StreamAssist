@@ -87,13 +87,13 @@ public sealed class ChatTarget : BlockSlotBase
     {
         if (_child.Block != null)
         {
-            AppLog.WriteError("Could not bind row - it already continues into a block");
+            AppLog.WriteError("can't bind row, it continues into a block");
             return false;
         }
 
         if (_bindable != null)
         {
-            AppLog.WriteError("Could not bind row - it already has a binding");
+            AppLog.WriteError("can't bind row, already bound");
             return false;
         }
 
@@ -184,7 +184,7 @@ public sealed class ChatTarget : BlockSlotBase
     public void LoadData(ChatTargetData data)
     {
         if (data.Bindable != null && data.Child != null)
-            AppLog.WriteWarning("Could not load chat block - a row had both a binding and a block after it, the block was dropped");
+            AppLog.WriteWarning("row had a binding and a block, block dropped");
 
         if (data.Bindable != null)
         {

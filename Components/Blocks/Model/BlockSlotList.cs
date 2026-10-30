@@ -55,13 +55,13 @@ public sealed class BlockSlotList : BlockSlotBase
     {
         if (!Accepts(block))
         {
-            AppLog.WriteError($"Could not place '{block.Name}' - {LockReason ?? "it doesn't fit in this list"}");
+            AppLog.WriteError($"can't place {block.Name}, {LockReason ?? "it doesn't fit here"}");
             return false;
         }
 
         if (index < 0 || index > _blocks.Count)
         {
-            AppLog.WriteError("Could not place block - index out of range");
+            AppLog.WriteError("can't place block, index out of range");
             return false;
         }
 

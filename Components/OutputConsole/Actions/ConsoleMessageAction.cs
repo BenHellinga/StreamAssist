@@ -4,7 +4,7 @@ using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Blocks.Model;
 using System.Text.Json.Serialization;
 
-namespace StreamAssist.Components.Blocks.Actions;
+namespace StreamAssist.Components.OutputConsole.Actions;
 
 
 

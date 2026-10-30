@@ -93,13 +93,13 @@ public class TimeOutUserAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("no chatbot in global context");
+        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
 
         var user = await _user.EvaluateAsync(context);
         var seconds = await _seconds.EvaluateAsync(context);
         var reason = await _reason.EvaluateAsync(context);
 
-        if (seconds < 1 || seconds > MaxSeconds) throw Fail($"{seconds} seconds is outside what twitch allows (1 to {MaxSeconds})");
+        if (seconds < 1 || seconds > MaxSeconds) throw Fail($"{seconds}s not allowed, 1 to {MaxSeconds}");
 
         // waits its turn in the twitch action queue, a failure is already logged there
         if (!await chatbot.TryTimeOutUserAsync(user, seconds, reason, context.CancellationToken))

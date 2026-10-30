@@ -83,13 +83,13 @@ public class ExpressionBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var text = await _formula.EvaluateAsync(context);
-        if (!Core.Utilities.Formula.TryEvaluate(text, out var result, out var error)) throw Fail($"'{text}' - {error}");
+        if (!Core.Utilities.Formula.TryEvaluate(text, out var result, out var error)) throw Fail($"'{text}' {error}");
 
         if (Kind == ValueKind.Double) return result.Value;
 
         // in a whole number slot a decimal answer drops its decimals (like Convert)
         var whole = Math.Truncate(result.Value);
-        if (whole is > int.MaxValue or < int.MinValue) throw Fail($"{whole} is too big for a whole number");
+        if (whole is > int.MaxValue or < int.MinValue) throw Fail($"{whole} too big for a whole number");
         return (int)whole;
     }
 }

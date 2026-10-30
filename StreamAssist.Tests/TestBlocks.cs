@@ -1,9 +1,12 @@
+using StreamAssist.Components.OutputConsole.Actions;
+using StreamAssist.Components.Keyboard.Conditions;
+using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Components.Chatbot.Actions;
 using StreamAssist.Components.Blocks.Values;
 using StreamAssist.Components.Blocks.Actions;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Chatbot.Background;
-using StreamAssist.Components.Chatbot.Blocks;
+using StreamAssist.Components.Chatbot.ChatBlocks;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Blocks.Conditions;
 using StreamAssist.Components.Keyboard.Background;

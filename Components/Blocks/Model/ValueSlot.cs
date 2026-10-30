@@ -96,8 +96,8 @@ public abstract class ValueSlot : BlockSlotBase
     // logs why the value can't be read (naming the block and this slot) and returns the exception to throw
     protected BlockFailedException Fail(string reason)
     {
-        var slot = Label == "" ? "" : $"{Label}: ";
-        AppLog.WriteError($"Could not run '{Owner?.Name ?? "block"}' - {slot}{reason}");
+        var slot = Label == "" ? "" : $"{Label} ";
+        AppLog.WriteError($"{Owner?.Name ?? "block"}: {slot}{reason}");
         return new BlockFailedException(reason);
     }
 
@@ -161,7 +161,7 @@ public sealed class ValueSlot<T> : ValueSlot where T : notnull
         if (ValueTypes.TryParse(text, kind, out var value)) return (T)value;
 
         throw Fail(text.Trim() == ""
-            ? $"nothing entered, it needs {ValueTypes.Describe(kind)}"
+            ? $"empty, needs {ValueTypes.Describe(kind)}"
             : $"'{text}' is not {ValueTypes.Describe(kind)}");
     }
 }

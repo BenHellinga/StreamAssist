@@ -94,8 +94,8 @@ public class SetRewardSettingAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("no chatbot in global context");
-        var setting = RewardSettings.Find(_setting) ?? throw Fail($"'{_setting}' is not a reward setting");
+        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
+        var setting = RewardSettings.Find(_setting) ?? throw Fail($"unknown setting '{_setting}'");
         var reward = await _reward.EvaluateAsync(context);
 
         // typed text or any block, turned into what the setting needs (e.g. a whole number for Cost)

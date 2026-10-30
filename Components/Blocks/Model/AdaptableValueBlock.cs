@@ -66,7 +66,7 @@ public abstract class AdaptableValueBlock : ValueBlock
 
         if (!CanBe(kind))
         {
-            AppLog.WriteError($"Could not change '{Name}' to {kind} - it can't return {ValueTypes.Describe(kind)}");
+            AppLog.WriteError($"{Name}: can't give {ValueTypes.Describe(kind)}");
             return false;
         }
 
@@ -74,7 +74,7 @@ public abstract class AdaptableValueBlock : ValueBlock
         if (slot != null && !WithKind(kind, () => slot.Fits(this)))
         {
             var wanted = slot.WantedKind is { } wantedKind ? ValueTypes.Describe(wantedKind) : "another type";
-            AppLog.WriteError($"Could not change '{Name}' to {kind} - the slot it's in needs {wanted}");
+            AppLog.WriteError($"{Name}: can't be {kind}, its slot needs {wanted}");
             return false;
         }
 

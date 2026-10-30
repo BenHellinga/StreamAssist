@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using StreamAssist.Components.Audio.Background;
 
-namespace StreamAssist.Components.Blocks.Actions;
+namespace StreamAssist.Components.Audio.Actions;
 
 
 

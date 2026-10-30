@@ -90,7 +90,7 @@ public static class ValueTypes
             var truncated = Math.Truncate((double)value);
             if (double.IsNaN(truncated) || truncated < int.MinValue || truncated > int.MaxValue)
             {
-                error = $"{ToText(value)} is too big for a whole number";
+                error = $"{ToText(value)} too big for a whole number";
                 return false;
             }
 

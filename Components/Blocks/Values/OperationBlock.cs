@@ -94,7 +94,7 @@ public class OperationBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var numbers = await _numbers.EvaluateFilledAsync<double>(context);
-        if (numbers.Count == 0) throw Fail("there are no numbers to work with");
+        if (numbers.Count == 0) throw Fail("no numbers");
 
         // like C#: only whole numbers means whole number maths, so dividing drops the decimals at each step
         var allWhole = numbers.All(n => n == Math.Truncate(n));
@@ -109,7 +109,7 @@ public class OperationBlock : AdaptableValueBlock
                 "×" => result * number,
                 "÷" when number == 0 => throw Fail("can't divide by zero"),
                 "÷" => allWhole ? Math.Truncate(result / number) : result / number,
-                _ => throw Fail($"'{_operator}' is not something it can do"),
+                _ => throw Fail($"unknown op '{_operator}'"),
             };
         }
 
@@ -117,7 +117,7 @@ public class OperationBlock : AdaptableValueBlock
 
         // in a whole number slot a decimal answer drops its decimals (like Convert)
         var whole = Math.Truncate(result);
-        if (whole is > int.MaxValue or < int.MinValue) throw Fail($"{whole} is too big for a whole number");
+        if (whole is > int.MaxValue or < int.MinValue) throw Fail($"{whole} too big for a whole number");
         return (int)whole;
     }
 }

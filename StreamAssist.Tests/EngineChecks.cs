@@ -1,3 +1,6 @@
+using StreamAssist.Components.OutputConsole.Actions;
+using StreamAssist.Components.Keyboard.Conditions;
+using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Core.Connections;
 using StreamAssist.Components.Chatbot.Values;
 using StreamAssist.Components.Chatbot.Actions;
@@ -5,7 +8,7 @@ using StreamAssist.Components.Blocks.Values;
 using StreamAssist.Components.Blocks.Actions;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Chatbot.Background;
-using StreamAssist.Components.Chatbot.Blocks;
+using StreamAssist.Components.Chatbot.ChatBlocks;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Blocks.Conditions;
 using StreamAssist.Components.Keyboard.Background;
@@ -38,8 +41,8 @@ internal static class EngineChecks
             var ctx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "Viewer", ["bad"] = "lots" });
             var noParams = new TriggerContext(TriggerPhase.Start, default);
             T Slot<T>(BlockModel b, int i) where T : BlockSlotBase => (T)b.Slots[i];
-            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("Error:")); }
-            string LastError() => AppLog.Lines.Last(l => l.Contains("Error:"));
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() => AppLog.Lines.Last(l => l.Contains("] error - "));
 
             // these blocks never really wait, so the run finishes synchronously on this thread
             (int Errors, List<string> Ran) RunConsole(Action<ConsoleMessageAction> setup, TriggerContext context)
@@ -56,13 +59,13 @@ internal static class EngineChecks
 
             var missing = RunConsole(c => Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(new GetParameterBlock { ParameterName = "user" }), noParams);
             Check("missing parameter: one error, run stopped", missing.Errors == 1 && missing.Ran.Count == 0);
-            Check("the error names the block", LastError().Contains("Could not run 'Get Parameter' - there's no parameter 'user'"));
+            Check("the error names the block", LastError().Contains("error - Get Parameter: no parameter 'user'"));
 
             var notANumber = RunConsole(c => Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(IntParam("bad")), ctx);
-            Check("bad int parameter: one error", notANumber.Errors == 1 && LastError().Contains("parameter 'bad' is 'lots', not a whole number"));
+            Check("bad int parameter: one error", notANumber.Errors == 1 && LastError().Contains("bad is 'lots', not a whole number"));
 
             var typedBad = RunConsole(c => { var r = new RoundBlock(); Slot<ValueSlot>(r, 0).SetText("abc"); Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(r); }, ctx);
-            Check("typed value that isn't a number: one error naming block + slot", typedBad.Errors == 1 && LastError().Contains("Could not run 'Round' - Number: 'abc' is not a number"));
+            Check("typed value that isn't a number: one error naming block + slot", typedBad.Errors == 1 && LastError().Contains("error - Round: Number 'abc' is not a number"));
 
             var crash = RunConsole(c => Slot<ValueSlot>(c, 0).SetText("fine"), ctx);
             Check("a working run logs no error and carries on", crash.Errors == 0 && crash.Ran.SequenceEqual(new[] { "after" }));
@@ -71,8 +74,8 @@ internal static class EngineChecks
 
         // ---- editable commands, two roots, Has Permission (on the main thread, errors are counted) ----
         {
-            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("Error:")); }
-            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("Error:")); }
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
             BindableModel Bind(BlockModel root) { var b = new BindableModel(); b.Root.TrySetBlock(root); return b; }
             Dictionary<string, string> Chat(bool mod = false, bool vip = false, bool sub = false, bool broadcaster = false)
             {
@@ -134,10 +137,10 @@ internal static class EngineChecks
             Check("add: whole command", model.TryAddCommand("!hello", "  hi there ") && Cmd("!hello")?.Target.Bindable?.Root.Block is SendChatMessageAction { Message.Text: "hi there" });
             Check("add: no errors so far", Errors() == e1);
             Check("add: a symbol at the end is fine", model.TryAddCommand("!hi?", "x") && Cmd("!hi?") != null && model.TryDeleteCommand("!HI?"));
-            Check("add: duplicate refused (any case)", !model.TryAddCommand("!HELLO", "x") && LastError().Contains("Could not add command '!HELLO' - it already exists"));
-            Check("add: no name refused", !model.TryAddCommand("  ", "x") && LastError().Contains("no command name given"));
-            Check("add: two words refused", !model.TryAddCommand("!a b", "x") && LastError().Contains("one word"));
-            Check("add: empty response refused", !model.TryAddCommand("!new", "  ") && LastError().Contains("no response given"));
+            Check("add: duplicate refused (any case)", !model.TryAddCommand("!HELLO", "x") && LastError().Contains("error - can't add !HELLO, already exists"));
+            Check("add: no name refused", !model.TryAddCommand("  ", "x") && LastError().Contains("command, no name"));
+            Check("add: two words refused", !model.TryAddCommand("!a b", "x") && LastError().Contains("must be one word"));
+            Check("add: empty response refused", !model.TryAddCommand("!new", "  ") && LastError().Contains("no response"));
             var e2 = Errors();
             Check("add: quiet when asked", !model.TryAddCommand("!hello", "x", logErrors: false) && Errors() == e2);
             Check("add: exactly one empty row at the end", custom.Rows.Rows.Count(r => r.IsEmpty) == 1 && custom.Rows.Rows[^1].IsEmpty);
@@ -145,9 +148,9 @@ internal static class EngineChecks
 
             // edit
             Check("edit: send-only command", model.TryEditCommand("!hello", "new text") && ((SendChatMessageAction)Cmd("!hello")!.Target.Bindable!.Root.Block!).Message.Text == "new text");
-            Check("edit: a command that does more is refused", !model.TryEditCommand("!rec", "x") && LastError().Contains("it does more than send a message"));
-            Check("edit: a row leading into blocks is refused", !model.TryEditCommand("!sub", "x") && LastError().Contains("isn't one command"));
-            Check("edit: missing refused", !model.TryEditCommand("!nope", "x") && LastError().Contains("'!nope' - it doesn't exist"));
+            Check("edit: a command that does more is refused", !model.TryEditCommand("!rec", "x") && LastError().Contains("not just a message"));
+            Check("edit: a row leading into blocks is refused", !model.TryEditCommand("!sub", "x") && LastError().Contains("not a single command"));
+            Check("edit: missing refused", !model.TryEditCommand("!nope", "x") && LastError().Contains("can't edit !nope, not found"));
 
             // delete
             Check("delete: a prefix isn't a command", !model.TryDeleteCommand("!") && Cmd("!lurk") != null);
@@ -180,7 +183,7 @@ internal static class EngineChecks
             // no Match Text (removed from the editable root)
             var bare = new ChatbotComponentModel();
             bare.EditableRoot.RemoveBlock(bare.EditableRoot.Block!);
-            Check("no block: refused", !bare.TryAddCommand("!a", "b") && LastError().Contains("there's no Match Text in the editable commands"));
+            Check("no block: refused", !bare.TryAddCommand("!a", "b") && LastError().Contains("no editable Match Text"));
 
             // save round trip
             var savedJson = JsonSerializer.Serialize(model);
@@ -278,8 +281,8 @@ internal static class EngineChecks
 
         // ---- Math, reward settings, Get / Set Reward Setting, New reward (main thread, errors are counted) ----
         {
-            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("Error:")); }
-            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("Error:")); }
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
             var redeem = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["cost"] = "100", ["rewardId"] = "abc" });
             object Eval(ValueBlock block) => block.EvaluateObjectAsync(redeem).GetAwaiter().GetResult();
             // typing in the empty number at the end adds the next one, like the editor
@@ -349,9 +352,9 @@ internal static class EngineChecks
             Check("new reward: valid one is asked for", chatbot.TryRequestCreateReward(" Make this cost more ", " 100 ", " go ", true)
                 && asked == new NewReward("Make this cost more", 100, "go", true) && Errors() == e3);
             asked = null;
-            Check("new reward: no title refused", !chatbot.TryRequestCreateReward("  ", "100", "", false) && asked == null && LastError().Contains("it needs a title"));
-            Check("new reward: bad cost refused", !chatbot.TryRequestCreateReward("x", "0", "", false) && !chatbot.TryRequestCreateReward("x", "lots", "", false) && LastError().Contains("isn't a whole number of at least 1"));
-            Check("new reward: long title refused", !chatbot.TryRequestCreateReward(new string('a', 46), "1", "", false) && LastError().Contains("45 characters"));
+            Check("new reward: no title refused", !chatbot.TryRequestCreateReward("  ", "100", "", false) && asked == null && LastError().Contains("reward needs a title"));
+            Check("new reward: bad cost refused", !chatbot.TryRequestCreateReward("x", "0", "", false) && !chatbot.TryRequestCreateReward("x", "lots", "", false) && LastError().Contains("must be 1 or more"));
+            Check("new reward: long title refused", !chatbot.TryRequestCreateReward(new string('a', 46), "1", "", false) && LastError().Contains("over 45 characters"));
 
             // its redeem row: added once, an existing one (any case) is reused
             var first = chatbot.Redeems.AddRow("Make this cost more");
@@ -372,8 +375,8 @@ internal static class EngineChecks
 
         // ---- Expression: typed formulas (main thread, errors are counted) ----
         {
-            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("Error:")); }
-            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("Error:")); }
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
             (double Value, bool Whole)? F(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var r, out _) ? (r.Value, r.IsWhole) : null;
             string Err(string text) { StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out _, out var e); return e; }
 
@@ -396,7 +399,7 @@ internal static class EngineChecks
             var e0 = Errors();
             var exprFailed = false;
             try { Eval(Expr("{cost}/0")); } catch (BlockFailedException) { exprFailed = true; }
-            Check("expression: a bad formula fails with one error naming it", exprFailed && Errors() == e0 + 1 && LastError().Contains("Could not run 'Expression' - '25/0' - can't divide by zero"));
+            Check("expression: a bad formula fails with one error naming it", exprFailed && Errors() == e0 + 1 && LastError().Contains("error - Expression: '25/0' can't divide by zero"));
             var join = new JoinBlock();
             var parts = (ValueSlotList)join.Slots[0];
             parts.Items[^1].SetText("total: ");
@@ -406,8 +409,8 @@ internal static class EngineChecks
 
         // ---- Set Parameter (main thread, errors are counted) ----
         {
-            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("Error:")); }
-            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("Error:")); }
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
             SetParameterAction SetP(string name, object value)
             {
                 var set = new SetParameterAction { ParameterName = name };
@@ -438,8 +441,8 @@ internal static class EngineChecks
             Check("set parameter: the next run starts without it", RunList(given, "otherCost") == "(missing)");
 
             var e0 = Errors();
-            Check("set parameter: no name fails and stops the run", RunList(given, "x", SetP(" ", "1")) == "(didn't run)" && Errors() == e0 + 1 && LastError().Contains("Could not run 'Set Parameter' - it needs a name"));
-            Check("set parameter: a name {} can't use fails", RunList(given, "x", SetP("my cost", "1")) == "(didn't run)" && LastError().Contains("'my cost' can't be a parameter name"));
+            Check("set parameter: no name fails and stops the run", RunList(given, "x", SetP(" ", "1")) == "(didn't run)" && Errors() == e0 + 1 && LastError().Contains("error - Set Parameter: needs a name"));
+            Check("set parameter: a name {} can't use fails", RunList(given, "x", SetP("my cost", "1")) == "(didn't run)" && LastError().Contains("'my cost' isn't a valid name"));
             // one scope per run: set four Ifs deep, still there after the Ifs finish
             BlockModel deep = SetP("deep", "found");
             for (int i = 0; i < 4; i++)

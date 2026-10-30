@@ -91,7 +91,7 @@ public class RoundBlock : ValueBlock<int>
         };
 
         if (double.IsNaN(rounded) || rounded < int.MinValue || rounded > int.MaxValue)
-            throw Fail($"{ValueTypes.ToText(number)} is too big for a whole number");
+            throw Fail($"{ValueTypes.ToText(number)} too big for a whole number");
 
         return (int)rounded;
     }

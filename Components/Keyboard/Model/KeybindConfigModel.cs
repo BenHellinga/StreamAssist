@@ -99,7 +99,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
     {
         if (_keybinds.ContainsKey(vk))
         {
-            AppLog.WriteError("Could not bind key - key already bound");
+            AppLog.WriteError("can't bind key, already bound");
             return false;
         }
 

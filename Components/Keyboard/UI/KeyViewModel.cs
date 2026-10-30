@@ -86,7 +86,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
     {
         if (_config == null)
         {
-            AppLog.WriteError("Could not select key - no config selected");
+            AppLog.WriteError("can't select key, no config selected");
             return;
         }
 

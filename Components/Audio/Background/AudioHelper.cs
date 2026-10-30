@@ -42,7 +42,7 @@ public static class AudioHelper
         }
         catch (Exception)
         {
-            AppLog.WriteError($"Could not play sound - failed to load '{filepath}'");
+            AppLog.WriteError($"can't load sound '{filepath}'");
             return false;
         }
 
@@ -85,7 +85,7 @@ public static class AudioHelper
 
         if (match == null)
         {
-            AppLog.WriteError($"Could not get audio device '{deviceName}' - device not found in list");
+            AppLog.WriteError($"audio device '{deviceName}' not found");
             device = null!;
             return false;
         }

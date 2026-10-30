@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
 
-namespace StreamAssist.Components.Chatbot.Blocks;
+namespace StreamAssist.Components.Chatbot.ChatBlocks;
 
 
 

@@ -130,11 +130,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
     public bool TryDeleteSlot(KeyboardSlotModel slot)
     {
-        if (!_slots.Contains(slot))
-        {
-            AppLog.WriteError("Could not delete keyboard slot - slot not found in list");
-            return false;
-        }
+        if (!_slots.Contains(slot)) return true; // already gone, nothing to say
 
         DeleteSlot(slot);
         return true;
@@ -162,19 +158,19 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
         
         if (string.IsNullOrWhiteSpace(trimmed))
         {
-            AppLog.WriteError("Could not create config - name cannot be empty");
+            AppLog.WriteError("config needs a name");
             return false;    
         }
 
         if (trimmed == NoneConfig)
         {
-            AppLog.WriteError($"Could not create config - name cannot be '{NoneConfig}'");
+            AppLog.WriteError($"config can't be named '{NoneConfig}'");
             return false;
         }
 
         if (_configs.Any(c => c.Name == trimmed))
         {
-            AppLog.WriteError($"Could not create config - '{trimmed}' already in use");
+            AppLog.WriteError($"config '{trimmed}' already exists");
             return false;
         }
 
@@ -195,11 +191,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
     public bool TryDeleteConfig(KeybindConfigModel config)
     {
-        if (!_configs.Contains(config))
-        {
-            AppLog.WriteError("Could not delete config - config not found in list");
-            return false;
-        }
+        if (!_configs.Contains(config)) return true; // already gone, nothing to say
 
         DeleteConfig(config);
         return true;

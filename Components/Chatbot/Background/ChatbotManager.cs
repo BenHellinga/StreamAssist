@@ -13,10 +13,6 @@ namespace StreamAssist.Components.Chatbot.Background;
 
 
 
-public enum ChatbotStatus { Disconnected, WaitingForLogin, Connecting, Connected, Error }
-
-
-
 // keeps the chatbot connected while the model says it should be, and turns twitch events into app events
 // the streamer login listens (twitch only sends redeems/subs/bits to the broadcaster), the bot login talks
 // everything this raises happens on the UI thread, so listeners can touch models directly
@@ -76,19 +72,11 @@ public class ChatbotManager : IDisposable
 
 
 
-    public ChatbotStatus Status { get; private set; }
-    public string StatusMessage { get; private set; } // the streamer connection
-    public string BotStatusMessage { get; private set; }
+    // each account's status as the Connections tab shows it, with a short detail (e.g. "Waiting for login code")
+    public ConnectionStatus StreamerConnection { get; private set; }
+    public string StatusMessage { get; private set; }
     public ConnectionStatus BotConnection { get; private set; }
-
-    // the streamer's status as the Connections tab shows it
-    public ConnectionStatus StreamerConnection => Status switch
-    {
-        ChatbotStatus.Connected => ConnectionStatus.Connected,
-        ChatbotStatus.Connecting or ChatbotStatus.WaitingForLogin => ConnectionStatus.Connecting,
-        ChatbotStatus.Error => ConnectionStatus.Failed,
-        _ => ConnectionStatus.NotConnected,
-    };
+    public string BotStatusMessage { get; private set; }
     public string? StreamerLogin => _streamer?.Login;
     public string? BotLogin => _bot?.Login;
     public string? BotUserId => _bot?.UserId;
@@ -119,7 +107,7 @@ public class ChatbotManager : IDisposable
         _lifetime = new();
         _refreshLock = new(1, 1);
 
-        Status = ChatbotStatus.Disconnected;
+        StreamerConnection = ConnectionStatus.NotConnected;
         StatusMessage = "Not connected";
         BotStatusMessage = "Not connected";
         BotConnection = ConnectionStatus.NotConnected;
@@ -288,7 +276,7 @@ public class ChatbotManager : IDisposable
         if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret))
         {
             SetBotStatus(ConnectionStatus.Failed, "Not connected");
-            AppLog.WriteError("Could not connect bot - enter the Client ID and Client Secret first");
+            AppLog.WriteError("bot needs the client id and secret");
             return;
         }
 
@@ -349,7 +337,7 @@ public class ChatbotManager : IDisposable
         _run = null;
 
         _streamer = null;
-        SetStatus(ChatbotStatus.Disconnected, "Not connected");
+        SetStatus(ConnectionStatus.NotConnected, "Not connected");
     }
 
 
@@ -360,7 +348,7 @@ public class ChatbotManager : IDisposable
     {
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
         {
-            SetStatus(ChatbotStatus.Error, "Not connected", "Could not connect to Twitch - enter the Client ID and Client Secret first");
+            SetStatus(ConnectionStatus.Failed, "Not connected", "twitch needs the client id and secret");
             return;
         }
 
@@ -372,29 +360,29 @@ public class ChatbotManager : IDisposable
         {
             return;
         }
-        catch (TwitchUnauthorizedException ex)
+        catch (TwitchUnauthorizedException)
         {
             // the saved login stopped working, forget it so Retry logs in again
             _auth.LogOut(TwitchAccount.Streamer);
             ClearStreamer(ct);
-            SetStatus(ChatbotStatus.Error, "Login expired", $"Could not connect to Twitch - login expired ({ex.Message}), press Retry to log in again");
+            SetStatus(ConnectionStatus.Failed, "Login expired", "streamer login expired, press retry");
         }
         catch (Exception ex)
         {
             if (ct.IsCancellationRequested) return;
 
-            var wasConnected = Status == ChatbotStatus.Connected;
+            var wasConnected = StreamerConnection == ConnectionStatus.Connected;
             ClearStreamer(ct);
 
             if (!wasConnected)
             {
-                SetStatus(ChatbotStatus.Error, "Not connected", $"Could not connect to Twitch - {ex.Message}");
+                SetStatus(ConnectionStatus.Failed, "Not connected", $"can't connect to twitch ({ex.Message})");
                 return;
             }
 
             // it was working, then twitch went away mid-stream
-            SetStatus(ChatbotStatus.Error, "Disconnected");
-            AppLog.WriteWarning($"Could not stay connected to Twitch as the streamer - {ex.Message}, press Retry in the Connections tab to reconnect");
+            SetStatus(ConnectionStatus.Failed, "Disconnected");
+            AppLog.WriteWarning($"streamer disconnected from twitch ({ex.Message})");
         }
     }
 
@@ -413,7 +401,7 @@ public class ChatbotManager : IDisposable
 
     private async Task ConnectOnceAsync(string clientId, string clientSecret, CancellationToken ct)
     {
-        SetStatus(ChatbotStatus.Connecting, "Logging in...");
+        SetStatus(ConnectionStatus.Connecting, "Logging in...");
         var streamer = await _auth.LogInAsync(TwitchAccount.Streamer, clientId, clientSecret, ct);
 
         Dispatcher.UIThread.Post(() =>
@@ -429,9 +417,9 @@ public class ChatbotManager : IDisposable
         {
             if (!ct.IsCancellationRequested) OnEventReceived(e); // ignore stragglers from a stopped connection
         });
-        client.SubscriptionRevoked += (type, reason) => AppLog.WriteWarning($"Could not keep listening for '{type}' - twitch stopped sending it ({reason})");
+        client.SubscriptionRevoked += (type, reason) => AppLog.WriteWarning($"twitch stopped sending {type} ({reason})");
 
-        SetStatus(ChatbotStatus.Connecting, "Connecting...");
+        SetStatus(ConnectionStatus.Connecting, "Connecting...");
         await client.RunAsync(ct);
     }
 
@@ -461,9 +449,9 @@ public class ChatbotManager : IDisposable
         if (ct.IsCancellationRequested) return;
 
         foreach (var failure in failed)
-            AppLog.WriteWarning($"Could not listen for {failure}");
+            AppLog.WriteWarning($"can't listen for {failure}");
 
-        SetStatus(ChatbotStatus.Connected, $"Connected as {streamer.Login}");
+        SetStatus(ConnectionStatus.Connected, $"Connected as {streamer.Login}");
     }
 
 
@@ -492,7 +480,7 @@ public class ChatbotManager : IDisposable
 
                 _bot = bot;
                 if (bot.UserId == _streamer?.UserId)
-                    AppLog.WriteWarning("Could not use a separate bot account - the bot was approved as the streamer, log in again in a private browser window as the bot");
+                    AppLog.WriteWarning("bot logged in as streamer, redo in a private window");
 
                 SetBotStatus(ConnectionStatus.Connected, $"Connected as {bot.Login}");
             });
@@ -503,7 +491,7 @@ public class ChatbotManager : IDisposable
             if (ct.IsCancellationRequested) return;
 
             SetBotStatus(ConnectionStatus.Failed, "Login failed");
-            AppLog.WriteError($"Could not connect bot - {ex.Message}");
+            AppLog.WriteError($"bot login failed ({ex.Message})");
         }
     }
 
@@ -520,12 +508,12 @@ public class ChatbotManager : IDisposable
         {
             // the default browser is probably logged in as the streamer, so the bot needs a private window
             SetBotStatus(ConnectionStatus.Connecting, "Waiting for login code");
-            AppLog.WriteLine($"Bot login - in a private/incognito browser window logged in as the bot, go to {url} and authorize");
+            AppLog.WritePrompt($"bot login, open in a private window as the bot: {url}");
             return;
         }
 
-        SetStatus(ChatbotStatus.WaitingForLogin, "Waiting for login code");
-        AppLog.WriteLine($"Streamer login - go to {url} and authorize");
+        SetStatus(ConnectionStatus.Connecting, "Waiting for login code");
+        AppLog.WritePrompt($"streamer login, open: {url}");
     }
 
 
@@ -562,7 +550,7 @@ public class ChatbotManager : IDisposable
             var streamer = _streamer;
             if (streamer == null)
             {
-                AppLog.WriteError($"Could not {what} - chatbot not connected");
+                AppLog.WriteError($"can't {what}, twitch not connected");
                 return (false, default);
             }
 
@@ -589,7 +577,7 @@ public class ChatbotManager : IDisposable
             }
             catch (Exception ex)
             {
-                AppLog.WriteError($"Could not {what} - {ex.Message}");
+                AppLog.WriteError($"can't {what} ({ex.Message})");
                 return (false, default);
             }
         }, ct);
@@ -694,8 +682,8 @@ public class ChatbotManager : IDisposable
             _run = null;
             _streamer = null;
 
-            SetStatus(ChatbotStatus.Error, "Login expired");
-            AppLog.WriteWarning("Could not stay logged in to Twitch as the streamer - twitch no longer accepts the login, press Retry in the Connections tab to log in again");
+            SetStatus(ConnectionStatus.Failed, "Login expired");
+            AppLog.WriteWarning("streamer login expired, press retry");
             return;
         }
 
@@ -706,7 +694,7 @@ public class ChatbotManager : IDisposable
         _bot = null;
 
         SetBotStatus(ConnectionStatus.Failed, "Login expired");
-        AppLog.WriteWarning("Could not stay logged in to Twitch as the bot - twitch no longer accepts the login, chat is sent as the streamer until you press Retry in the Connections tab");
+        AppLog.WriteWarning("bot login expired, chat sent as streamer");
     });
 
 
@@ -757,15 +745,15 @@ public class ChatbotManager : IDisposable
 
     // message is the short state shown beside the button, log (if any) is the detail for the console
     // can be called from any thread, listeners always get it on the UI thread
-    private void SetStatus(ChatbotStatus status, string message, string? log = null)
+    private void SetStatus(ConnectionStatus status, string message, string? log = null)
     {
         Dispatcher.UIThread.Post(() =>
         {
             if (log != null) AppLog.WriteError(log);
 
-            if (status == Status && message == StatusMessage) return;
+            if (status == StreamerConnection && message == StatusMessage) return;
 
-            Status = status;
+            StreamerConnection = status;
             StatusMessage = message;
             StatusChanged?.Invoke();
         });

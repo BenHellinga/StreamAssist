@@ -81,7 +81,7 @@ public class BanUserAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("no chatbot in global context");
+        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
 
         var user = await _user.EvaluateAsync(context);
         var reason = await _reason.EvaluateAsync(context);

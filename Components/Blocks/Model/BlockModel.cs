@@ -150,7 +150,7 @@ public abstract class BlockModel : ModelBase
     // e.g. throw Fail("there's no parameter 'viewers'"), the run stops and the root doesn't log it again
     protected BlockFailedException Fail(string reason)
     {
-        AppLog.WriteError($"Could not run '{Name}' - {reason}");
+        AppLog.WriteError($"{Name}: {reason}");
         return new BlockFailedException(reason);
     }
 

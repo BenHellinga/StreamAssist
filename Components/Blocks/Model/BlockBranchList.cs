@@ -59,13 +59,13 @@ public sealed class BlockBranchList : BlockSlotBase
     {
         if (!Accepts(condition))
         {
-            AppLog.WriteError($"Could not place '{condition.Name}' - only conditions start a new branch");
+            AppLog.WriteError($"can't place {condition.Name}, only conditions start a branch");
             return false;
         }
 
         if (index < 0 || index > _branches.Count)
         {
-            AppLog.WriteError("Could not place condition - index out of range");
+            AppLog.WriteError("can't place condition, index out of range");
             return false;
         }
 

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Actions;
-using StreamAssist.Components.Chatbot.Blocks;
+using StreamAssist.Components.Chatbot.ChatBlocks;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Mvvm;
 
@@ -246,19 +246,19 @@ public class ChatbotComponentModel : ModelBase
         var name = title.Trim();
         if (name == "")
         {
-            AppLog.WriteError("Could not create reward - it needs a title");
+            AppLog.WriteError("reward needs a title");
             return false;
         }
 
         if (name.Length > 45)
         {
-            AppLog.WriteError($"Could not create reward '{name}' - twitch allows at most 45 characters in a title");
+            AppLog.WriteError("reward title over 45 characters");
             return false;
         }
 
         if (!int.TryParse(cost.Trim(), out var points) || points < 1)
         {
-            AppLog.WriteError($"Could not create reward '{name}' - the cost '{cost.Trim()}' isn't a whole number of at least 1");
+            AppLog.WriteError($"reward cost '{cost.Trim()}' must be 1 or more");
             return false;
         }
 
@@ -274,7 +274,7 @@ public class ChatbotComponentModel : ModelBase
         var slot = _events.FirstOrDefault(e => e.Key == key);
         if (slot == null)
         {
-            AppLog.WriteError($"Could not run chatbot event '{key}' - unknown event");
+            AppLog.WriteError($"unknown event '{key}'");
             return false;
         }
 
@@ -303,11 +303,11 @@ public class ChatbotComponentModel : ModelBase
         if (!TryFindCommand(command, "add", logErrors, out failure, out var block, out var name)) return false;
 
         var text = response.Trim();
-        if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not add command '{name}' - no response given");
+        if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't add {name}, no response");
 
         var place = FindCommand(block, name);
         if (place.Row != null && !place.Row.Target.IsEmpty)
-            return Refuse(logErrors, out failure, CommandFailure.AlreadyExists, $"Could not add command '{name}' - it already exists");
+            return Refuse(logErrors, out failure, CommandFailure.AlreadyExists, $"can't add {name}, already exists");
 
         var send = new SendChatMessageAction();
         send.Message.SetText(text);
@@ -327,12 +327,12 @@ public class ChatbotComponentModel : ModelBase
         if (!TryFindCommand(command, "edit", logErrors, out failure, out var block, out var name)) return false;
 
         var text = response.Trim();
-        if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not edit command '{name}' - no response given");
+        if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't edit {name}, no response");
 
         if (!TryFindBoundRow(block, name, "edit", logErrors, out failure, out _, out var row)) return false;
 
         if (row.Target.Bindable!.Root.Block is not SendChatMessageAction send || send.Message.BlockSlot.Block != null)
-            return Refuse(logErrors, out failure, CommandFailure.NotSimple, $"Could not edit command '{name}' - it does more than send a message, edit it in the app");
+            return Refuse(logErrors, out failure, CommandFailure.NotSimple, $"can't edit {name}, not just a message");
 
         send.Message.SetText(text);
         return true;
@@ -428,12 +428,12 @@ public class ChatbotComponentModel : ModelBase
         block = null!;
 
         if (_editableRoot.Block is not MatchTextChatBlock found)
-            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command '{name}' - there's no Match Text in the editable commands");
+            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no editable Match Text");
 
         block = found;
-        if (name == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command - no command name given");
-        if (name.Any(char.IsWhiteSpace)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command '{name}' - a command is one word");
-        if (ChatText.TryGetRegex(name, out _)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command '{name}' - in slashes it would be a regex, not a command");
+        if (name == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} command, no name");
+        if (name.Any(char.IsWhiteSpace)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, must be one word");
+        if (ChatText.TryGetRegex(name, out _)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, slashes make it a regex");
 
         failure = CommandFailure.None;
         return true;
@@ -450,9 +450,9 @@ public class ChatbotComponentModel : ModelBase
         block = place.Block;
         row = place.Row!;
         if (row == null || row.Target.IsEmpty)
-            return Refuse(logErrors, out failure, CommandFailure.NotFound, $"Could not {verb} command '{name}' - it doesn't exist");
+            return Refuse(logErrors, out failure, CommandFailure.NotFound, $"can't {verb} {name}, not found");
         if (row.Target.Bindable == null)
-            return Refuse(logErrors, out failure, CommandFailure.NotFound, $"Could not {verb} command '{name}' - it leads into more blocks, it isn't one command");
+            return Refuse(logErrors, out failure, CommandFailure.NotFound, $"can't {verb} {name}, not a single command");
 
         failure = CommandFailure.None;
         return true;
@@ -497,7 +497,7 @@ public class ChatbotComponentModel : ModelBase
             var slot = _events.FirstOrDefault(e => e.Key == key);
             if (slot == null)
             {
-                AppLog.WriteWarning($"Could not load chatbot event '{key}' - unknown event, it was skipped");
+                AppLog.WriteWarning($"unknown event '{key}' skipped");
                 bindable.Dispose();
                 continue;
             }

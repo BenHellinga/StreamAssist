@@ -156,11 +156,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     {
         if (_callbackBlocker.IsBlocked()) return;
 
-        if (_slot.SelectedConfig == null)
-        {
-            AppLog.WriteError($"Could not delete config - no config selected");
-            return;
-        }
+        if (_slot.SelectedConfig == null) return; // nothing to delete
 
         DeleteConfigRequested?.Invoke(_slot.SelectedConfig);
     }

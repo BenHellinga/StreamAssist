@@ -73,7 +73,7 @@ public class DeleteCommandAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var model = GlobalContext.ChatbotComponentModel ?? throw Fail("no chatbot in global context");
+        var model = GlobalContext.ChatbotComponentModel ?? throw Fail("chatbot not set up");
 
         var command = await _command.EvaluateAsync(context);
 
