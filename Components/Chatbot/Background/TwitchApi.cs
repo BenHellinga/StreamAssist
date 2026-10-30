@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -72,7 +73,11 @@ public static class TwitchApi
         }, clientSecret)), ct);
 
         var body = await response.Content.ReadAsStringAsync(ct);
-        if (!response.IsSuccessStatusCode) throw new TwitchUnauthorizedException($"Couldn't refresh the Twitch login: {ReadMessage(body)}");
+
+        // twitch refused the refresh token (the login is gone), anything else (e.g. twitch being down) is worth trying again later
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            throw new TwitchUnauthorizedException($"Couldn't refresh the Twitch login: {ReadMessage(body)}");
+        if (!response.IsSuccessStatusCode) throw new Exception($"Couldn't refresh the Twitch login: {(int)response.StatusCode} {ReadMessage(body)}");
 
         return JsonDocument.Parse(body).RootElement.Clone();
     }
@@ -167,6 +172,33 @@ public static class TwitchApi
         var path = $"moderation/chat?broadcaster_id={Uri.EscapeDataString(broadcasterId)}&moderator_id={Uri.EscapeDataString(session.UserId)}"
             + $"&message_id={Uri.EscapeDataString(messageId)}";
         await HelixAsync(session, HttpMethod.Delete, path, null, ct);
+    }
+
+
+
+    // every channel point reward on the channel (as the broadcaster), each one twitch's reward json
+    public static async Task<List<JsonElement>> GetCustomRewardsAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"channel_points/custom_rewards?broadcaster_id={Uri.EscapeDataString(broadcasterId)}", null, ct);
+        return result.GetProperty("data").EnumerateArray().ToList();
+    }
+
+
+
+    // changes some of a reward's settings (only rewards this app created)
+    public static async Task UpdateCustomRewardAsync(TwitchSession session, string broadcasterId, string rewardId, JsonObject changes, CancellationToken ct)
+    {
+        var path = $"channel_points/custom_rewards?broadcaster_id={Uri.EscapeDataString(broadcasterId)}&id={Uri.EscapeDataString(rewardId)}";
+        await HelixAsync(session, HttpMethod.Patch, path, changes, ct);
+    }
+
+
+
+    // creates a reward owned by this app (so the app can change it later)
+    public static async Task CreateCustomRewardAsync(TwitchSession session, string broadcasterId, JsonObject reward, CancellationToken ct)
+    {
+        var path = $"channel_points/custom_rewards?broadcaster_id={Uri.EscapeDataString(broadcasterId)}";
+        await HelixAsync(session, HttpMethod.Post, path, reward, ct);
     }
 
 

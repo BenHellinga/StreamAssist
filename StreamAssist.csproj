@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- the test project lives inside this folder, its files aren't part of the app -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);StreamAssist.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

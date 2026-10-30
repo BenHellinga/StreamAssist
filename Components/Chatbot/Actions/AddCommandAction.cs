@@ -16,7 +16,7 @@ public class AddCommandAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Add Command";
-    [JsonIgnore] public override string Description => "Adds a command to the Editable commands that replies with the response (e.g. for !addcom). Fails if it already exists. A failure is logged, except when a chat message ran it (then it fails quietly, so nothing after it runs).";
+    [JsonIgnore] public override string Description => "Adds a command to the Editable commands that replies with the response (e.g. for !addcom). Fails if it already exists. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
 
 
 
@@ -88,8 +88,8 @@ public class AddCommandAction : ActionBlock
         var command = await _command.EvaluateAsync(context);
         var response = await _response.EvaluateAsync(context);
 
-        // from chat a failure is quiet (chatters get no reply), anywhere else the model logs why
-        if (!model.TryAddCommand(command, response, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
-            throw new BlockFailedException("the command wasn't added");
+        // from chat the chatter is told what went wrong, anywhere else the model logs it to the console
+        if (!model.TryAddCommand(command, response, out var failure, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
+            throw await CommandActionHelper.FailAsync(context, failure, "the command wasn't added");
     }
 }

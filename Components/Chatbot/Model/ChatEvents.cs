@@ -180,12 +180,12 @@ public static class ChatEvents
 
 
 
-    // a made-up chat message's parameters for the chat command test panel (the same names TwitchEvent.ChatParameters gives)
     // a run that a chat message started (a chat command, or the test panel), e.g. so its failures stay quiet
     public static bool IsFromChat(IReadOnlyDictionary<string, string> parameters) => parameters.ContainsKey("messageId");
 
 
 
+    // a made-up chat message's parameters for the chat command test panel (the same names TwitchEvent.ChatParameters gives)
     public static Dictionary<string, string> SampleChatParameters(string user, string message, bool isModerator, bool isVip, bool isSubscriber)
     {
         var badges = new List<string>();

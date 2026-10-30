@@ -19,6 +19,14 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
+    <!-- a small tab in a panel's tab bar (e.g. Test / New reward), Open = its panel is showing, looks like a selected tab -->
+
+    <Style Selector="Button.Tab.Open /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource PanelFillToggle}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderToggle}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+    </Style>
+
     <!-- width always matches height -->
 
     <Style Selector="Button.Square">

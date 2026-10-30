@@ -48,11 +48,11 @@ public class ValueSlotListViewModel : ViewModelBase
 
 
 
-    private void OnItemInserted(ValueSlot<string> item, int index) => _items.Insert(index, new(item));
+    private void OnItemInserted(ValueSlot item, int index) => _items.Insert(index, new(item));
 
 
 
-    private void OnItemRemoved(ValueSlot<string> item)
+    private void OnItemRemoved(ValueSlot item)
     {
         var viewModel = _items.FirstOrDefault(i => i.RepresentsModel(item));
         if (viewModel == null) return;

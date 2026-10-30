@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -31,6 +33,11 @@ public class ChatbotManager : IDisposable
     // U+034F) at the end makes a repeat different without changing how it looks
     private const string DuplicateSuffix = " \u034F";
 
+    // twitch logins run out after a few hours: both are checked this often (twitch wants apps to check about hourly),
+    // and one with less than RefreshBefore left gets a new token before anything fails
+    private static readonly TimeSpan LoginCheckInterval = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan RefreshBefore = TimeSpan.FromMinutes(45);
+
     private readonly ChatbotComponentModel _model;
     private readonly TwitchAuthManager _auth;
     private readonly TwitchActionQueue _actions;
@@ -39,6 +46,8 @@ public class ChatbotManager : IDisposable
     private CancellationTokenSource? _run;
     private CancellationTokenSource? _botLogin;
     private bool _restartQueued;
+    private readonly CancellationTokenSource _lifetime; // stops the login checks when the app closes
+    private readonly SemaphoreSlim _refreshLock; // one token refresh at a time
 
     private TwitchSession? _streamer;
     private TwitchSession? _bot;
@@ -107,6 +116,8 @@ public class ChatbotManager : IDisposable
         _run = null;
         _botLogin = null;
         _restartQueued = false;
+        _lifetime = new();
+        _refreshLock = new(1, 1);
 
         Status = ChatbotStatus.Disconnected;
         StatusMessage = "Not connected";
@@ -116,10 +127,13 @@ public class ChatbotManager : IDisposable
         _model.ConnectionChanged += OnConnectionChanged;
         _model.BotConnectionChanged += OnBotConnectionChanged;
         _model.CredentialsChanged += OnCredentialsChanged;
+        _model.CreateRewardRequested += OnCreateRewardRequested;
         _auth.LoginCodeReady += OnLoginCodeReady;
 
         if (_model.IsEnabled) Start();
         if (_model.IsBotEnabled) ResumeBot();
+
+        _ = KeepLoginsFreshAsync(_lifetime.Token);
     }
 
 
@@ -129,7 +143,8 @@ public class ChatbotManager : IDisposable
 
 
     // twitch actions: each waits its turn in the queue, is done as the bot if one is logged in (otherwise as the
-    // streamer), and logs why if it fails (false), so the block that asked doesn't have to
+    // streamer; channel point rewards always as the streamer), and logs why if it fails (false), so the block that
+    // asked doesn't have to
 
 
 
@@ -171,7 +186,62 @@ public class ChatbotManager : IDisposable
 
 
 
+    // channel point rewards: always done as the streamer (only the broadcaster can manage their rewards, so the bot never
+    // needs that permission). A reward is found by its id or its title (case ignored)
+
+
+
+    // a reward's setting, as the setting's kind (int, string or bool), e.g. the Cost of "Hydrate"
+    public Task<(bool Ok, object? Value)> TryGetRewardSettingAsync(string reward, RewardSetting setting, CancellationToken ct = default) =>
+        TryRunActionAsync<object>($"read '{setting.Name}' of reward '{reward}'", async (account, channelId, token) =>
+            setting.Read(await FindRewardAsync(account, channelId, reward, token)), ct, asStreamer: true);
+
+
+
+    // value is the setting's kind (int, string or bool). Only works on rewards this app created
+    public Task<bool> TrySetRewardSettingAsync(string reward, RewardSetting setting, object value, CancellationToken ct = default) =>
+        TryRunActionAsync($"change '{setting.Name}' of reward '{reward}'", async (account, channelId, token) =>
+        {
+            var found = await FindRewardAsync(account, channelId, reward, token);
+            var changes = new JsonObject();
+            setting.Write(changes, value);
+
+            try
+            {
+                await TwitchApi.UpdateCustomRewardAsync(account, channelId, found.GetProperty("id").GetString()!, changes, token);
+            }
+            catch (Exception ex) when (ex.Message.StartsWith("403"))
+            {
+                throw new Exception("it was made outside StreamAssist, and twitch only lets the app that created a reward change it (create it with New reward in the Events tab)");
+            }
+        }, ct, asStreamer: true);
+
+
+
+    public Task<bool> TryCreateRewardAsync(NewReward reward, CancellationToken ct = default) =>
+        TryRunActionAsync($"create reward '{reward.Title}'", (account, channelId, token) =>
+        {
+            var body = new JsonObject
+            {
+                ["title"] = reward.Title,
+                ["cost"] = reward.Cost,
+                ["prompt"] = reward.Prompt,
+                ["is_user_input_required"] = reward.UserInputRequired,
+            };
+            return TwitchApi.CreateCustomRewardAsync(account, channelId, body, token);
+        }, ct, asStreamer: true);
+
+
+
     // model callbacks
+
+
+
+    // the New reward panel asked: create it on twitch, then give it a redeem row to bind (a failure is already logged)
+    private async void OnCreateRewardRequested(NewReward reward)
+    {
+        if (await TryCreateRewardAsync(reward)) _model.Redeems.AddRow(reward.Title);
+    }
 
 
 
@@ -313,8 +383,18 @@ public class ChatbotManager : IDisposable
         {
             if (ct.IsCancellationRequested) return;
 
+            var wasConnected = Status == ChatbotStatus.Connected;
             ClearStreamer(ct);
-            SetStatus(ChatbotStatus.Error, "Not connected", $"Could not connect to Twitch - {ex.Message}");
+
+            if (!wasConnected)
+            {
+                SetStatus(ChatbotStatus.Error, "Not connected", $"Could not connect to Twitch - {ex.Message}");
+                return;
+            }
+
+            // it was working, then twitch went away mid-stream
+            SetStatus(ChatbotStatus.Error, "Disconnected");
+            AppLog.WriteWarning($"Could not stay connected to Twitch as the streamer - {ex.Message}, press Retry in the Connections tab to reconnect");
         }
     }
 
@@ -460,20 +540,48 @@ public class ChatbotManager : IDisposable
 
 
     // the connection is checked when it's the action's turn (it may have changed while it waited)
-    private async Task<bool> TryRunActionAsync(string what, Func<TwitchSession, string, CancellationToken, Task> action, CancellationToken ct) =>
-        await _actions.RunAsync(async () =>
+    private async Task<bool> TryRunActionAsync(string what, Func<TwitchSession, string, CancellationToken, Task> action, CancellationToken ct,
+        bool asStreamer = false)
+    {
+        var result = await TryRunActionAsync<bool>(what, async (account, channelId, token) =>
+        {
+            await action(account, channelId, token);
+            return true;
+        }, ct, asStreamer);
+        return result.Ok;
+    }
+
+
+
+    // the same for actions that give something back (e.g. reading a reward), Value is default when it failed
+    // done as the bot if one is connected, unless asStreamer (things only the broadcaster can do)
+    private async Task<(bool Ok, T? Value)> TryRunActionAsync<T>(string what, Func<TwitchSession, string, CancellationToken, Task<T>> action,
+        CancellationToken ct, bool asStreamer = false) =>
+        await _actions.RunAsync<(bool, T?)>(async () =>
         {
             var streamer = _streamer;
             if (streamer == null)
             {
                 AppLog.WriteError($"Could not {what} - chatbot not connected");
-                return false;
+                return (false, default);
             }
+
+            var account = asStreamer || _bot == null ? TwitchAccount.Streamer : TwitchAccount.Bot;
+            var session = account == TwitchAccount.Streamer ? streamer : _bot!;
 
             try
             {
-                await action(_bot ?? streamer, streamer.UserId, ct);
-                return true;
+                try
+                {
+                    return (true, await action(session, streamer.UserId, ct));
+                }
+                catch (TwitchUnauthorizedException)
+                {
+                    // the token ran out before the regular check caught it: get a new one and try once more
+                    var fresh = await TryRefreshSessionAsync(account, session);
+                    if (fresh == null) throw;
+                    return (true, await action(fresh, streamer.UserId, ct));
+                }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -482,9 +590,153 @@ public class ChatbotManager : IDisposable
             catch (Exception ex)
             {
                 AppLog.WriteError($"Could not {what} - {ex.Message}");
-                return false;
+                return (false, default);
             }
         }, ct);
+
+
+
+    // logins
+
+
+
+    // checks both logins every LoginCheckInterval until the app closes
+    private async Task KeepLoginsFreshAsync(CancellationToken ct)
+    {
+        while (true)
+        {
+            try
+            {
+                await Task.Delay(LoginCheckInterval, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            await CheckLoginAsync(TwitchAccount.Streamer, ct);
+            await CheckLoginAsync(TwitchAccount.Bot, ct);
+        }
+    }
+
+
+
+    // still fine: keep going (with twitch's new expiry); running out soon or already refused: refresh it now
+    private async Task CheckLoginAsync(TwitchAccount account, CancellationToken ct)
+    {
+        var session = SessionFor(account);
+        if (session == null) return;
+
+        try
+        {
+            var current = await TwitchAuthManager.TryValidateAsync(session, ct);
+            if (current != null && current.ExpiresAt - DateTime.UtcNow > RefreshBefore)
+            {
+                if (SessionFor(account) == session) SetSession(account, current);
+                return;
+            }
+
+            await TryRefreshSessionAsync(account, session);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            // twitch couldn't be reached right now, the next check tries again (a dropped connection reports itself)
+        }
+    }
+
+
+
+    // a new token for an account whose token ran out (or is about to), one refresh at a time: if another refresh already
+    // replaced this token, that one is used. Null when there's no login any more (disconnected, or twitch refused it,
+    // which is reported). Twitch being unreachable throws, the login is kept for next time
+    private async Task<TwitchSession?> TryRefreshSessionAsync(TwitchAccount account, TwitchSession used)
+    {
+        await _refreshLock.WaitAsync();
+        try
+        {
+            var current = SessionFor(account);
+            if (current == null) return null;
+            if (current.AccessToken != used.AccessToken) return current;
+
+            var fresh = await _auth.TryRefreshAsync(account, current, CancellationToken.None);
+            if (fresh == null)
+            {
+                OnLoginLost(account);
+                return null;
+            }
+
+            if (SessionFor(account) == current) SetSession(account, fresh);
+            return fresh;
+        }
+        finally
+        {
+            _refreshLock.Release();
+        }
+    }
+
+
+
+    // twitch won't refresh the login any more (e.g. the app's access was removed): forget it, stop using it, and say so
+    // once. Retry in the Connections tab starts a new code login
+    private void OnLoginLost(TwitchAccount account) => Dispatcher.UIThread.Post(() =>
+    {
+        _auth.LogOut(account);
+
+        if (account == TwitchAccount.Streamer)
+        {
+            if (_streamer == null) return;
+
+            _run?.Cancel();
+            _run?.Dispose();
+            _run = null;
+            _streamer = null;
+
+            SetStatus(ChatbotStatus.Error, "Login expired");
+            AppLog.WriteWarning("Could not stay logged in to Twitch as the streamer - twitch no longer accepts the login, press Retry in the Connections tab to log in again");
+            return;
+        }
+
+        if (_bot == null) return;
+
+        _botLogin?.Cancel();
+        _botLogin = null;
+        _bot = null;
+
+        SetBotStatus(ConnectionStatus.Failed, "Login expired");
+        AppLog.WriteWarning("Could not stay logged in to Twitch as the bot - twitch no longer accepts the login, chat is sent as the streamer until you press Retry in the Connections tab");
+    });
+
+
+
+    private TwitchSession? SessionFor(TwitchAccount account) => account == TwitchAccount.Streamer ? _streamer : _bot;
+
+
+
+    private void SetSession(TwitchAccount account, TwitchSession session)
+    {
+        if (account == TwitchAccount.Streamer) _streamer = session;
+        else _bot = session;
+    }
+
+
+
+    // a reward on the channel by its id or its title (case and surrounding spaces ignored)
+    private static async Task<JsonElement> FindRewardAsync(TwitchSession account, string channelId, string reward, CancellationToken ct)
+    {
+        var name = reward.Trim();
+        if (name == "") throw new Exception("no reward given");
+
+        var rewards = await TwitchApi.GetCustomRewardsAsync(account, channelId, ct);
+        foreach (var found in rewards)
+            if (found.GetProperty("id").GetString() == name) return found;
+        foreach (var found in rewards)
+            if (string.Equals(found.GetProperty("title").GetString()?.Trim(), name, StringComparison.OrdinalIgnoreCase)) return found;
+
+        throw new Exception($"there's no reward '{name}' on the channel");
+    }
 
 
 
@@ -549,11 +801,15 @@ public class ChatbotManager : IDisposable
         _model.ConnectionChanged -= OnConnectionChanged;
         _model.BotConnectionChanged -= OnBotConnectionChanged;
         _model.CredentialsChanged -= OnCredentialsChanged;
+        _model.CreateRewardRequested -= OnCreateRewardRequested;
         _auth.LoginCodeReady -= OnLoginCodeReady;
 
         _botLogin?.Cancel();
         _run?.Cancel();
         _run?.Dispose();
         _run = null;
+
+        _lifetime.Cancel();
+        _lifetime.Dispose();
     }
 }

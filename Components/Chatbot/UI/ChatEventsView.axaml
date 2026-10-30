@@ -85,33 +85,55 @@
             </Border>
         </ScrollViewer>
 
-        <!-- test panel: closed it's one small button, open it shows the made-up values and a Test button on every row -->
+        <!-- a small tab bar: closed it's one line, clicking a tab opens its panel under it (the list above gets shorter),
+             clicking the open tab closes it -->
 
         <StackPanel Grid.Row="1" Spacing="5" Margin="0,0,0,5">
             <Border Classes="Divider"/>
 
-            <StackPanel Orientation="Horizontal" Spacing="10" Margin="{StaticResource ContentInset}">
-                <Button Command="{Binding TestTogglePressedCommand}" VerticalAlignment="Center"
-                        ToolTip.Tip="Try bindings without waiting for a real redeem, sub, raid, ...">
-                    <Panel>
-                        <TextBlock Text="Test ▸" IsVisible="{Binding !IsTestOpen}"/>
-                        <TextBlock Text="Test ▾" IsVisible="{Binding IsTestOpen}"/>
-                    </Panel>
-                </Button>
-
-                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsTestOpen}">
-                    <TextBlock Classes="Label" Text="User"/>
-                    <TextBox Width="120" Text="{Binding TestUser}"/>
-                    <TextBlock Classes="Label" Text="Amount"
-                               ToolTip.Tip="Used as the months (Sub), count (Gift Subs), bits (Cheer), viewers (Raid) or cost (redeems)"/>
-                    <TextBox Width="70" Text="{Binding TestAmount}"/>
-                    <TextBlock Classes="Label" Text="Tier"/>
-                    <TextBox Width="40" Text="{Binding TestTier}"/>
-                    <TextBlock Classes="Label" Text="Text"
-                               ToolTip.Tip="Used as the message (Sub, Cheer) or the viewer's input (redeems)"/>
-                    <TextBox Width="200" Text="{Binding TestText}"/>
-                </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">
+                <Button Classes="Tab" Classes.Open="{Binding IsTestOpen}" Content="Test"
+                        Command="{Binding TestTabPressedCommand}"
+                        ToolTip.Tip="Try bindings without waiting for a real redeem, sub, raid, ... (a Test button appears on every row)"/>
+                <Button Classes="Tab" Classes.Open="{Binding IsNewRewardOpen}" Content="New reward"
+                        Command="{Binding NewRewardTabPressedCommand}"
+                        ToolTip.Tip="Create a channel point reward on twitch (the only kind StreamAssist can change later)"/>
             </StackPanel>
+
+            <!-- test: the made-up values the Test buttons use -->
+
+            <Grid IsVisible="{Binding IsTestOpen}" Margin="{StaticResource ContentInset}"
+                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="User" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding TestUser}"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Amount" VerticalAlignment="Center"
+                           ToolTip.Tip="Used as the months (Sub), count (Gift Subs), bits (Cheer), viewers (Raid) or cost (redeems)"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding TestAmount}"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Tier" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding TestTier}"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label" Text="Text" VerticalAlignment="Center"
+                           ToolTip.Tip="Used as the message (Sub, Cheer) or the viewer's input (redeems)"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding TestText}"/>
+            </Grid>
+
+            <!-- new reward: created on twitch as the streamer, then a redeem row appears for it -->
+
+            <Grid IsVisible="{Binding IsNewRewardOpen}" Margin="{StaticResource ContentInset}"
+                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="Title" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardTitle}"
+                         PlaceholderText="Unique on your channel" MaxLength="45"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Cost" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding NewRewardCost}"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Prompt" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardPrompt}"
+                         PlaceholderText="What viewers see (optional)"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label" Text="Viewer types text" VerticalAlignment="Center"/>
+                <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding NewRewardNeedsInput}" VerticalAlignment="Center"/>
+                <Button Grid.Row="4" Grid.Column="1" Content="Create on Twitch" HorizontalAlignment="Left"
+                        Command="{Binding CreateRewardPressedCommand}"
+                        ToolTip.Tip="Creates it on twitch as the streamer (problems go to the console), then adds its row to Redeems"/>
+            </Grid>
         </StackPanel>
 
     </Grid>

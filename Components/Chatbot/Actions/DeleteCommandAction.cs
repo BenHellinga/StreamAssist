@@ -16,7 +16,7 @@ public class DeleteCommandAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Delete Command";
-    [JsonIgnore] public override string Description => "Deletes a command from the Editable commands (e.g. for !delcom). It has to be a whole command that runs a binding, not a prefix or a row that leads into more blocks. A failure is logged, except when a chat message ran it (then it fails quietly, so nothing after it runs).";
+    [JsonIgnore] public override string Description => "Deletes a command from the Editable commands (e.g. for !delcom). It has to be a whole command that runs a binding, not a prefix or a row that leads into more blocks. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
 
 
 
@@ -77,8 +77,8 @@ public class DeleteCommandAction : ActionBlock
 
         var command = await _command.EvaluateAsync(context);
 
-        // from chat a failure is quiet (chatters get no reply), anywhere else the model logs why
-        if (!model.TryDeleteCommand(command, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
-            throw new BlockFailedException("the command wasn't deleted");
+        // from chat the chatter is told what went wrong, anywhere else the model logs it to the console
+        if (!model.TryDeleteCommand(command, out var failure, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
+            throw await CommandActionHelper.FailAsync(context, failure, "the command wasn't deleted");
     }
 }

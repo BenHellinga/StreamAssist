@@ -14,7 +14,7 @@ public class ParameterChatBlock : ChatBlock
 
 
     [JsonIgnore] public override string Name => "Parse Parameter"; // the class keeps its old name, it's the save file's key
-    [JsonIgnore] public override string Description => "Reads the next word, or the rest of the message, into a parameter with this name, then runs its binding or continues into the block next to it (after the rest of the message there's nothing left, so only a binding). Spaces before it are skipped, but it won't read the end of a word that's already partly matched.";
+    [JsonIgnore] public override string Description => "Reads the next word, or the rest of the message, into a parameter with this name, then runs its binding or continues into the block next to it (after the rest of the message there's nothing left, so only a binding). Spaces after a word are skipped (and it won't read the end of a word that's already partly matched), after a symbol it reads right away (! then a parameter reads !lurk as lurk).";
 
 
 
@@ -112,18 +112,16 @@ public class ParameterChatBlock : ChatBlock
         var text = state.Text;
         var position = state.Position;
 
-        // skip the spaces before it, but don't start in the middle of a word (e.g. "!sofoo" after a "!so" row)
-        var start = position;
-        while (start < text.Length && char.IsWhiteSpace(text[start])) start++;
-        var separated = start > position || position == 0 || char.IsWhiteSpace(text[position - 1]);
-        if (!separated && start < text.Length) return false;
+        // after a word, skip the spaces in between, but never start in the middle of a word (e.g. "!sofoo" after a
+        // "!so" row); after a symbol, read right away (see ChatText)
+        if (ChatText.SkipGap(text, position, nextStartsWithWord: true) is not { } start) return false;
 
         int end;
         string value;
         if (_reads == RestOfMessage)
         {
             end = text.Length;
-            value = text[start..].TrimEnd(); // can be empty
+            value = text[start..].Trim(); // can be empty
         }
         else
         {

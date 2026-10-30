@@ -17,7 +17,7 @@ public class MatchTextChatBlock : ChatBlock
 
 
     [JsonIgnore] public override string Name => "Match Text";
-    [JsonIgnore] public override string Description => "Each row matches some text (or a regex) right after what's already matched, then runs its binding or continues into the block next to it. Spaces aren't added for you, case is ignored, named groups like (?<name>...) become parameters.";
+    [JsonIgnore] public override string Description => "Each row matches some text right after what's already matched, then runs its binding or continues into the block next to it. Plain text matches whole words, case ignored (lurk isn't lurker), and spaces only matter between words (! then lurk is !lurk, pay then all is pay all). A /regex/ in slashes is matched exactly as written, its named groups like (?<name>...) become parameters, and // matches nothing, so always (e.g. a last row for anything else).";
 
 
 
@@ -77,15 +77,12 @@ public class MatchTextChatBlock : ChatBlock
 
         foreach (var row in _rows.Rows.ToArray())
         {
-            if (row.Pattern == "") continue;
-
-            var match = row.Compiled.MatchAt(row.Pattern, ignoreCase: true, state.Text, state.Position, Name);
-            if (match == null) continue;
+            if (!row.TryMatchAt(state, Name, out var length, out var groups)) continue;
 
             if (!anyRowMatched) RaiseTriggered();
             anyRowMatched = true;
 
-            if (row.Target.TryMatch(state.Advance(match.Length, row.Compiled.NamedGroups(match)))) return true;
+            if (row.Target.TryMatch(state.Advance(length, groups))) return true;
         }
 
         return false;

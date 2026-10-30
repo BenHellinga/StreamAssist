@@ -9,6 +9,19 @@
              Width="{Binding W}"
              Height="{Binding H}">
 
+    <!-- the buttons only show while the pointer is on a key that has a binding (hidden by opacity, so nothing moves) -->
+
+    <UserControl.Styles>
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.Bound:pointerover > Grid > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
     <!-- single key -->
 
     <Border Classes="Panel Droppable"
@@ -26,7 +39,7 @@
                        TextAlignment="Center"
                        HorizontalAlignment="Center"/>
 
-            <blocks:EditButtons IsVisible="{Binding IsSelected}"/>
+            <blocks:EditButtons Classes="HoverOnly"/>
         </Grid>
     </Border>
 </UserControl>

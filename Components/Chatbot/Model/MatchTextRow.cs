@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;
 
@@ -61,6 +62,46 @@ public sealed class MatchTextRow : IDisposable
 
         _pattern = pattern;
         PatternChanged?.Invoke();
+    }
+
+
+
+    // matching (see ChatText)
+
+
+
+    public bool IsRegex => ChatText.TryGetRegex(_pattern, out _);
+
+
+
+    // the length matched from state.Position (spaces skipped before a plain row included), and any named groups a
+    // /regex/ captured, or false. A row with no text matches nothing (it's the empty row at the end)
+    public bool TryMatchAt(ChatMatchState state, string blockName, out int length, out IEnumerable<KeyValuePair<string, string>> groups)
+    {
+        length = 0;
+        groups = [];
+
+        if (ChatText.TryGetRegex(_pattern, out var body))
+        {
+            var match = _compiled.MatchAt(body, ignoreCase: true, state.Text, state.Position, blockName);
+            if (match == null) return false;
+
+            length = match.Length;
+            groups = _compiled.NamedGroups(match);
+            return true;
+        }
+
+        var text = _pattern.Trim();
+        if (text == "") return false;
+
+        if (ChatText.SkipGap(state.Text, state.Position, ChatText.IsWordChar(text[0])) is not { } start) return false;
+
+        var end = start + text.Length;
+        if (end > state.Text.Length || string.Compare(state.Text, start, text, 0, text.Length, StringComparison.OrdinalIgnoreCase) != 0) return false;
+        if (!ChatText.EndsCleanly(state.Text, end, text)) return false;
+
+        length = end - state.Position;
+        return true;
     }
 
 

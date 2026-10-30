@@ -15,8 +15,9 @@ public enum TwitchAccount { Streamer, Bot }
 
 
 
-// a usable login: which app, which token, and who it belongs to
-public sealed record TwitchSession(string ClientId, string ClientSecret, string AccessToken, string UserId, string Login);
+// a usable login: which app, which token, who it belongs to, and when twitch said the token runs out (a few hours
+// after it was made, then it's refreshed with TryRefreshAsync)
+public sealed record TwitchSession(string ClientId, string ClientSecret, string AccessToken, string UserId, string Login, DateTime ExpiresAt);
 
 
 
@@ -65,6 +66,7 @@ public class TwitchAuthManager
             "user:read:chat",                  // read chat messages and chat notifications
             "user:write:chat",                 // send chat when there's no bot account
             "channel:read:redemptions",        // channel point redeems
+            "channel:manage:redemptions",      // read, change and create channel point rewards (Get / Set Reward Setting, New reward)
             "channel:read:subscriptions",      // subs, resubs, gift subs
             "bits:read",                       // cheers
             "moderator:read:followers",        // follows
@@ -134,6 +136,40 @@ public class TwitchAuthManager
         if (!ScopesFor(account).All(granted.Contains)) return null;
 
         return ToSession(clientId, clientSecret, tokens, info.Value);
+    }
+
+
+
+    // a new token for a login that's in use (before it runs out, or after twitch refused it), saved for next time
+    // null if twitch refused the refresh token: the login is gone and a new code login is needed. Other problems (e.g.
+    // twitch being down) throw, so the caller can try again later without losing the login
+    public async Task<TwitchSession?> TryRefreshAsync(TwitchAccount account, TwitchSession session, CancellationToken ct)
+    {
+        var tokens = Load().For(account);
+        if (tokens.ClientId != session.ClientId || tokens.RefreshToken == "") return null;
+
+        try
+        {
+            var token = await TwitchApi.RefreshAsync(session.ClientId, session.ClientSecret, tokens.RefreshToken, ct);
+            tokens = Save(account, session.ClientId, token);
+        }
+        catch (TwitchUnauthorizedException)
+        {
+            return null;
+        }
+
+        var info = await TwitchApi.ValidateAsync(tokens.AccessToken, ct);
+        return info == null ? null : ToSession(session.ClientId, session.ClientSecret, tokens, info.Value);
+    }
+
+
+
+    // asks twitch whether the token still works (twitch wants apps to check about once an hour), with its new expiry,
+    // null if it no longer works
+    public static async Task<TwitchSession?> TryValidateAsync(TwitchSession session, CancellationToken ct)
+    {
+        var info = await TwitchApi.ValidateAsync(session.AccessToken, ct);
+        return info == null ? null : session with { ExpiresAt = ExpiresAt(info.Value) };
     }
 
 
@@ -220,5 +256,14 @@ public class TwitchAuthManager
         clientSecret,
         tokens.AccessToken,
         info.GetProperty("user_id").GetString()!,
-        info.GetProperty("login").GetString()!);
+        info.GetProperty("login").GetString()!,
+        ExpiresAt(info));
+
+
+
+    // validate says how many seconds the token has left (0 for tokens that don't expire)
+    private static DateTime ExpiresAt(JsonElement info) =>
+        info.TryGetProperty("expires_in", out var seconds) && seconds.GetInt64() > 0
+            ? DateTime.UtcNow.AddSeconds(seconds.GetInt64())
+            : DateTime.MaxValue;
 }

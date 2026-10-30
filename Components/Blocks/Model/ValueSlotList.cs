@@ -9,15 +9,17 @@ namespace StreamAssist.Components.Blocks.Model;
 
 
 
-// a growing list of text value slots (e.g. Join's parts): there's always one empty slot at the end (typing in it
-// or placing a block adds the next), and a slot disappears once it has no text and no block (see GrowingList)
+// a growing list of value slots of one kind (e.g. Join's text parts, Operation's numbers): there's always one empty
+// slot at the end (typing in it or placing a block adds the next), and a slot disappears once it has no text and no
+// block (see GrowingList)
 public sealed class ValueSlotList : BlockSlotBase
 {
     // private
 
 
 
-    private readonly GrowingList<ValueSlot<string>> _items;
+    private readonly ValueKind _kind;
+    private readonly GrowingList<ValueSlot> _items;
     private BlockModel? _owner;
 
 
@@ -26,7 +28,7 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    public IReadOnlyList<ValueSlot<string>> Items => _items.Items;
+    public IReadOnlyList<ValueSlot> Items => _items.Items;
     public override IReadOnlyList<BlockModel> Blocks => [];
     public override IReadOnlyList<BlockSlotBase> InnerSlots => _items.Items;
 
@@ -47,13 +49,13 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    public event Action<ValueSlot<string>, int>? ItemInserted
+    public event Action<ValueSlot, int>? ItemInserted
     {
         add => _items.ItemInserted += value;
         remove => _items.ItemInserted -= value;
     }
 
-    public event Action<ValueSlot<string>>? ItemRemoved
+    public event Action<ValueSlot>? ItemRemoved
     {
         add => _items.ItemRemoved += value;
         remove => _items.ItemRemoved -= value;
@@ -65,10 +67,11 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    public ValueSlotList(string label) : base(label, typeof(ValueBlock))
+    public ValueSlotList(string label, ValueKind kind = ValueKind.Text) : base(label, typeof(ValueBlock))
     {
         _owner = null;
-        _items = new(() => new ValueSlot<string>(""), IsEmpty, SubscribeToItem, UnsubscribeFromItem);
+        _kind = kind;
+        _items = new(CreateItem, IsEmpty, SubscribeToItem, UnsubscribeFromItem);
         _items.Changed += RaiseChanged;
     }
 
@@ -82,10 +85,22 @@ public sealed class ValueSlotList : BlockSlotBase
     public async Task<string> EvaluateJoinedAsync(TriggerContext context)
     {
         var joined = new StringBuilder();
-        foreach (var item in _items.Items.ToArray())
+        foreach (var item in _items.Items.OfType<ValueSlot<string>>().ToArray())
             joined.Append(await item.EvaluateAsync(context));
 
         return joined.ToString();
+    }
+
+
+
+    // the filled items' values, top to bottom (the empty one at the end isn't asked, it would fail with "nothing entered")
+    public async Task<List<T>> EvaluateFilledAsync<T>(TriggerContext context) where T : notnull
+    {
+        var values = new List<T>();
+        foreach (var item in _items.Items.Where(item => !IsEmpty(item)).OfType<ValueSlot<T>>().ToArray())
+            values.Add(await item.EvaluateAsync(context));
+
+        return values;
     }
 
 
@@ -118,11 +133,22 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    private static bool IsEmpty(ValueSlot<string> item) => item.Text == "" && item.BlockSlot.Block == null;
+    private ValueSlot CreateItem() => _kind switch
+    {
+        ValueKind.Int => new ValueSlot<int>(""),
+        ValueKind.Double => new ValueSlot<double>(""),
+        ValueKind.Bool => new ValueSlot<bool>(""),
+        ValueKind.Char => new ValueSlot<char>(""),
+        _ => new ValueSlot<string>(""),
+    };
 
 
 
-    private void SubscribeToItem(ValueSlot<string> item)
+    private static bool IsEmpty(ValueSlot item) => item.Text == "" && item.BlockSlot.Block == null;
+
+
+
+    private void SubscribeToItem(ValueSlot item)
     {
         item.Owner = _owner;
         item.TextChanged += OnItemFilledOrEmptied;
@@ -132,7 +158,7 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    private void UnsubscribeFromItem(ValueSlot<string> item)
+    private void UnsubscribeFromItem(ValueSlot item)
     {
         item.TextChanged -= OnItemFilledOrEmptied;
         item.BlockSlot.BlockChanged -= OnItemBlockChanged;
@@ -152,7 +178,7 @@ public sealed class ValueSlotList : BlockSlotBase
 
     public void LoadData(List<ValueSlotData>? data) => _items.Load((data ?? []).Select(itemData =>
     {
-        var item = new ValueSlot<string>("");
+        var item = CreateItem();
         item.LoadData(itemData);
         return item;
     }));

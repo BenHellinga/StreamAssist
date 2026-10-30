@@ -6,6 +6,19 @@
              xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
              xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
 
+    <!-- the buttons only show while the pointer is on a bind box that has a binding (hidden by opacity, so nothing moves) -->
+
+    <UserControl.Styles>
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.Bound:pointerover > Grid > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
     <!-- the chat block slot | bind box, filling one hides the other -->
 
     <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Top">
@@ -15,7 +28,7 @@
         <ContentControl Content="{Binding Child}" IsVisible="{Binding ShowSlot}"/>
 
         <!-- bind box: shows the command that reaches it (grey preview until bound), click to edit its binding below,
-             green = bound, red = disabled, buttons inside when open -->
+             green = bound, red = disabled, buttons inside while the pointer is on a bound one -->
 
         <Border Classes="Panel Droppable Clickable"
                 Classes.Bound="{Binding IsBound}"
@@ -40,7 +53,7 @@
 
                 <Panel Grid.Column="1">
                     <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
-                    <blocks:EditButtons IsVisible="{Binding IsSelected}"/>
+                    <blocks:EditButtons Classes="HoverOnly"/>
                 </Panel>
             </Grid>
         </Border>

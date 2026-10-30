@@ -77,7 +77,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
 
 
 
-    [RelayCommand] private void OnTestTogglePressed() => IsTestOpen = !IsTestOpen;
+    [RelayCommand] private void OnTestTabPressed() => IsTestOpen = !IsTestOpen;
 
 
 

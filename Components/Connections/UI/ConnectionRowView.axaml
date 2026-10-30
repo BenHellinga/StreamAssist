@@ -5,7 +5,7 @@
 
              xmlns:ui="using:StreamAssist.Components.Connections.UI">
 
-    <!-- name | status | connect/disconnect/retry | connect on startup -->
+    <!-- name | status | connect/disconnect/retry | connect on startup | which account, while connected (muted) -->
 
     <StackPanel Orientation="Horizontal" Spacing="10">
 
@@ -26,6 +26,8 @@
 
         <TextBlock Classes="Label" Text="Connect on startup"/>
         <CheckBox IsChecked="{Binding ConnectOnStartup}" VerticalAlignment="Center"/>
+
+        <TextBlock Classes="Description" Text="{Binding ConnectedText}" VerticalAlignment="Center"/>
 
     </StackPanel>
 

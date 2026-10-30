@@ -26,6 +26,7 @@ public partial class ConnectionRowViewModel : ViewModelBase
 
     [ObservableProperty] private string _statusText;
     [ObservableProperty] private string _detail; // tooltip, e.g. "Connected as budderbot"
+    [ObservableProperty] private string _connectedText; // the detail again after the row while connected (which account), else empty
     [ObservableProperty] private string _buttonText;
     [ObservableProperty] private bool _isConnected; // green outline
     [ObservableProperty] private bool _isFailed; // red outline
@@ -58,6 +59,7 @@ public partial class ConnectionRowViewModel : ViewModelBase
         _status = ConnectionStatus.NotConnected;
         _statusText = "";
         _detail = "";
+        _connectedText = "";
         _buttonText = "";
         _connectOnStartup = false;
 
@@ -93,6 +95,7 @@ public partial class ConnectionRowViewModel : ViewModelBase
         };
 
         Detail = detail;
+        ConnectedText = status == ConnectionStatus.Connected ? detail : "";
         IsConnected = status == ConnectionStatus.Connected;
         IsFailed = status == ConnectionStatus.Failed;
         ConnectOnStartup = _getConnectOnStartup();

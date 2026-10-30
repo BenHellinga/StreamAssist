@@ -19,7 +19,7 @@
                 <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
 
                     <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top"
-                             Text="{Binding Pattern}" PlaceholderText="Text or regex…"/>
+                             Text="{Binding Pattern}" PlaceholderText="Text or /regex/…"/>
 
                     <!-- bind box + slot (a ChatTargetView through the ViewLocator), only once the row has text -->
                     <ContentControl Grid.Column="1" Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>

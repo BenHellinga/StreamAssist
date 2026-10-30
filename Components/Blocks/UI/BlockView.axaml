@@ -28,7 +28,9 @@
                 Classes.Triggered="{Binding IsTriggered}"
                 Classes.Disabled="{Binding IsDisabled}"
                 IsVisible="{Binding !IsCollapsed}"
-                HorizontalAlignment="Left">
+                HorizontalAlignment="Left"
+                x:Name="Card"
+                PointerExited="OnCardPointerExited">
             <StackPanel>
 
                 <!-- title | corner buttons, side by side so the buttons never cover the title
@@ -37,7 +39,9 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- placed blocks only show their name, the description is in the block list (and on hover here) -->
                     <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="10,10,5,5" ToolTip.Tip="{Binding Description}"/>
-                    <ui:EditButtons Grid.Column="1"/>
+                    <!-- only shown while the pointer is on this card (not a block inside it), hidden by opacity so the
+                         title row keeps its size -->
+                    <ui:EditButtons Grid.Column="1" x:Name="Buttons" Opacity="0" IsHitTestVisible="False"/>
                 </Grid>
 
                 <!-- settings, then the slots under them (or beside them, for blocks that ask) -->

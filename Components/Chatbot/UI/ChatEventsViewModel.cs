@@ -11,7 +11,8 @@ namespace StreamAssist.Components.Chatbot.UI;
 
 
 // the chatbot's Events tab: one bind box per stream event (Alerts), then the channel point redeems
-// the collapsible test panel fires a binding with made-up values, so alerts can be tried without twitch
+// a small tab bar at the bottom opens one panel at a time: Test (made-up values for the Test button on every row, so
+// alerts can be tried without twitch) or New reward (creates a channel point reward on twitch)
 public partial class ChatEventsViewModel : ViewModelBase
 {
     // private
@@ -27,6 +28,12 @@ public partial class ChatEventsViewModel : ViewModelBase
     [ObservableProperty] private string _testAmount; // months, gift count, bits, viewers or cost
     [ObservableProperty] private string _testTier;
     [ObservableProperty] private string _testText; // message or redeem input
+
+    [ObservableProperty] private bool _isNewRewardOpen;
+    [ObservableProperty] private string _newRewardTitle;
+    [ObservableProperty] private string _newRewardCost;
+    [ObservableProperty] private string _newRewardPrompt;
+    [ObservableProperty] private bool _newRewardNeedsInput;
 
 
 
@@ -53,6 +60,12 @@ public partial class ChatEventsViewModel : ViewModelBase
         _testTier = "1";
         _testText = "";
 
+        _isNewRewardOpen = false;
+        _newRewardTitle = "";
+        _newRewardCost = "100";
+        _newRewardPrompt = "";
+        _newRewardNeedsInput = false;
+
         _redeems = [];
         foreach (var row in _model.Redeems.Rows)
             _redeems.Add(CreateRedeemRow(row));
@@ -69,7 +82,27 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
 
-    [RelayCommand] private void OnTestTogglePressed() => IsTestOpen = !IsTestOpen;
+    // clicking a tab opens its panel (closing the other one), clicking the open tab closes it
+    [RelayCommand] private void OnTestTabPressed()
+    {
+        IsTestOpen = !IsTestOpen;
+        if (IsTestOpen) IsNewRewardOpen = false;
+    }
+
+
+
+    [RelayCommand] private void OnNewRewardTabPressed()
+    {
+        IsNewRewardOpen = !IsNewRewardOpen;
+        if (IsNewRewardOpen) IsTestOpen = false;
+    }
+
+
+
+    // the model checks the values and the chatbot creates it on twitch (a redeem row appears once it exists), a problem
+    // goes to the console
+    [RelayCommand] private void OnCreateRewardPressed() =>
+        _model.TryRequestCreateReward(NewRewardTitle, NewRewardCost, NewRewardPrompt, NewRewardNeedsInput);
 
 
 

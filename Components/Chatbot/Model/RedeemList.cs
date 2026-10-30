@@ -74,6 +74,20 @@ public sealed class RedeemList : IDisposable
 
 
 
+    // the row for this title (case and surrounding spaces ignored, like matching), or a new one filled in at the end
+    // (e.g. after a reward was created on twitch)
+    public RedeemRow AddRow(string title)
+    {
+        var existing = _rows.Items.FirstOrDefault(row => row.Title != "" && row.Matches(title));
+        if (existing != null) return existing;
+
+        var row = _rows.Items[^1];
+        row.SetTitle(title.Trim());
+        return row;
+    }
+
+
+
     // model callbacks
 
 

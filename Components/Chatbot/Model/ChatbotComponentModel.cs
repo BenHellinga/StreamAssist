@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Actions;
 using StreamAssist.Components.Chatbot.Blocks;
@@ -114,6 +113,7 @@ public class ChatbotComponentModel : ModelBase
     public event Action? BotConnectionChanged; // the bot was enabled/disabled, or a reconnect was asked for
     public event Action? CredentialsChanged; // client id or secret changed (saved to auth.json)
     public event Action? Changed; // anything else changed (saved to chatbot.json)
+    public event Action<NewReward>? CreateRewardRequested; // the background creates it on twitch, then adds its redeem row
 
 
 
@@ -238,6 +238,36 @@ public class ChatbotComponentModel : ModelBase
 
 
 
+    // asks for a new channel point reward on twitch (the New reward panel, or anything else), the chatbot manager creates
+    // it as the streamer and adds a redeem row for it. Rewards made this way are the only ones the app can change later
+    // (Set Reward Setting): twitch only lets the app that created a reward edit it
+    public bool TryRequestCreateReward(string title, string cost, string prompt, bool userInputRequired)
+    {
+        var name = title.Trim();
+        if (name == "")
+        {
+            AppLog.WriteError("Could not create reward - it needs a title");
+            return false;
+        }
+
+        if (name.Length > 45)
+        {
+            AppLog.WriteError($"Could not create reward '{name}' - twitch allows at most 45 characters in a title");
+            return false;
+        }
+
+        if (!int.TryParse(cost.Trim(), out var points) || points < 1)
+        {
+            AppLog.WriteError($"Could not create reward '{name}' - the cost '{cost.Trim()}' isn't a whole number of at least 1");
+            return false;
+        }
+
+        CreateRewardRequested?.Invoke(new NewReward(name, points, prompt.Trim(), userInputRequired));
+        return true;
+    }
+
+
+
     // runs the binding for a stream event (a ChatEvents key), false if it isn't bound or is disabled
     public bool TryRunEvent(string key, IReadOnlyDictionary<string, string> parameters)
     {
@@ -254,47 +284,55 @@ public class ChatbotComponentModel : ModelBase
 
 
     // editable commands (what chat's !addcom / !editcom / !delcom change)
-    // only rows directly in the editable root's Match Text are touched, and only whole commands: a row whose pattern is
-    // just that command and that runs a binding (never one that leads into more blocks). logErrors is false when chat
-    // asked, so chatters can't fill the console
+    // only the editable tree is touched, found by walking literal rows (see FindCommand), and only whole commands: a row
+    // whose text completes the command and that runs a binding (never one that leads into more blocks). logErrors is
+    // false when chat asked, so chatters can't fill the console, and failure says why (so chat can be told instead)
 
 
 
-    // adds a row that replies with the response, e.g. ("!hello", "hi there") adds the row !hello\b (\b = a whole word,
-    // so it doesn't run for !helloworld)
-    public bool TryAddCommand(string command, string response, bool logErrors = true)
+    public bool TryAddCommand(string command, string response, bool logErrors = true) => TryAddCommand(command, response, out _, logErrors);
+    public bool TryEditCommand(string command, string response, bool logErrors = true) => TryEditCommand(command, response, out _, logErrors);
+    public bool TryDeleteCommand(string command, bool logErrors = true) => TryDeleteCommand(command, out _, logErrors);
+
+
+
+    // adds a row that replies with the response, e.g. ("!hello", "hi there") adds hello after an existing "!" row, or
+    // !hello at the top if there's none (plain text rows match whole words, so it doesn't run for !helloworld)
+    public bool TryAddCommand(string command, string response, out CommandFailure failure, bool logErrors = true)
     {
-        if (!TryFindCommand(command, "add", logErrors, out var block, out var name)) return false;
+        if (!TryFindCommand(command, "add", logErrors, out failure, out var block, out var name)) return false;
 
         var text = response.Trim();
-        if (text == "") return Refuse(logErrors, $"Could not add command '{name}' - no response given");
+        if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not add command '{name}' - no response given");
 
-        var row = FindRow(block, name);
-        if (row != null && !row.Target.IsEmpty) return Refuse(logErrors, $"Could not add command '{name}' - it already exists");
+        var place = FindCommand(block, name);
+        if (place.Row != null && !place.Row.Target.IsEmpty)
+            return Refuse(logErrors, out failure, CommandFailure.AlreadyExists, $"Could not add command '{name}' - it already exists");
 
         var send = new SendChatMessageAction();
         send.Message.SetText(text);
         var bindable = new BindableModel();
         bindable.Root.TrySetBlock(send);
 
-        (row ?? block.Rows.AddRow(CommandPattern(name))).Target.TryBind(bindable); // a row with just the command typed in gets the binding
+        // a row with just the command typed in gets the binding, otherwise a new row goes where the walk stopped
+        (place.Row ?? place.Block.Rows.AddRow(place.Remaining)).Target.TryBind(bindable);
         return true;
     }
 
 
 
     // changes what a command replies, only if all it does is send one typed message (anything more is edited in the app)
-    public bool TryEditCommand(string command, string response, bool logErrors = true)
+    public bool TryEditCommand(string command, string response, out CommandFailure failure, bool logErrors = true)
     {
-        if (!TryFindCommand(command, "edit", logErrors, out var block, out var name)) return false;
+        if (!TryFindCommand(command, "edit", logErrors, out failure, out var block, out var name)) return false;
 
         var text = response.Trim();
-        if (text == "") return Refuse(logErrors, $"Could not edit command '{name}' - no response given");
+        if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not edit command '{name}' - no response given");
 
-        if (!TryFindBoundRow(block, name, "edit", logErrors, out var row)) return false;
+        if (!TryFindBoundRow(block, name, "edit", logErrors, out failure, out _, out var row)) return false;
 
         if (row.Target.Bindable!.Root.Block is not SendChatMessageAction send || send.Message.BlockSlot.Block != null)
-            return Refuse(logErrors, $"Could not edit command '{name}' - it does more than send a message, edit it in the app");
+            return Refuse(logErrors, out failure, CommandFailure.NotSimple, $"Could not edit command '{name}' - it does more than send a message, edit it in the app");
 
         send.Message.SetText(text);
         return true;
@@ -302,10 +340,10 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    public bool TryDeleteCommand(string command, bool logErrors = true)
+    public bool TryDeleteCommand(string command, out CommandFailure failure, bool logErrors = true)
     {
-        if (!TryFindCommand(command, "delete", logErrors, out var block, out var name)) return false;
-        if (!TryFindBoundRow(block, name, "delete", logErrors, out var row)) return false;
+        if (!TryFindCommand(command, "delete", logErrors, out failure, out var root, out var name)) return false;
+        if (!TryFindBoundRow(root, name, "delete", logErrors, out failure, out var block, out var row)) return false;
 
         block.Rows.RemoveRow(row);
         return true;
@@ -334,8 +372,8 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // the steps leading to a target, one per Match Text row (its raw pattern) or Parameter ({name}, with a space before it
-    // unless the text before already ends in one),
+    // the steps leading to a target, one per Match Text row (plain text, or a /regex/ as written) or Parameter ({name}),
+    // with a space in front where two words meet (see ChatText.Join),
     // e.g. ["!", "pay ", "{user}", " ", "{amount}"], or null if the target isn't in the tree
     public List<string>? FindCommandSteps(ChatTarget target) => FindPath(t => t == target)?.Select(step => step.Text).ToList();
 
@@ -373,76 +411,80 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    private static bool Refuse(bool logErrors, string message)
+    private static bool Refuse(bool logErrors, out CommandFailure failure, CommandFailure reason, string message)
     {
         if (logErrors) AppLog.WriteError(message);
+        failure = reason;
         return false;
     }
 
 
 
     // the editable root's Match Text, and the command trimmed (one word, the whole command, e.g. "!hello")
-    private bool TryFindCommand(string command, string verb, bool logErrors, out MatchTextChatBlock block, out string name)
+    private bool TryFindCommand(string command, string verb, bool logErrors, out CommandFailure failure,
+        out MatchTextChatBlock block, out string name)
     {
         name = command.Trim();
         block = null!;
 
         if (_editableRoot.Block is not MatchTextChatBlock found)
-            return Refuse(logErrors, $"Could not {verb} command '{name}' - there's no Match Text in the editable commands");
+            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command '{name}' - there's no Match Text in the editable commands");
 
         block = found;
-        if (name == "") return Refuse(logErrors, $"Could not {verb} command - no command name given");
-        if (name.Any(char.IsWhiteSpace)) return Refuse(logErrors, $"Could not {verb} command '{name}' - a command is one word");
+        if (name == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command - no command name given");
+        if (name.Any(char.IsWhiteSpace)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command '{name}' - a command is one word");
+        if (ChatText.TryGetRegex(name, out _)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"Could not {verb} command '{name}' - in slashes it would be a regex, not a command");
+
+        failure = CommandFailure.None;
         return true;
     }
 
 
 
-    // the command's row, which has to run a binding (a row that leads into more blocks isn't one command)
-    private static bool TryFindBoundRow(MatchTextChatBlock block, string name, string verb, bool logErrors, out MatchTextRow row)
+    // the command's row (and the Match Text it's in), which has to run a binding (a row that leads into more blocks
+    // isn't one command, so it counts as not found)
+    private static bool TryFindBoundRow(MatchTextChatBlock root, string name, string verb, bool logErrors, out CommandFailure failure,
+        out MatchTextChatBlock block, out MatchTextRow row)
     {
-        row = FindRow(block, name)!;
-        if (row == null || row.Target.IsEmpty) return Refuse(logErrors, $"Could not {verb} command '{name}' - it doesn't exist");
-        if (row.Target.Bindable == null) return Refuse(logErrors, $"Could not {verb} command '{name}' - it leads into more blocks, it isn't one command");
+        var place = FindCommand(root, name);
+        block = place.Block;
+        row = place.Row!;
+        if (row == null || row.Target.IsEmpty)
+            return Refuse(logErrors, out failure, CommandFailure.NotFound, $"Could not {verb} command '{name}' - it doesn't exist");
+        if (row.Target.Bindable == null)
+            return Refuse(logErrors, out failure, CommandFailure.NotFound, $"Could not {verb} command '{name}' - it leads into more blocks, it isn't one command");
+
+        failure = CommandFailure.None;
         return true;
     }
 
 
 
-    // the row that is this command (case ignored, like matching): its pattern is the command, as typed or as added
-    private static MatchTextRow? FindRow(MatchTextChatBlock block, string name) =>
-        block.Rows.Rows.FirstOrDefault(row => string.Equals(CommandOf(row.Pattern), name, StringComparison.OrdinalIgnoreCase));
-
-
-
-    // the row pattern for a command: the text matched literally, then the end of the word (\b after a letter or digit,
-    // otherwise "a space or the end next", since \b only works after one)
-    private static string CommandPattern(string name)
+    // walks down through plain text rows like matching does (case ignored), e.g. "!lurk" through a "!" row into the Match Text
+    // after it, then its "lurk" row. Row = the row that is the whole command, or null; Block / Remaining = where it is, or where
+    // adding it goes: the first Match Text the walk reaches that has nothing more for it, and what's left of the command
+    private static (MatchTextChatBlock Block, string Remaining, MatchTextRow? Row) FindCommand(MatchTextChatBlock block, string command)
     {
-        var last = name[^1];
-        return Regex.Escape(name) + (char.IsLetterOrDigit(last) || last == '_' ? @"\b" : @"(?!\S)");
-    }
+        (MatchTextChatBlock, string, MatchTextRow?)? addHere = null;
 
-
-
-    // which command a row pattern is: undoes CommandPattern ("!hello\b" -> "!hello"), plain text is itself ("!lurk"),
-    // null for anything that isn't literal text (an empty row, a regex like .* that matches more than one command)
-    private static string? CommandOf(string pattern)
-    {
-        if (pattern.EndsWith(@"\b")) pattern = pattern[..^2];
-        else if (pattern.EndsWith(@"(?!\S)")) pattern = pattern[..^6];
-        if (pattern == "") return null;
-
-        try
+        foreach (var row in block.Rows.Rows)
         {
-            // literal = escaping the text gives the pattern back (# doesn't need escaping here, people type it plain)
-            var text = Regex.Unescape(pattern);
-            return Regex.Escape(text).Replace(@"\#", "#") == pattern.Replace(@"\#", "#") ? text : null;
+            if (row.IsRegex) continue; // a /regex/ row is never a command, and never walked into
+            var text = row.Pattern.Trim();
+            if (text == "") continue;
+            if (string.Equals(text, command, StringComparison.OrdinalIgnoreCase)) return (block, command, row);
+
+            // a prefix row leading into another Match Text, e.g. "!" (only where matching would carry on: "lu" isn't a
+            // prefix of "lurk", it would cut the word in half)
+            if (!command.StartsWith(text, StringComparison.OrdinalIgnoreCase) || !ChatText.EndsCleanly(command, text.Length, text)) continue;
+            if (row.Target.Child.Block is not MatchTextChatBlock child) continue;
+
+            var deeper = FindCommand(child, command[text.Length..]);
+            if (deeper.Row != null) return deeper;
+            addHere ??= deeper;
         }
-        catch (ArgumentException)
-        {
-            return null;
-        }
+
+        return addHere ?? (block, command, null);
     }
 
 
@@ -471,6 +513,10 @@ public class ChatbotComponentModel : ModelBase
 
 
 
+    private static string PathText(List<PathStep> path) => string.Concat(path.Select(step => step.Text));
+
+
+
     // the steps down to the first target isEnd says yes to, in either root
     private List<PathStep>? FindPath(Func<ChatTarget, bool> isEnd)
     {
@@ -487,10 +533,20 @@ public class ChatbotComponentModel : ModelBase
             case MatchTextChatBlock match:
                 foreach (var row in match.Rows.Rows)
                 {
-                    var groups = ChatPattern.GroupNames(row.Pattern)
-                        .Select(g => new ParameterInfo(g, ValueKind.Text, $"captured by the (?<{g}>...) group in '{row.Pattern}'"))
-                        .ToList();
-                    if (FindPath(new(row.Pattern, groups), row.Target, isEnd, path)) return true;
+                    // a /regex/ shows as written (// adds nothing) and its named groups are captured, plain text joins
+                    // the words before it with a space, like matching does
+                    List<ParameterInfo> groups = [];
+                    string text;
+                    if (ChatText.TryGetRegex(row.Pattern, out var body))
+                    {
+                        text = body == "" ? "" : row.Pattern.Trim();
+                        groups = ChatPattern.GroupNames(body)
+                            .Select(g => new ParameterInfo(g, ValueKind.Text, $"captured by the (?<{g}>...) group in '{row.Pattern.Trim()}'"))
+                            .ToList();
+                    }
+                    else text = ChatText.Join(PathText(path), row.Pattern.Trim());
+
+                    if (FindPath(new(text, groups), row.Target, isEnd, path)) return true;
                 }
                 break;
 
@@ -503,11 +559,10 @@ public class ChatbotComponentModel : ModelBase
                 List<ParameterInfo> captured = name == "" ? []
                     : [new(name, ValueKind.Text, $"captured by the Parse Parameter block ({parameter.Reads.ToLowerInvariant()})")];
 
-                // it skips the spaces before it, so the command reads "!addcom {command} {content}" even with no " " row between
-                var before = string.Concat(path.Select(step => step.Text));
-                var gap = before != "" && !char.IsWhiteSpace(before[^1]) ? " " : "";
+                // after a word it reads past the space, so the command shows "!addcom {command} {content}"
+                var shown = ChatText.Join(PathText(path), $"{{{(name == "" ? "?" : name)}}}");
 
-                if (FindPath(new($"{gap}{{{(name == "" ? "?" : name)}}}", captured), parameter.Target, isEnd, path)) return true;
+                if (FindPath(new(shown, captured), parameter.Target, isEnd, path)) return true;
                 break;
         }
 

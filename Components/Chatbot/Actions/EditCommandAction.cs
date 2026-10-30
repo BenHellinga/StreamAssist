@@ -16,7 +16,7 @@ public class EditCommandAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Edit Command";
-    [JsonIgnore] public override string Description => "Changes what a command in the Editable commands replies (e.g. for !editcom). Only works on commands that just send a message. A failure is logged, except when a chat message ran it (then it fails quietly, so nothing after it runs).";
+    [JsonIgnore] public override string Description => "Changes what a command in the Editable commands replies (e.g. for !editcom). Only works on commands that just send a message. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
 
 
 
@@ -88,8 +88,8 @@ public class EditCommandAction : ActionBlock
         var command = await _command.EvaluateAsync(context);
         var response = await _response.EvaluateAsync(context);
 
-        // from chat a failure is quiet (chatters get no reply), anywhere else the model logs why
-        if (!model.TryEditCommand(command, response, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
-            throw new BlockFailedException("the command wasn't edited");
+        // from chat the chatter is told what went wrong, anywhere else the model logs it to the console
+        if (!model.TryEditCommand(command, response, out var failure, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
+            throw await CommandActionHelper.FailAsync(context, failure, "the command wasn't edited");
     }
 }
