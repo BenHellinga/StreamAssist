@@ -34,10 +34,16 @@
             DragDrop.Drop="OnDrop"
             PointerPressed="OnPointerPressed">
 
+        <!-- the key's name, then the binding's label (if it has one) as one more line that ends in ... when too long,
+             centred up and down as one block (so a label pushes the name up) -->
+
         <Grid>
-            <TextBlock Text="{Binding Label}"
-                       TextAlignment="Center"
-                       HorizontalAlignment="Center"/>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{Binding Label}" TextAlignment="Center"/>
+                <TextBlock Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
+                           Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding BindLabel}"/>
+            </StackPanel>
 
             <blocks:EditButtons Classes="HoverOnly"/>
         </Grid>

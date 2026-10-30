@@ -30,4 +30,13 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
+    <!-- the bottom editor's label box: its text coloured like the label on the key / bind box -->
+    <Style Selector="TextBox.BindLabel">
+        <Setter Property="Foreground" Value="{DynamicResource Bound}"/>
+    </Style>
+
+    <Style Selector="TextBox.BindLabel.Disabled">
+        <Setter Property="Foreground" Value="{DynamicResource Disabled}"/>
+    </Style>
+
 </Styles>

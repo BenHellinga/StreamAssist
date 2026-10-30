@@ -28,13 +28,14 @@
         <ContentControl Content="{Binding Child}" IsVisible="{Binding ShowSlot}"/>
 
         <!-- bind box: shows the command that reaches it (grey preview until bound), click to edit its binding below,
-             green = bound, red = disabled, buttons inside while the pointer is on a bound one -->
+             green = bound, red = disabled, buttons inside while the pointer is on a bound one. A labelled binding gets
+             its label as a second line (the box grows taller, and wider for a long label, never wraps) -->
 
         <Border Classes="Panel Droppable Clickable"
                 Classes.Bound="{Binding IsBound}"
                 Classes.Disabled="{Binding IsDisabled}"
                 Classes.Triggered="{Binding IsTriggered}"
-                MinWidth="100" MaxWidth="300" Height="25" VerticalAlignment="Top"
+                MinWidth="100" MinHeight="25" VerticalAlignment="Top"
                 IsVisible="{Binding ShowBindBox}"
                 ToolTip.Tip="{Binding Command}"
                 DragDrop.AllowDrop="True"
@@ -46,12 +47,17 @@
             <!-- text on the left, an invisible copy of the buttons on the right keeps exactly enough room for them,
                  so the text doesn't move when the real buttons appear -->
 
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding Command}"
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                <!-- long commands end in ... (the label line below has no limit) -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Command}"
                            Classes.Placeholder="{Binding !IsBound}"
-                           Margin="6,0,0,0" TextTrimming="CharacterEllipsis"/>
+                           Margin="6,0,0,0" MaxWidth="260" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
 
-                <Panel Grid.Column="1">
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
+                           Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Margin="6,0,0,2"/>
+
+                <Panel Grid.Row="0" Grid.Column="1">
                     <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
                     <blocks:EditButtons Classes="HoverOnly"/>
                 </Panel>

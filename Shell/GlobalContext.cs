@@ -4,6 +4,10 @@ using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.OBS.Background;
+using StreamAssist.Components.OBS.Model;
+using StreamAssist.Components.Spotify.Background;
+using StreamAssist.Components.Spotify.Model;
 
 namespace StreamAssist.Shell;
 
@@ -24,4 +28,12 @@ public static class GlobalContext
     public static ChatbotComponentModel? ChatbotComponentModel { get; set; }
 
     public static ChatbotManager? ChatbotManager { get; set; } // e.g. for sending chat messages
+
+    public static ObsComponentModel? ObsComponentModel { get; set; }
+
+    public static ObsManager? ObsManager { get; set; } // e.g. for switching scenes
+
+    public static SpotifyComponentModel? SpotifyComponentModel { get; set; }
+
+    public static SpotifyManager? SpotifyManager { get; set; } // e.g. for playing a song
 }

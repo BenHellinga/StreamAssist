@@ -37,7 +37,7 @@ Actions are discovered and instantiated via reflection, so adding a new one is a
 
 ## Planned Work
 
-- **OBS integration** — scene switching, source visibility, source transforms/positioning, volume control, and other source-level control. (`obs-websocket-dotnet` is already a dependency; this isn't wired up yet.)
+- **OBS integration** — started: blocks can switch scenes, show/hide, move and resize sources, set volumes, mute, and set text or any source setting (talks to OBS's built-in WebSocket server directly).
 - **More trigger sources** — chat commands, timers/scheduled events, and other stream events, feeding into the same action system keybinds already use.
 - **Chat bot tab** — command handling and chat interaction.
 - **Timer tab** — countdowns, intervals, and scheduled triggers.
@@ -73,7 +73,6 @@ Actions work similarly: `ActionModel` is a small abstract base with one `Execute
 | [Avalonia](https://avaloniaui.net/) | 12.0.5 | Cross-platform UI framework |
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | 8.4.1 | MVVM source generators (`[ObservableProperty]`, `[RelayCommand]`) |
 | [NAudio](https://github.com/naudio/NAudio) | 2.3.0 | Audio playback for the Play Sound action |
-| [obs-websocket-dotnet](https://github.com/BarRaider/obs-websocket-dotnet) | 5.0.1 | OBS Studio integration (in progress) |
 | [RawInput.Sharp](https://github.com/mfakane/rawinput-sharp) | 0.1.3 | Raw keyboard input, per-device identification |
 
 Voicemeeter (Banana) integration is done via direct API calls rather than a NuGet package, and is required at runtime for the Mute Voicemeeter action to function.

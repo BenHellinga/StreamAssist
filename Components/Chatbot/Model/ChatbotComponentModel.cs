@@ -25,6 +25,7 @@ public class ChatbotComponentModel : ModelBase
     private string _clientSecret;
     private bool _connectOnStartup;
     private bool _botConnectOnStartup;
+    private bool _chatOnlyAsBot;
     private bool _isEnabled;
     private bool _isBotEnabled;
     private readonly BlockSlot _root;
@@ -46,9 +47,13 @@ public class ChatbotComponentModel : ModelBase
     [JsonIgnore] public bool ConnectOnStartup => _connectOnStartup;
     [JsonIgnore] public bool BotConnectOnStartup => _botConnectOnStartup;
 
+    // saved: chat and moderation only ever go out as the bot, failing when it isn't connected (never as the streamer)
+    // off: as the bot while it's connected, otherwise as the streamer (for anyone without a bot account)
+    [JsonIgnore] public bool ChatOnlyAsBot => _chatOnlyAsBot;
+
     // this session only (start as the connect on startup setting): whether each account should be connected right now
     [JsonIgnore] public bool IsEnabled => _isEnabled;
-    [JsonIgnore] public bool IsBotEnabled => _isBotEnabled; // without the bot, chat is sent as the streamer
+    [JsonIgnore] public bool IsBotEnabled => _isBotEnabled;
     [JsonIgnore] public BlockSlot Root => _root; // the protected commands, every message is tried here first
     [JsonIgnore] public BlockSlot EditableRoot => _editableRoot; // the commands chat can change (a Match Text, see TryAddCommand)
     [JsonIgnore] public RedeemList Redeems => _redeems;
@@ -72,6 +77,13 @@ public class ChatbotComponentModel : ModelBase
     {
         get => _botConnectOnStartup;
         set => _botConnectOnStartup = _isBotEnabled = value;
+    }
+
+    [JsonInclude] [JsonPropertyName("chatOnlyAsBot")]
+    private bool JsonChatOnlyAsBot
+    {
+        get => _chatOnlyAsBot;
+        set => _chatOnlyAsBot = value;
     }
 
     [JsonInclude] [JsonPropertyName("rootBlock")]
@@ -127,6 +139,7 @@ public class ChatbotComponentModel : ModelBase
         _clientSecret = "";
         _connectOnStartup = false;
         _botConnectOnStartup = false;
+        _chatOnlyAsBot = false;
         _isEnabled = false;
         _isBotEnabled = false;
         _root = new("", typeof(ChatBlock));
@@ -218,6 +231,16 @@ public class ChatbotComponentModel : ModelBase
         if (connectOnStartup == _botConnectOnStartup) return;
 
         _botConnectOnStartup = connectOnStartup;
+        Changed?.Invoke();
+    }
+
+
+
+    public void SetChatOnlyAsBot(bool chatOnlyAsBot)
+    {
+        if (chatOnlyAsBot == _chatOnlyAsBot) return;
+
+        _chatOnlyAsBot = chatOnlyAsBot;
         Changed?.Invoke();
     }
 

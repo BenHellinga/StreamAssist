@@ -18,6 +18,7 @@ public class BindableModel : ModelBase
 
 
     private bool _isDisabled;
+    private string _label;
     private readonly BlockSlot _root;
     private readonly CancellationTokenSource _cancellation;
     private Action? _unbindSelf;
@@ -29,6 +30,7 @@ public class BindableModel : ModelBase
 
 
     [JsonIgnore] public bool IsDisabled => _isDisabled;
+    [JsonIgnore] public string Label => _label; // optional name shown on its key / bind box (e.g. "On Hold"), "" for none
     [JsonIgnore] public BlockSlot Root => _root;
     [JsonIgnore] public bool HasBlock => _root.Block != null;
 
@@ -45,6 +47,14 @@ public class BindableModel : ModelBase
         set => _isDisabled = value;
     }
 
+    // only saved when there is one
+    [JsonInclude] [JsonPropertyName("label")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    private string? JsonLabel
+    {
+        get => _label == "" ? null : _label;
+        set => _label = value ?? "";
+    }
+
     [JsonInclude] [JsonPropertyName("root")]
     private PendingBlockData? JsonRoot
     {
@@ -59,6 +69,7 @@ public class BindableModel : ModelBase
 
 
     public event Action<bool>? IsDisabledChanged;
+    public event Action? LabelChanged;
     public event Action? Changed; // anything in this bindable changed (used for saving)
     public event Action? Triggered; // it just ran (e.g. so the UI can flash it)
 
@@ -71,6 +82,7 @@ public class BindableModel : ModelBase
     public BindableModel()
     {
         _isDisabled = false;
+        _label = "";
         _root = new("", typeof(ExecutableBlock));
         _cancellation = new();
         _unbindSelf = null;
@@ -116,6 +128,23 @@ public class BindableModel : ModelBase
 
         Triggered?.Invoke();
         _ = root.SafeRunAsync(new TriggerContext(phase, _cancellation.Token, parameters));
+    }
+
+
+
+    // label
+
+
+
+    // only something with blocks can be labelled (nothing bound, nothing to label)
+    public void SetLabel(string label)
+    {
+        if (label == _label) return;
+        if (!HasBlock && label != "") return;
+
+        _label = label;
+        LabelChanged?.Invoke();
+        Changed?.Invoke();
     }
 
 
@@ -173,9 +202,13 @@ public class BindableModel : ModelBase
 
 
     // a bindable with no root block has nothing to run, so it removes itself from its owner
+    // the last block went: its label goes too, then it unbinds itself
     private void OnRootBlockChanged(BlockModel? _, BlockModel? newBlock)
     {
-        if (newBlock == null) _unbindSelf?.Invoke();
+        if (newBlock != null) return;
+
+        SetLabel("");
+        _unbindSelf?.Invoke();
     }
 
 

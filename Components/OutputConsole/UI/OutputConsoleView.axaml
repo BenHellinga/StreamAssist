@@ -31,12 +31,13 @@
 
         <!-- log messages -->
 
-        <!-- one selectable text for the whole log: drag to select across lines, Ctrl+A / Ctrl+C or right click to copy -->
+        <!-- one selectable text for the whole log: drag to select across lines, Ctrl+A / Ctrl+C or right click to copy
+             its text is built in code-behind from the view model's Text, so each line's [time] can be muted -->
 
         <ScrollViewer x:Name="LogScrollViewer" Classes="Gapped">
             <!-- fills the whole console (transparent background) so clicking empty space still focuses it for Ctrl+A
                  (inset with Padding, not Margin, so filling the console doesn't make it scrollable) -->
-            <SelectableTextBlock Classes="OutputLine" Text="{Binding Text}" Background="Transparent" Padding="5"
+            <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent" Padding="5"
                                  MinHeight="{Binding #LogScrollViewer.Bounds.Height}"/>
         </ScrollViewer>
 

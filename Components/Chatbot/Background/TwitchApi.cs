@@ -203,6 +203,224 @@ public static class TwitchApi
 
 
 
+    // moderation and chat (as a moderator: the bot if it's one, or the streamer)
+
+
+
+    public static async Task UnbanUserAsync(TwitchSession session, string broadcasterId, string userId, CancellationToken ct)
+    {
+        var path = $"moderation/bans?broadcaster_id={E(broadcasterId)}&moderator_id={E(session.UserId)}&user_id={E(userId)}";
+        await HelixAsync(session, HttpMethod.Delete, path, null, ct);
+    }
+
+
+
+    // color is primary, blue, green, orange or purple
+    public static async Task SendAnnouncementAsync(TwitchSession session, string broadcasterId, string message, string color, CancellationToken ct)
+    {
+        var path = $"chat/announcements?broadcaster_id={E(broadcasterId)}&moderator_id={E(session.UserId)}";
+        await HelixAsync(session, HttpMethod.Post, path, new JsonObject { ["message"] = message, ["color"] = color }, ct);
+    }
+
+
+
+    public static async Task ShoutoutAsync(TwitchSession session, string broadcasterId, string toUserId, CancellationToken ct)
+    {
+        var path = $"chat/shoutouts?from_broadcaster_id={E(broadcasterId)}&to_broadcaster_id={E(toUserId)}&moderator_id={E(session.UserId)}";
+        await HelixAsync(session, HttpMethod.Post, path, null, ct);
+    }
+
+
+
+    public static async Task<JsonElement> GetChatSettingsAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"chat/settings?broadcaster_id={E(broadcasterId)}&moderator_id={E(session.UserId)}", null, ct);
+        return result.GetProperty("data")[0];
+    }
+
+
+
+    public static async Task UpdateChatSettingsAsync(TwitchSession session, string broadcasterId, JsonObject changes, CancellationToken ct) =>
+        await HelixAsync(session, HttpMethod.Patch, $"chat/settings?broadcaster_id={E(broadcasterId)}&moderator_id={E(session.UserId)}", changes, ct);
+
+
+
+    // the channel and stream (as the streamer)
+
+
+
+    // title, game_name, ...
+    public static async Task<JsonElement> GetChannelAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"channels?broadcaster_id={E(broadcasterId)}", null, ct);
+        return result.GetProperty("data")[0];
+    }
+
+
+
+    // e.g. { "title": "..." } or { "game_id": "..." }
+    public static async Task UpdateChannelAsync(TwitchSession session, string broadcasterId, JsonObject changes, CancellationToken ct) =>
+        await HelixAsync(session, HttpMethod.Patch, $"channels?broadcaster_id={E(broadcasterId)}", changes, ct);
+
+
+
+    // a category's id by its name (exact first, else the closest search result), null if there's none
+    public static async Task<string?> FindCategoryIdAsync(TwitchSession session, string name, CancellationToken ct)
+    {
+        var exact = await HelixAsync(session, HttpMethod.Get, $"games?name={E(name)}", null, ct);
+        if (exact.GetProperty("data").GetArrayLength() > 0) return exact.GetProperty("data")[0].GetProperty("id").GetString();
+
+        var search = await HelixAsync(session, HttpMethod.Get, $"search/categories?query={E(name)}&first=1", null, ct);
+        return search.GetProperty("data").GetArrayLength() > 0 ? search.GetProperty("data")[0].GetProperty("id").GetString() : null;
+    }
+
+
+
+    // the live stream (viewer_count, started_at, ...), null while offline
+    public static async Task<JsonElement?> GetStreamAsync(TwitchSession session, string userId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"streams?user_id={E(userId)}", null, ct);
+        return result.GetProperty("data").GetArrayLength() > 0 ? result.GetProperty("data")[0] : null;
+    }
+
+
+
+    public static async Task<int> GetFollowerCountAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"channels/followers?broadcaster_id={E(broadcasterId)}&first=1", null, ct);
+        return result.GetProperty("total").GetInt32();
+    }
+
+
+
+    // when a user followed (followed_at), null if they don't
+    public static async Task<JsonElement?> GetFollowAsync(TwitchSession session, string broadcasterId, string userId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"channels/followers?broadcaster_id={E(broadcasterId)}&user_id={E(userId)}", null, ct);
+        return result.GetProperty("data").GetArrayLength() > 0 ? result.GetProperty("data")[0] : null;
+    }
+
+
+
+    // a user's id, display_name, created_at, description, ..., null if there's no such user
+    public static async Task<JsonElement?> GetUserInfoAsync(TwitchSession session, string login, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"users?login={E(login)}", null, ct);
+        return result.GetProperty("data").GetArrayLength() > 0 ? result.GetProperty("data")[0] : null;
+    }
+
+
+
+    // a clip of the last ~30 seconds (only while live), returns its link
+    public static async Task<string> CreateClipAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Post, $"clips?broadcaster_id={E(broadcasterId)}", null, ct);
+        return $"https://clips.twitch.tv/{result.GetProperty("data")[0].GetProperty("id").GetString()}";
+    }
+
+
+
+    // a marker at the current point of the stream (only while live), shown in the stream's VOD
+    public static async Task CreateMarkerAsync(TwitchSession session, string userId, string description, CancellationToken ct)
+    {
+        var body = new JsonObject { ["user_id"] = userId };
+        if (description.Trim() != "") body["description"] = description.Trim();
+        await HelixAsync(session, HttpMethod.Post, "streams/markers", body, ct);
+    }
+
+
+
+    public static async Task StartCommercialAsync(TwitchSession session, string broadcasterId, int seconds, CancellationToken ct) =>
+        await HelixAsync(session, HttpMethod.Post, "channels/commercial", new JsonObject { ["broadcaster_id"] = broadcasterId, ["length"] = seconds }, ct);
+
+
+
+    // polls and predictions (one of each can run at a time)
+
+
+
+    public static async Task StartPollAsync(TwitchSession session, string broadcasterId, string title, IEnumerable<string> choices, int seconds, CancellationToken ct)
+    {
+        var body = new JsonObject
+        {
+            ["broadcaster_id"] = broadcasterId,
+            ["title"] = title,
+            ["choices"] = new JsonArray(choices.Select(c => (JsonNode)new JsonObject { ["title"] = c }).ToArray()),
+            ["duration"] = seconds,
+        };
+        await HelixAsync(session, HttpMethod.Post, "polls", body, ct);
+    }
+
+
+
+    // the running poll's id, null if none is running
+    public static async Task<string?> GetActivePollIdAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"polls?broadcaster_id={E(broadcasterId)}&first=1", null, ct);
+        var data = result.GetProperty("data");
+        return data.GetArrayLength() > 0 && data[0].GetProperty("status").GetString() == "ACTIVE" ? data[0].GetProperty("id").GetString() : null;
+    }
+
+
+
+    // status TERMINATED (ends it, results shown) or ARCHIVED (ends it, results hidden)
+    public static async Task EndPollAsync(TwitchSession session, string broadcasterId, string pollId, string status, CancellationToken ct) =>
+        await HelixAsync(session, HttpMethod.Patch, "polls", new JsonObject { ["broadcaster_id"] = broadcasterId, ["id"] = pollId, ["status"] = status }, ct);
+
+
+
+    public static async Task StartPredictionAsync(TwitchSession session, string broadcasterId, string title, IEnumerable<string> outcomes, int seconds, CancellationToken ct)
+    {
+        var body = new JsonObject
+        {
+            ["broadcaster_id"] = broadcasterId,
+            ["title"] = title,
+            ["outcomes"] = new JsonArray(outcomes.Select(o => (JsonNode)new JsonObject { ["title"] = o }).ToArray()),
+            ["prediction_window"] = seconds,
+        };
+        await HelixAsync(session, HttpMethod.Post, "predictions", body, ct);
+    }
+
+
+
+    // the prediction that's open or locked (id, outcomes with their titles and ids), null if there's none
+    public static async Task<JsonElement?> GetCurrentPredictionAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"predictions?broadcaster_id={E(broadcasterId)}&first=1", null, ct);
+        var data = result.GetProperty("data");
+        return data.GetArrayLength() > 0 && data[0].GetProperty("status").GetString() is "ACTIVE" or "LOCKED" ? data[0] : null;
+    }
+
+
+
+    // status LOCKED (no more predicting), RESOLVED (with winningOutcomeId, points paid out) or CANCELED (points refunded)
+    public static async Task EndPredictionAsync(TwitchSession session, string broadcasterId, string predictionId, string status, string? winningOutcomeId, CancellationToken ct)
+    {
+        var body = new JsonObject { ["broadcaster_id"] = broadcasterId, ["id"] = predictionId, ["status"] = status };
+        if (winningOutcomeId != null) body["winning_outcome_id"] = winningOutcomeId;
+        await HelixAsync(session, HttpMethod.Patch, "predictions", body, ct);
+    }
+
+
+
+    // your channel's VIPs and moderators (add = true, remove = false)
+
+
+
+    public static async Task SetVipAsync(TwitchSession session, string broadcasterId, string userId, bool add, CancellationToken ct) =>
+        await HelixAsync(session, add ? HttpMethod.Post : HttpMethod.Delete, $"channels/vips?broadcaster_id={E(broadcasterId)}&user_id={E(userId)}", null, ct);
+
+
+
+    public static async Task SetModeratorAsync(TwitchSession session, string broadcasterId, string userId, bool add, CancellationToken ct) =>
+        await HelixAsync(session, add ? HttpMethod.Post : HttpMethod.Delete, $"moderation/moderators?broadcaster_id={E(broadcasterId)}&user_id={E(userId)}", null, ct);
+
+
+
+    private static string E(string value) => Uri.EscapeDataString(value);
+
+
+
     // helpers
 
 

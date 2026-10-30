@@ -3,6 +3,11 @@ using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
+using StreamAssist.Components.OBS.Background;
+using StreamAssist.Components.OBS.Model;
+using StreamAssist.Components.Spotify.Background;
+using StreamAssist.Components.Spotify.Model;
+using StreamAssist.Core.Connections;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Shell;
 
@@ -22,12 +27,21 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
     private readonly ChatbotManager _chatbotManager;
     private readonly AudioComponentModel _audioModel;
     private readonly VoicemeeterManager _voicemeeterManager;
+    private readonly ObsComponentModel _obsModel;
+    private readonly ObsManager _obsManager;
+    private readonly SpotifyComponentModel _spotifyModel;
+    private readonly SpotifyManager _spotifyManager;
     private readonly ConnectionRowViewModel _twitchStreamer;
     private readonly ConnectionRowViewModel _twitchBot;
     private readonly ConnectionRowViewModel _voicemeeter;
+    private readonly ConnectionRowViewModel _obs;
+    private readonly ConnectionRowViewModel _spotify;
 
     [ObservableProperty] private string _clientIdInput;
     [ObservableProperty] private string _clientSecretInput;
+    [ObservableProperty] private string _obsAddressInput;
+    [ObservableProperty] private string _obsPasswordInput;
+    [ObservableProperty] private string _spotifyClientIdInput;
 
 
 
@@ -38,6 +52,9 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
     public ConnectionRowViewModel TwitchStreamer => _twitchStreamer;
     public ConnectionRowViewModel TwitchBot => _twitchBot;
     public ConnectionRowViewModel Voicemeeter => _voicemeeter;
+    public ConnectionRowViewModel Obs => _obs;
+    public ConnectionRowViewModel Spotify => _spotify;
+    public string SpotifyRedirectUri => SpotifyComponentModel.RedirectUri;
 
 
 
@@ -46,12 +63,13 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
 
 
     public static ConnectionsComponentViewModel ActivateTab(ChatbotComponentModel chatbotModel, ChatbotManager chatbotManager,
-        AudioComponentModel audioModel, VoicemeeterManager voicemeeterManager, PanelViewModel sidePanel, PanelViewModel bottomPanel)
+        AudioComponentModel audioModel, VoicemeeterManager voicemeeterManager, ObsComponentModel obsModel, ObsManager obsManager,
+        SpotifyComponentModel spotifyModel, SpotifyManager spotifyManager, PanelViewModel sidePanel, PanelViewModel bottomPanel)
     {
         sidePanel.TransferContent(null);
         bottomPanel.TransferContent(null);
 
-        return new(chatbotModel, chatbotManager, audioModel, voicemeeterManager);
+        return new(chatbotModel, chatbotManager, audioModel, voicemeeterManager, obsModel, obsManager, spotifyModel, spotifyManager);
     }
 
 
@@ -61,15 +79,23 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
 
 
     public ConnectionsComponentViewModel(ChatbotComponentModel chatbotModel, ChatbotManager chatbotManager,
-        AudioComponentModel audioModel, VoicemeeterManager voicemeeterManager)
+        AudioComponentModel audioModel, VoicemeeterManager voicemeeterManager, ObsComponentModel obsModel, ObsManager obsManager,
+        SpotifyComponentModel spotifyModel, SpotifyManager spotifyManager)
     {
         _chatbotModel = chatbotModel;
         _chatbotManager = chatbotManager;
         _audioModel = audioModel;
         _voicemeeterManager = voicemeeterManager;
+        _obsModel = obsModel;
+        _obsManager = obsManager;
+        _spotifyModel = spotifyModel;
+        _spotifyManager = spotifyManager;
 
         _clientIdInput = _chatbotModel.ClientId;
         _clientSecretInput = _chatbotModel.ClientSecret;
+        _obsAddressInput = _obsModel.Address;
+        _obsPasswordInput = _obsModel.Password;
+        _spotifyClientIdInput = _spotifyModel.ClientId;
 
         // twitch: the streamer listens to chat and events, the optional bot only sends chat
         // connecting (or retrying) first saves whatever is in the Client ID / Secret boxes
@@ -85,20 +111,43 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
             () => { CommitCredentials(); _chatbotModel.ReconnectBot(); },
             () => _chatbotModel.SetIsBotEnabled(false),
             () => _chatbotModel.BotConnectOnStartup,
-            _chatbotModel.SetBotConnectOnStartup);
+            _chatbotModel.SetBotConnectOnStartup,
+            "Chat only as bot",
+            () => _chatbotModel.ChatOnlyAsBot,
+            _chatbotModel.SetChatOnlyAsBot);
 
         _voicemeeter = new("Voicemeeter",
-            () => (_voicemeeterManager.Status, ""),
+            () => (_voicemeeterManager.Status, _voicemeeterManager.Status == ConnectionStatus.Connected ? "Connected to Voicemeeter" : ""),
             _audioModel.ReconnectVoicemeeter,
             () => _audioModel.SetIsVoicemeeterEnabled(false),
             () => _audioModel.VoicemeeterConnectOnStartup,
             _audioModel.SetVoicemeeterConnectOnStartup);
+
+        // obs: connecting (or retrying) first saves whatever is in the Address / Password boxes
+        _obs = new("OBS",
+            () => (_obsManager.Status, _obsManager.StatusMessage),
+            () => { _obsModel.SetConnectionDetails(ObsAddressInput, ObsPasswordInput); _obsModel.Reconnect(); },
+            () => _obsModel.SetIsEnabled(false),
+            () => _obsModel.ConnectOnStartup,
+            _obsModel.SetConnectOnStartup);
+
+        // spotify: connecting (or retrying) first saves whatever is in the Client ID box
+        _spotify = new("Spotify",
+            () => (_spotifyManager.Status, _spotifyManager.StatusMessage),
+            () => { _spotifyModel.SetClientId(SpotifyClientIdInput); _spotifyModel.Reconnect(); },
+            () => _spotifyModel.SetIsEnabled(false),
+            () => _spotifyModel.ConnectOnStartup,
+            _spotifyModel.SetConnectOnStartup);
 
         _chatbotModel.CredentialsChanged += OnCredentialsChanged;
         _chatbotModel.Changed += OnTwitchChanged;
         _chatbotManager.StatusChanged += OnTwitchChanged;
         _audioModel.Changed += OnVoicemeeterChanged;
         _voicemeeterManager.StatusChanged += OnVoicemeeterChanged;
+        _obsModel.Changed += OnObsChanged;
+        _obsManager.StatusChanged += OnObsChanged;
+        _spotifyModel.Changed += OnSpotifyChanged;
+        _spotifyManager.StatusChanged += OnSpotifyChanged;
     }
 
 
@@ -127,6 +176,14 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
 
 
 
+    private void OnObsChanged() => _obs.Refresh();
+
+
+
+    private void OnSpotifyChanged() => _spotify.Refresh();
+
+
+
     // helpers
 
 
@@ -146,5 +203,9 @@ public partial class ConnectionsComponentViewModel : ViewModelBase
         _chatbotManager.StatusChanged -= OnTwitchChanged;
         _audioModel.Changed -= OnVoicemeeterChanged;
         _voicemeeterManager.StatusChanged -= OnVoicemeeterChanged;
+        _obsModel.Changed -= OnObsChanged;
+        _obsManager.StatusChanged -= OnObsChanged;
+        _spotifyModel.Changed -= OnSpotifyChanged;
+        _spotifyManager.StatusChanged -= OnSpotifyChanged;
     }
 }

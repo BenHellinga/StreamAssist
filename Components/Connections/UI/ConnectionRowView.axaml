@@ -5,17 +5,18 @@
 
              xmlns:ui="using:StreamAssist.Components.Connections.UI">
 
-    <!-- name | status | connect/disconnect/retry | connect on startup | which account, while connected (muted) -->
+    <!-- name | status | connect/disconnect/retry | connect on startup | the row's extra checkbox, if any
+         which account it's connected to is only in the status box's tooltip, so it isn't on screen when the tab is shown -->
 
     <StackPanel Orientation="Horizontal" Spacing="10">
 
         <TextBlock Classes="Label" Text="{Binding Label}" Width="100"/>
 
-        <!-- green = connected, red = failed, grey otherwise (details in the tooltip and the console) -->
+        <!-- green = connected, grey = connecting, red otherwise (details in the tooltip and the console) -->
 
         <Border Classes="Panel"
                 Classes.Bound="{Binding IsConnected}"
-                Classes.Disabled="{Binding IsFailed}"
+                Classes.Disabled="{Binding IsDown}"
                 Width="130" Height="25"
                 ToolTip.Tip="{Binding Detail}">
             <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center"/>
@@ -27,7 +28,8 @@
         <TextBlock Classes="Label" Text="Connect on startup"/>
         <CheckBox IsChecked="{Binding ConnectOnStartup}" VerticalAlignment="Center"/>
 
-        <TextBlock Classes="Description" Text="{Binding ConnectedText}" VerticalAlignment="Center"/>
+        <TextBlock Classes="Label" Text="{Binding OptionLabel}" IsVisible="{Binding HasOption}"/>
+        <CheckBox IsChecked="{Binding Option}" VerticalAlignment="Center" IsVisible="{Binding HasOption}"/>
 
     </StackPanel>
 

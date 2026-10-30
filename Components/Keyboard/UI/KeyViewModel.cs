@@ -21,6 +21,8 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
     private KeybindConfigModel? _config;
     private BindableModel? _keybind;
+
+    [ObservableProperty] private string _bindLabel; // the binding's label as a third line, "" for none
     private KeybindViewModel? _keyConfigurator;
 
     private string _label;
@@ -58,6 +60,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
     public KeyViewModel(string label, ushort vk, double x, double y, double w, double h, KeybindViewModel? keyConfigurator = null)
     {
         _label = label;
+        _bindLabel = "";
         _vk = vk;
         _baseX = x;
         _baseY = y;
@@ -191,6 +194,10 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
 
 
+    private void OnKeybindLabelChanged() => BindLabel = _keybind?.Label.Trim() ?? "";
+
+
+
     private void OnKeybindChanged() => UpdateIsBound();
 
 
@@ -243,6 +250,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
     private void SubscribeToKeybindModel(BindableModel? keybind)
     {
         keybind?.IsDisabledChanged += OnDisabledChanged;
+        keybind?.LabelChanged += OnKeybindLabelChanged;
         keybind?.Changed += OnKeybindChanged;
     }
 
@@ -251,6 +259,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
     private void UnsubscribeFromKeybindModel(BindableModel? keybind)
     {
         keybind?.IsDisabledChanged -= OnDisabledChanged;
+        keybind?.LabelChanged -= OnKeybindLabelChanged;
         keybind?.Changed -= OnKeybindChanged;
     }
 
@@ -264,6 +273,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
         UpdateIsBound();
         IsDisabled = _keybind?.IsDisabled ?? false;
+        BindLabel = _keybind?.Label.Trim() ?? "";
 
         SubscribeToKeybindModel(_keybind);
     }

@@ -22,10 +22,21 @@
         <Setter Property="Margin" Value="0,4,0,0"/>
     </Style>
 
-    <Style Selector="TextBlock.Description">
+    <!-- :is so a SelectableTextBlock (text that can be copied, e.g. spotify's redirect uri) looks the same -->
+    <Style Selector=":is(TextBlock).Description">
         <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- a bind's label on its key / bind box: one line, green while enabled, red while disabled -->
+    <Style Selector="TextBlock.BindLabel">
+        <Setter Property="Foreground" Value="{DynamicResource Bound}"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+    </Style>
+
+    <Style Selector="TextBlock.BindLabel.Disabled">
+        <Setter Property="Foreground" Value="{DynamicResource Disabled}"/>
     </Style>
 
     <Style Selector="TextBlock.Placeholder">

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Connections;
@@ -17,9 +18,6 @@ public sealed class VoicemeeterManager : IDisposable
 
     private const float MIN_GAIN_DB = -60f;
     private const float MAX_GAIN_DB = 12f;
-    private const int MIC_STRIP = 0;
-    private const int MISC_BUS = 3;
-    private const int OBS_BUS = 4;
 
 
 
@@ -29,15 +27,7 @@ public sealed class VoicemeeterManager : IDisposable
 
     private readonly AudioComponentModel _model;
     private bool _connected;
-    private Dictionary<StereoInputTarget, InputState> _states;
-
-
-
-    private class InputState(bool muted, float gain)
-    { 
-        public bool Muted = muted;
-        public float Gain = gain;
-    }
+    private int _edition;
 
 
 
@@ -45,9 +35,10 @@ public sealed class VoicemeeterManager : IDisposable
 
 
 
-    public enum StereoInputTarget { All, Misc, Obs }
-
     public ConnectionStatus Status { get; private set; }
+
+    // the channels of the Voicemeeter that's connected (Banana's until one is), for the blocks' dropdowns
+    public IReadOnlyList<VoicemeeterChannel> Channels => VoicemeeterChannels.For(_edition);
 
 
 
@@ -67,7 +58,7 @@ public sealed class VoicemeeterManager : IDisposable
     {
         _model = model;
         _connected = false;
-        _states = [];
+        _edition = VoicemeeterChannels.Banana;
         Status = ConnectionStatus.NotConnected;
 
         _model.VoicemeeterConnectionChanged += OnConnectionChanged;
@@ -132,8 +123,10 @@ public sealed class VoicemeeterManager : IDisposable
             return false;
         }
 
+        // nothing is changed on connect: mutes and gains stay as they are in Voicemeeter, the blocks read them from there
+        var edition = 0;
+        if (Voicemeeter64.VBVMR_GetVoicemeeterType(ref edition) == 0 && edition is >= 1 and <= 3) _edition = edition;
         _connected = true;
-        InitState();
         SetStatus(ConnectionStatus.Connected);
         return true;
     }
@@ -152,110 +145,109 @@ public sealed class VoicemeeterManager : IDisposable
 
 
 
-    public bool TrySetMute(StereoInputTarget target, bool mute)
-    {
-        if (!_connected)
-        {
-            AppLog.WriteError("can't set mute, voicemeeter not connected");
-            return false;
-        }
+    // channels (by the name Voicemeeter's window shows, e.g. "Stereo Input 1", "B2"), each logs why if it can't
 
-        _ = Voicemeeter64.VBVMR_SetParameterFloat(ParamName(target, "Mute"), mute ? 1f : 0f);
-        _states[target].Muted = mute;
+
+
+    public bool TryGetMute(string channel, out bool muted)
+    {
+        muted = false;
+        if (!TryFind(channel, "read mute", out var found) || !TryGetParameter($"{found.Prefix}.Mute", out var value)) return false;
+
+        muted = value >= 0.5f;
         return true;
     }
 
 
 
-    public bool TryToggleSetMute(StereoInputTarget target)
-    {
-        if (!_connected)
-        {
-            AppLog.WriteError("can't toggle mute, voicemeeter not connected");
-            return false;
-        }
+    public bool TrySetMute(string channel, bool muted) =>
+        TryFind(channel, "set mute", out var found) && TrySetParameter($"{found.Prefix}.Mute", muted ? 1 : 0);
 
-        var mute = !_states[target].Muted;
-        _ = Voicemeeter64.VBVMR_SetParameterFloat(ParamName(target, "Mute"), mute ? 1f : 0f);
-        _states[target].Muted = mute;
-        return true;
+
+
+    public bool TryGetGain(string channel, out float db)
+    {
+        db = 0;
+        return TryFind(channel, "read gain", out var found) && TryGetParameter($"{found.Prefix}.Gain", out db);
     }
 
 
 
-    public bool TryGetMute(StereoInputTarget target, out bool muted)
+    // in dB like the fader, kept to Voicemeeter's -60 to 12
+    public bool TrySetGain(string channel, float db)
     {
-        if (!_connected)
-        {
-            AppLog.WriteError("can't read mute, voicemeeter not connected");
-            muted = false;
-            return false;
-        }
-
-        muted = _states[target].Muted;
-        return true;
-    }
-
-
-
-    public bool TrySetGainDb(StereoInputTarget target, float db)
-    {
-        if (!_connected)
-        {
-            AppLog.WriteError("can't set gain, voicemeeter not connected");
-            return false;
-        }
+        if (!TryFind(channel, "set gain", out var found)) return false;
 
         var clamped = Math.Clamp(db, MIN_GAIN_DB, MAX_GAIN_DB);
+        if (clamped != db) AppLog.WriteWarning($"gain too {(clamped < db ? "high" : "low")}, clamped to {clamped}");
 
-        if (clamped != db)
-            AppLog.WriteWarning($"gain too {(clamped < db ? "high" : "low")}, clamped to {clamped}");
+        return TrySetParameter($"{found.Prefix}.Gain", clamped);
+    }
 
-        _ = Voicemeeter64.VBVMR_SetParameterFloat(ParamName(target, "Gain"), clamped);
-        _states[target].Gain = db;
+
+
+    // whether an input is sent to an output bus (its A1 / B1 ... buttons)
+    public bool TryGetRoute(string input, string bus, out bool routed)
+    {
+        routed = false;
+        if (!TryRoute(input, bus, "read route", out var name) || !TryGetParameter(name, out var value)) return false;
+
+        routed = value >= 0.5f;
         return true;
     }
 
 
 
-    public bool TryGetGainDb(StereoInputTarget target, out float db)
+    public bool TrySetRoute(string input, string bus, bool routed) =>
+        TryRoute(input, bus, "set route", out var name) && TrySetParameter(name, routed ? 1 : 0);
+
+
+
+    // any parameter by its Voicemeeter remote name, e.g. "Strip[0].Comp" or "Bus[3].EQ.on" (anything the blocks above
+    // don't cover), reads what Voicemeeter has right now
+
+
+
+    public bool TryGetParameter(string name, out float value)
     {
+        value = 0;
         if (!_connected)
         {
-            AppLog.WriteError("can't read gain, voicemeeter not connected");
-            db = 0;
+            AppLog.WriteError($"can't read voicemeeter {name}, not connected");
             return false;
         }
 
-        db = _states[target].Gain;
-        return true;
+        // Voicemeeter refreshes what GetParameterFloat gives when asked whether anything changed, and after a change made
+        // in its own window that can take more than one ask, so ask until it says nothing more changed (a few at most)
+        for (int i = 0; i < 20 && Voicemeeter64.VBVMR_IsParametersDirty() > 0; i++) { }
+
+        var result = Voicemeeter64.VBVMR_GetParameterFloat(name, ref value);
+        if (result == 0) return true;
+
+        AppLog.WriteError($"can't read voicemeeter {name}, {(result == -3 ? "no such parameter" : $"code {result}")}");
+        return false;
+    }
+
+
+
+    public bool TrySetParameter(string name, float value)
+    {
+        if (!_connected)
+        {
+            AppLog.WriteError($"can't set voicemeeter {name}, not connected");
+            return false;
+        }
+
+        var result = Voicemeeter64.VBVMR_SetParameterFloat(name, value);
+        if (result == 0) return true;
+
+        AppLog.WriteError($"can't set voicemeeter {name}, {(result == -3 ? "no such parameter" : $"code {result}")}");
+        return false;
     }
 
 
 
     // helpers
-
-
-
-    private bool InitState()
-    {
-        _states = new()
-        {
-            { StereoInputTarget.All, new(false, 0) },
-            { StereoInputTarget.Misc, new(false, 0) },
-            { StereoInputTarget.Obs, new(false, 0) },
-        };
-
-        if (!TrySetMute(StereoInputTarget.All, false)) return false;
-        if (!TrySetMute(StereoInputTarget.Misc, false)) return false;
-        if (!TrySetMute(StereoInputTarget.Obs, false)) return false;
-
-        if (!TrySetGainDb(StereoInputTarget.All, 0)) return false;
-        if (!TrySetGainDb(StereoInputTarget.Misc, 0)) return false;
-        if (!TrySetGainDb(StereoInputTarget.Obs, 0)) return false;
-        
-        return true;
-    }
 
 
 
@@ -269,15 +261,31 @@ public sealed class VoicemeeterManager : IDisposable
 
 
 
-    private static string ParamName(StereoInputTarget target, string parameter)
+    private bool TryFind(string channel, string what, out VoicemeeterChannel found)
     {
-        return target switch
+        found = Channels.FirstOrDefault(c => c.Name == channel.Trim())!;
+        if (found != null) return true;
+
+        AppLog.WriteError($"can't {what}, voicemeeter has no channel '{channel}'");
+        return false;
+    }
+
+
+
+    // e.g. ("Stereo Input 1", "B1") -> "Strip[0].B1"
+    private bool TryRoute(string input, string bus, string what, out string name)
+    {
+        name = "";
+        if (!TryFind(input, what, out var from) || !TryFind(bus, what, out var to)) return false;
+
+        if (!from.IsInput || to.IsInput)
         {
-            StereoInputTarget.All => $"Strip[{MIC_STRIP}].{parameter}",
-            StereoInputTarget.Misc => $"Bus[{MISC_BUS}].{parameter}",
-            StereoInputTarget.Obs => $"Bus[{OBS_BUS}].{parameter}",
-            _ => throw new NotImplementedException(),
-        };
+            AppLog.WriteError($"can't {what}, it goes from an input to an output bus");
+            return false;
+        }
+
+        name = $"{from.Prefix}.{to.Name}";
+        return true;
     }
 
 

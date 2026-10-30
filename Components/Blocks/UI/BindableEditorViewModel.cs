@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Core.Mvvm;
+using StreamAssist.Core.Utilities;
 using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Blocks.UI;
@@ -24,10 +25,14 @@ public partial class BindableEditorViewModel : ViewModelBase
     private readonly WindowLayoutModel _layout;
     private readonly BlockPaletteViewModel _palette;
     private BindableModel? _bindable; // what's being edited, a saved binding or a draft
+    private readonly CallbackBlocker _labelBlocker; // stops the label box writing back a label it was just given
     private Func<BindableModel, bool>? _saveDraft; // set while it's a draft
 
     [ObservableProperty] private BlockSlotViewModel? _rootSlot;
     [ObservableProperty] private bool _hasBindable;
+    [ObservableProperty] private string _bindLabel; // the label box above the blocks, typing in it sets the bindable's label
+    [ObservableProperty] private bool _isBindDisabled; // colours the label red like the key / bind box
+    [ObservableProperty] private bool _canEditBindLabel; // only a saved binding with blocks can be labelled (not a draft)
     [ObservableProperty] private string _label;
     [ObservableProperty] private string _emptyText; // shown when nothing is being edited, e.g. "No key selected"
     [ObservableProperty] private IReadOnlyList<ParameterInfo> _parameters; // what Get Parameter can read here
@@ -65,6 +70,8 @@ public partial class BindableEditorViewModel : ViewModelBase
             ("Double", BlockCategory.Double),
             ("Char", BlockCategory.Char));
 
+        _labelBlocker = new();
+        _bindLabel = "";
         _bindable = null;
         _saveDraft = null;
         _rootSlot = null;
@@ -121,9 +128,17 @@ public partial class BindableEditorViewModel : ViewModelBase
             _bindable.Dispose();
         }
 
+        if (_bindable != null)
+        {
+            _bindable.LabelChanged -= OnBindableLabelChanged;
+            _bindable.IsDisabledChanged -= OnBindableIsDisabledChanged;
+            _bindable.Changed -= OnBindableChanged;
+        }
+
         _bindable = null;
         _saveDraft = null;
         HasBindable = false;
+        CanEditBindLabel = false;
     }
 
 
@@ -133,6 +148,15 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
     [RelayCommand] private void OnParametersTogglePressed() => IsParametersOpen = !IsParametersOpen;
+
+
+
+    // typing in the label box (a draft with a block gets saved by its first change, like any other edit)
+    partial void OnBindLabelChanged(string value)
+    {
+        if (_labelBlocker.IsBlocked()) return;
+        _bindable?.SetLabel(value);
+    }
 
 
 
@@ -164,7 +188,32 @@ public partial class BindableEditorViewModel : ViewModelBase
             _saveDraft = save;
             _bindable.Changed += OnDraftChanged;
         }
+
+        UpdateCanEditBindLabel();
     }
+
+
+
+    // the label changed somewhere else (e.g. code, or the binding moved), show it without writing it back
+    private void OnBindableLabelChanged()
+    {
+        _labelBlocker.Block();
+        BindLabel = _bindable?.Label ?? "";
+        _labelBlocker.Unblock();
+    }
+
+
+
+    private void OnBindableIsDisabledChanged(bool isDisabled) => IsBindDisabled = isDisabled;
+
+
+
+    // e.g. its last block was removed
+    private void OnBindableChanged() => UpdateCanEditBindLabel();
+
+
+
+    private void UpdateCanEditBindLabel() => CanEditBindLabel = _bindable != null && _saveDraft == null && _bindable.HasBlock;
 
 
 
@@ -190,6 +239,12 @@ public partial class BindableEditorViewModel : ViewModelBase
 
         RootSlot = new BlockSlotViewModel(bindable.Root);
         Label = label;
+        _bindable.LabelChanged += OnBindableLabelChanged;
+        _bindable.IsDisabledChanged += OnBindableIsDisabledChanged;
+        _bindable.Changed += OnBindableChanged;
+        OnBindableLabelChanged();
+        UpdateCanEditBindLabel();
+        IsBindDisabled = bindable.IsDisabled;
         SetParameters(parameters);
         HasBindable = true;
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -119,7 +120,7 @@ public class ChatbotManager : IDisposable
         _auth.LoginCodeReady += OnLoginCodeReady;
 
         if (_model.IsEnabled) Start();
-        if (_model.IsBotEnabled) ResumeBot();
+        if (_model.IsBotEnabled) ConnectBot();
 
         _ = KeepLoginsFreshAsync(_lifetime.Token);
     }
@@ -130,9 +131,9 @@ public class ChatbotManager : IDisposable
 
 
 
-    // twitch actions: each waits its turn in the queue, is done as the bot if one is logged in (otherwise as the
-    // streamer; channel point rewards always as the streamer), and logs why if it fails (false), so the block that
-    // asked doesn't have to
+    // twitch actions: each waits its turn in the queue, is done as the bot if it's connected, otherwise as the streamer
+    // (or not at all with "chat only as bot" ticked; channel point rewards always as the streamer), and logs why if it
+    // fails (false), so the block that asked doesn't have to
 
 
 
@@ -171,6 +172,212 @@ public class ChatbotManager : IDisposable
     public Task<bool> TryDeleteChatMessageAsync(string messageId, CancellationToken ct = default) =>
         TryRunActionAsync("delete chat message", (account, channelId, token) =>
             TwitchApi.DeleteChatMessageAsync(account, channelId, messageId, token), ct);
+
+
+
+    // more moderation, as the bot if it's connected (it has to be a moderator), otherwise the streamer (see ChatOnlyAsBot)
+
+
+
+    public Task<bool> TryUnbanUserAsync(string user, CancellationToken ct = default) =>
+        TryRunActionAsync($"unban '{user}'", async (account, channelId, token) =>
+            await TwitchApi.UnbanUserAsync(account, channelId, await FindUserIdAsync(account, user, token), token), ct);
+
+
+
+    // the coloured chat banner, color from TwitchInfos.AnnouncementColors
+    public Task<bool> TrySendAnnouncementAsync(string message, string color, CancellationToken ct = default) =>
+        TryRunActionAsync("send announcement", (account, channelId, token) =>
+            TwitchApi.SendAnnouncementAsync(account, channelId, message, color.ToLowerInvariant(), token), ct);
+
+
+
+    // a chat mode from TwitchInfos.ChatModes on (true), off (false) or toggled (null); duration is seconds for slow
+    // mode, minutes followed for followers only (null keeps twitch's current / default)
+    public Task<bool> TrySetChatModeAsync(string mode, bool? on, int? duration, CancellationToken ct = default) =>
+        TryRunActionAsync($"set {mode.ToLowerInvariant()}", async (account, channelId, token) =>
+        {
+            var (key, durationKey) = mode switch
+            {
+                "Slow Mode" => ("slow_mode", "slow_mode_wait_time"),
+                "Followers Only" => ("follower_mode", "follower_mode_duration"),
+                "Subscribers Only" => ("subscriber_mode", null),
+                "Emote Only" => ("emote_mode", null),
+                "Unique Chat" => ("unique_chat_mode", (string?)null),
+                _ => throw new Exception($"unknown chat mode '{mode}'"),
+            };
+
+            var turnOn = on ?? !(await TwitchApi.GetChatSettingsAsync(account, channelId, token)).GetProperty(key).GetBoolean();
+            var changes = new JsonObject { [key] = turnOn };
+            if (turnOn && durationKey != null && duration is { } value) changes[durationKey] = value;
+
+            await TwitchApi.UpdateChatSettingsAsync(account, channelId, changes, token);
+        }, ct);
+
+
+
+    // the channel and stream: always as the streamer
+
+
+
+    // shown to viewers as "go follow x" (only while live, twitch limits how often)
+    public Task<bool> TryShoutoutAsync(string user, CancellationToken ct = default) =>
+        TryRunActionAsync($"shout out '{user}'", async (account, channelId, token) =>
+            await TwitchApi.ShoutoutAsync(account, channelId, await FindUserIdAsync(account, user, token), token), ct, asStreamer: true);
+
+
+
+    // setting is "Title" or "Category" (a category's name, the closest match if it isn't exact)
+    public Task<bool> TrySetStreamInfoAsync(string setting, string value, CancellationToken ct = default) =>
+        TryRunActionAsync($"set stream {setting.ToLowerInvariant()}", async (account, channelId, token) =>
+        {
+            var changes = setting switch
+            {
+                "Title" => new JsonObject { ["title"] = value },
+                "Category" => new JsonObject { ["game_id"] = await TwitchApi.FindCategoryIdAsync(account, value, token) ?? throw new Exception($"no category '{value}'") },
+                _ => throw new Exception($"unknown setting '{setting}'"),
+            };
+            await TwitchApi.UpdateChannelAsync(account, channelId, changes, token);
+        }, ct, asStreamer: true);
+
+
+
+    // a TwitchInfos.Stream entry, as its kind (string, bool or int)
+    public Task<(bool Ok, object? Value)> TryGetStreamInfoAsync(TwitchInfo info, CancellationToken ct = default) =>
+        TryRunActionAsync<object>($"read stream {info.Name.ToLowerInvariant()}", async (account, channelId, token) =>
+        {
+            switch (info.Name)
+            {
+                case "Title": return (await TwitchApi.GetChannelAsync(account, channelId, token)).GetProperty("title").GetString() ?? "";
+                case "Category": return (await TwitchApi.GetChannelAsync(account, channelId, token)).GetProperty("game_name").GetString() ?? "";
+                case "Followers": return await TwitchApi.GetFollowerCountAsync(account, channelId, token);
+            }
+
+            var stream = await TwitchApi.GetStreamAsync(account, channelId, token);
+            return info.Name switch
+            {
+                "Live" => stream != null,
+                "Viewers" => stream?.GetProperty("viewer_count").GetInt32() ?? 0,
+                "Uptime Minutes" => stream == null ? 0 : (int)(DateTime.UtcNow - stream.Value.GetProperty("started_at").GetDateTime().ToUniversalTime()).TotalMinutes,
+                _ => throw new Exception($"unknown setting '{info.Name}'"),
+            };
+        }, ct, asStreamer: true);
+
+
+
+    // a TwitchInfos.Follower entry for a user (login name), as its kind
+    public Task<(bool Ok, object? Value)> TryGetFollowerInfoAsync(string user, TwitchInfo info, CancellationToken ct = default) =>
+        TryRunActionAsync<object>($"read if '{user}' follows", async (account, channelId, token) =>
+        {
+            var follow = await TwitchApi.GetFollowAsync(account, channelId, await FindUserIdAsync(account, user, token), token);
+            var followedAt = follow?.GetProperty("followed_at").GetDateTime().ToUniversalTime();
+            return info.Name switch
+            {
+                "Following" => follow != null,
+                "Days Following" => followedAt == null ? 0 : (int)(DateTime.UtcNow - followedAt.Value).TotalDays,
+                "Followed On" => followedAt?.ToString("yyyy-MM-dd") ?? "",
+                _ => throw new Exception($"unknown setting '{info.Name}'"),
+            };
+        }, ct, asStreamer: true);
+
+
+
+    // a TwitchInfos.User entry for a user (login name), as its kind
+    public Task<(bool Ok, object? Value)> TryGetUserInfoAsync(string user, TwitchInfo info, CancellationToken ct = default) =>
+        TryRunActionAsync<object>($"read twitch user '{user}'", async (account, channelId, token) =>
+        {
+            var login = user.Trim().TrimStart('@').ToLowerInvariant();
+            var found = await TwitchApi.GetUserInfoAsync(account, login, token) ?? throw new Exception($"there's no twitch user '{login}'");
+            var created = found.GetProperty("created_at").GetDateTime().ToUniversalTime();
+            return info.Name switch
+            {
+                "Display Name" => found.GetProperty("display_name").GetString() ?? "",
+                "Id" => found.GetProperty("id").GetString() ?? "",
+                "Account Age Days" => (int)(DateTime.UtcNow - created).TotalDays,
+                "Created On" => created.ToString("yyyy-MM-dd"),
+                "Description" => found.GetProperty("description").GetString() ?? "",
+                _ => throw new Exception($"unknown setting '{info.Name}'"),
+            };
+        }, ct);
+
+
+
+    // a clip of the last ~30 seconds (only while live), its link
+    public Task<(bool Ok, string? Value)> TryCreateClipAsync(CancellationToken ct = default) =>
+        TryRunActionAsync<string>("create clip", (account, channelId, token) =>
+            TwitchApi.CreateClipAsync(account, channelId, token), ct, asStreamer: true);
+
+
+
+    public Task<bool> TryCreateMarkerAsync(string description, CancellationToken ct = default) =>
+        TryRunActionAsync("create stream marker", (account, channelId, token) =>
+            TwitchApi.CreateMarkerAsync(account, channelId, description, token), ct, asStreamer: true);
+
+
+
+    public Task<bool> TryRunAdAsync(int seconds, CancellationToken ct = default) =>
+        TryRunActionAsync("run ad", (account, channelId, token) =>
+            TwitchApi.StartCommercialAsync(account, channelId, seconds, token), ct, asStreamer: true);
+
+
+
+    // polls, predictions, VIPs and moderators: always as the streamer (only the broadcaster can)
+
+
+
+    public Task<bool> TryStartPollAsync(string title, IReadOnlyList<string> choices, int seconds, CancellationToken ct = default) =>
+        TryRunActionAsync("start poll", (account, channelId, token) =>
+            TwitchApi.StartPollAsync(account, channelId, title, choices, seconds, token), ct, asStreamer: true);
+
+
+
+    // showResults false hides the results when it ends
+    public Task<bool> TryEndPollAsync(bool showResults, CancellationToken ct = default) =>
+        TryRunActionAsync("end poll", async (account, channelId, token) =>
+        {
+            var id = await TwitchApi.GetActivePollIdAsync(account, channelId, token) ?? throw new Exception("no poll is running");
+            await TwitchApi.EndPollAsync(account, channelId, id, showResults ? "TERMINATED" : "ARCHIVED", token);
+        }, ct, asStreamer: true);
+
+
+
+    public Task<bool> TryStartPredictionAsync(string title, IReadOnlyList<string> outcomes, int seconds, CancellationToken ct = default) =>
+        TryRunActionAsync("start prediction", (account, channelId, token) =>
+            TwitchApi.StartPredictionAsync(account, channelId, title, outcomes, seconds, token), ct, asStreamer: true);
+
+
+
+    // change is Lock, Resolve (winner = an outcome's title, case ignored) or Cancel
+    public Task<bool> TryEndPredictionAsync(string change, string winner, CancellationToken ct = default) =>
+        TryRunActionAsync($"{change.ToLowerInvariant()} prediction", async (account, channelId, token) =>
+        {
+            var prediction = await TwitchApi.GetCurrentPredictionAsync(account, channelId, token) ?? throw new Exception("no prediction is open");
+            var id = prediction.GetProperty("id").GetString()!;
+
+            string? winnerId = null;
+            if (change == "Resolve")
+            {
+                var outcome = prediction.GetProperty("outcomes").EnumerateArray()
+                    .FirstOrDefault(o => string.Equals(o.GetProperty("title").GetString()?.Trim(), winner.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (outcome.ValueKind == JsonValueKind.Undefined) throw new Exception($"no outcome '{winner}'");
+                winnerId = outcome.GetProperty("id").GetString();
+            }
+
+            var status = change switch { "Lock" => "LOCKED", "Resolve" => "RESOLVED", _ => "CANCELED" };
+            await TwitchApi.EndPredictionAsync(account, channelId, id, status, winnerId, token);
+        }, ct, asStreamer: true);
+
+
+
+    public Task<bool> TrySetVipAsync(string user, bool add, CancellationToken ct = default) =>
+        TryRunActionAsync($"{(add ? "add" : "remove")} vip '{user}'", async (account, channelId, token) =>
+            await TwitchApi.SetVipAsync(account, channelId, await FindUserIdAsync(account, user, token), add, token), ct, asStreamer: true);
+
+
+
+    public Task<bool> TrySetModeratorAsync(string user, bool add, CancellationToken ct = default) =>
+        TryRunActionAsync($"{(add ? "add" : "remove")} moderator '{user}'", async (account, channelId, token) =>
+            await TwitchApi.SetModeratorAsync(account, channelId, await FindUserIdAsync(account, user, token), add, token), ct, asStreamer: true);
 
 
 
@@ -257,11 +464,11 @@ public class ChatbotManager : IDisposable
 
 
 
-    // the app changed: drop the old bot login and quietly use a saved one for the new app if there is one
+    // the app changed: drop the old bot login and connect again with the new one (like the streamer)
     private void OnCredentialsChanged()
     {
         DropBot();
-        if (_model.IsBotEnabled) ResumeBot();
+        if (_model.IsBotEnabled) ConnectBot();
     }
 
 
@@ -270,7 +477,8 @@ public class ChatbotManager : IDisposable
 
 
 
-    // logs the bot in, using its saved login or showing a code to enter in a private browser window, logged in as the bot
+    // logs the bot in, using its saved login or showing a login link (opened while logged in to twitch as the bot)
+    // the same as the streamer, and on its own: neither waits for the other
     private void ConnectBot()
     {
         if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret))
@@ -282,24 +490,12 @@ public class ChatbotManager : IDisposable
 
         _botLogin = new CancellationTokenSource();
         SetBotStatus(ConnectionStatus.Connecting, "Logging in...");
-        _ = LogInBotAsync(_model.ClientId, _model.ClientSecret, interactive: true, _botLogin.Token);
+        _ = LogInBotAsync(_model.ClientId, _model.ClientSecret, _botLogin.Token);
     }
 
 
 
-    // uses the bot's saved login without asking for a code (at startup, or after the credentials changed)
-    private void ResumeBot()
-    {
-        if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret)) return;
-
-        _botLogin = new CancellationTokenSource();
-        SetBotStatus(ConnectionStatus.Connecting, "Logging in...");
-        _ = LogInBotAsync(_model.ClientId, _model.ClientSecret, interactive: false, _botLogin.Token);
-    }
-
-
-
-    // stops using the bot (its saved login is kept), chat is sent as the streamer
+    // stops using the bot (its saved login is kept), chat is sent as the streamer unless "chat only as bot" is ticked
     private void DropBot()
     {
         _botLogin?.Cancel();
@@ -451,28 +647,18 @@ public class ChatbotManager : IDisposable
         foreach (var failure in failed)
             AppLog.WriteWarning($"can't listen for {failure}");
 
-        SetStatus(ConnectionStatus.Connected, $"Connected as {streamer.Login}");
+        SetStatus(ConnectionStatus.Connected, $"Connected to {streamer.Login}");
     }
 
 
 
-    // interactive: ask for a code if there's no saved login, otherwise only use a saved one
-    private async Task LogInBotAsync(string clientId, string clientSecret, bool interactive, CancellationToken ct)
+    // the saved login, or a login link if there isn't one that still works
+    private async Task LogInBotAsync(string clientId, string clientSecret, CancellationToken ct)
     {
         try
         {
-            var bot = interactive
-                ? await _auth.LogInAsync(TwitchAccount.Bot, clientId, clientSecret, ct)
-                : await _auth.TryResumeAsync(TwitchAccount.Bot, clientId, clientSecret, ct);
-
+            var bot = await _auth.LogInAsync(TwitchAccount.Bot, clientId, clientSecret, ct);
             if (ct.IsCancellationRequested) return;
-
-            // no saved login to resume, the Connect button asks for a code
-            if (bot == null)
-            {
-                SetBotStatus(ConnectionStatus.NotConnected, "Not connected");
-                return;
-            }
 
             Dispatcher.UIThread.Post(() =>
             {
@@ -482,7 +668,7 @@ public class ChatbotManager : IDisposable
                 if (bot.UserId == _streamer?.UserId)
                     AppLog.WriteWarning("bot logged in as streamer, redo in a private window");
 
-                SetBotStatus(ConnectionStatus.Connected, $"Connected as {bot.Login}");
+                SetBotStatus(ConnectionStatus.Connected, $"Connected to {bot.Login}");
             });
         }
         catch (OperationCanceledException) { }
@@ -506,9 +692,8 @@ public class ChatbotManager : IDisposable
     {
         if (account == TwitchAccount.Bot)
         {
-            // the default browser is probably logged in as the streamer, so the bot needs a private window
             SetBotStatus(ConnectionStatus.Connecting, "Waiting for login code");
-            AppLog.WritePrompt($"bot login, open in a private window as the bot: {url}");
+            AppLog.WritePrompt($"bot login, open: {url}");
             return;
         }
 
@@ -542,7 +727,7 @@ public class ChatbotManager : IDisposable
 
 
     // the same for actions that give something back (e.g. reading a reward), Value is default when it failed
-    // done as the bot if one is connected, unless asStreamer (things only the broadcaster can do)
+    // done as the bot if it's connected (or must be, see ChatOnlyAsBot), unless asStreamer (things only the broadcaster can do)
     private async Task<(bool Ok, T? Value)> TryRunActionAsync<T>(string what, Func<TwitchSession, string, CancellationToken, Task<T>> action,
         CancellationToken ct, bool asStreamer = false) =>
         await _actions.RunAsync<(bool, T?)>(async () =>
@@ -554,22 +739,28 @@ public class ChatbotManager : IDisposable
                 return (false, default);
             }
 
-            var account = asStreamer || _bot == null ? TwitchAccount.Streamer : TwitchAccount.Bot;
-            var session = account == TwitchAccount.Streamer ? streamer : _bot!;
+            // as the bot while it's connected; with "chat only as bot" ticked never as the streamer, failing without the bot
+            var bot = _bot;
+            var useBot = !asStreamer && (bot != null || _model.ChatOnlyAsBot);
+            if (useBot && bot == null)
+            {
+                AppLog.WriteError($"can't {what}, bot not connected");
+                return (false, default);
+            }
+
+            var account = useBot ? TwitchAccount.Bot : TwitchAccount.Streamer;
+            var session = useBot ? bot! : streamer;
 
             try
             {
-                try
-                {
-                    return (true, await action(session, streamer.UserId, ct));
-                }
-                catch (TwitchUnauthorizedException)
-                {
-                    // the token ran out before the regular check caught it: get a new one and try once more
-                    var fresh = await TryRefreshSessionAsync(account, session);
-                    if (fresh == null) throw;
-                    return (true, await action(fresh, streamer.UserId, ct));
-                }
+                return (true, await action(session, streamer.UserId, ct));
+            }
+            catch (TwitchUnauthorizedException)
+            {
+                // no refresh or retry here (only startup, Connect / Retry and the background check do that), so a
+                // refused login shows up: that account counts as disconnected and the action fails
+                OnLoginRefused(account, session, what);
+                return (false, default);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -694,7 +885,36 @@ public class ChatbotManager : IDisposable
         _bot = null;
 
         SetBotStatus(ConnectionStatus.Failed, "Login expired");
-        AppLog.WriteWarning("bot login expired, chat sent as streamer");
+        AppLog.WriteWarning("bot login expired, press retry");
+    });
+
+
+
+    // twitch refused an action's token: stop using that account (its saved login is kept, so Retry uses it again
+    // without a new code), say it disconnected once (later actions just say it isn't connected), then the action's error
+    private void OnLoginRefused(TwitchAccount account, TwitchSession session, string what) => Dispatcher.UIThread.Post(() =>
+    {
+        if (account == TwitchAccount.Streamer && _streamer == session)
+        {
+            _run?.Cancel();
+            _run?.Dispose();
+            _run = null;
+            _streamer = null;
+
+            SetStatus(ConnectionStatus.Failed, "Disconnected");
+            AppLog.WriteWarning("streamer disconnected from twitch (login refused)");
+        }
+        else if (account == TwitchAccount.Bot && _bot == session)
+        {
+            _botLogin?.Cancel();
+            _botLogin = null;
+            _bot = null;
+
+            SetBotStatus(ConnectionStatus.Failed, "Disconnected");
+            AppLog.WriteWarning("bot disconnected from twitch (login refused)");
+        }
+
+        AppLog.WriteError($"can't {what} (login refused)");
     });
 
 

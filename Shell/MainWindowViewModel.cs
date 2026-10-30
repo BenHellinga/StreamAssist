@@ -13,6 +13,10 @@ using StreamAssist.Components.Connections.UI;
 using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Chatbot.UI;
+using StreamAssist.Components.OBS.Background;
+using StreamAssist.Components.OBS.Model;
+using StreamAssist.Components.Spotify.Background;
+using StreamAssist.Components.Spotify.Model;
 
 namespace StreamAssist.Shell;
 
@@ -25,6 +29,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private KeyboardComponentModel _keyboardComponentModel;
     private ChatbotComponentModel _chatbotComponentModel;
     private AudioComponentModel _audioComponentModel;
+    private ObsComponentModel _obsComponentModel;
+    private SpotifyComponentModel _spotifyComponentModel;
 
     // managers
     private WindowLayoutSaveManager _windowLayoutSaveManager;
@@ -36,6 +42,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private AudioSaveManager _audioSaveManager;
 
     private VoicemeeterManager _voicemeeterManager; // this should go in an AudioComponentManager
+    private ObsSaveManager _obsSaveManager;
+    private ObsManager _obsManager;
+    private SpotifySaveManager _spotifySaveManager;
+    private SpotifyManager _spotifyManager;
 
     // main view models
     private PanelViewModel _outputConsolePanelViewModel;
@@ -70,6 +80,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _keyboardComponentModel = JsonFileStore.Load<KeyboardComponentModel>("keyboard");
         _chatbotComponentModel = ChatbotSaveManager.Load();
         _audioComponentModel = AudioSaveManager.Load();
+        _obsComponentModel = ObsSaveManager.Load();
+        _spotifyComponentModel = SpotifySaveManager.Load();
 
         // managers
 
@@ -83,6 +95,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _audioSaveManager = new(_audioComponentModel);
         _voicemeeterManager = new(_audioComponentModel); // connects if connect on startup is ticked
 
+        _obsSaveManager = new(_obsComponentModel);
+        _obsManager = new(_obsComponentModel); // connects if connect on startup is ticked
+
+        _spotifySaveManager = new(_spotifyComponentModel);
+        _spotifyManager = new(_spotifyComponentModel); // connects if connect on startup is ticked
+
         // global context
 
         GlobalContext.KeyboardComponentModel = _keyboardComponentModel;
@@ -92,6 +110,10 @@ public partial class MainWindowViewModel : ViewModelBase
         GlobalContext.WindowLayoutModel = _windowLayoutModel;
         GlobalContext.ChatbotComponentModel = _chatbotComponentModel;
         GlobalContext.ChatbotManager = _chatbotManager;
+        GlobalContext.ObsComponentModel = _obsComponentModel;
+        GlobalContext.ObsManager = _obsManager;
+        GlobalContext.SpotifyComponentModel = _spotifyComponentModel;
+        GlobalContext.SpotifyManager = _spotifyManager;
 
         // view models
 
@@ -105,7 +127,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
             new("Chatbot", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
             new("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
-            new("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _sidePanelViewModel, _bottomPanelViewModel)),
+            new("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _obsComponentModel, _obsManager, _spotifyComponentModel, _spotifyManager, _sidePanelViewModel, _bottomPanelViewModel)),
         ];
 
         // reopen the last selected tab (set through the field so the content is only created once)
@@ -157,6 +179,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _voicemeeterManager.Dispose();
         _audioSaveManager.Dispose();
+
+        _obsManager.Dispose();
+        _obsSaveManager.Dispose();
+
+        _spotifyManager.Dispose();
+        _spotifySaveManager.Dispose();
 
         _chatCommandManager.Dispose();
         _chatEventManager.Dispose();

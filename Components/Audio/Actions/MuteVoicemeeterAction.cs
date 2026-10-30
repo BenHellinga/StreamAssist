@@ -1,9 +1,8 @@
-using System.Threading.Tasks;
-using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Components.Blocks.Model;
-using System.Text.Json.Serialization;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Background;
+using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Actions;
@@ -17,7 +16,7 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Mute/Unmute Voicemeeter";
-    [JsonIgnore] public override string Description => "Mute, unmute, or toggle the selected target in Voicemeeter (setup specific).";
+    [JsonIgnore] public override string Description => "Mutes, unmutes or toggles a Voicemeeter channel (an input like Stereo Input 1, or an output bus like B1), with an optional sound when it changes.";
 
 
 
@@ -26,8 +25,9 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
     private string _setType;
-    private string _inputTarget;
-    private bool _playSound;
+    private string _channel;
+    private string _muteSound;
+    private string _unmuteSound;
 
 
 
@@ -42,20 +42,27 @@ public class MuteVoicemeeterAction : ActionBlock
         set => SetParameter(ref _setType, value);
     }
 
-    [ConfigurableParameter("Input Target", ConfiguratorType.Menu)] [JsonPropertyName("inputTarget")]
-    public string InputTarget
+    [ConfigurableParameter("Channel", ConfiguratorType.Menu)] [JsonPropertyName("channel")]
+    public string Channel
     {
-        get => _inputTarget;
-        set => SetParameter(ref _inputTarget, value);
+        get => _channel;
+        set => SetParameter(ref _channel, value);
     }
 
-    [ConfigurableParameter("Play Sound", ConfiguratorType.Boolean)] [JsonPropertyName("playSound")]
-    public bool PlaySound
+    // played when it becomes muted / unmuted (empty = no sound)
+    [ConfigurableParameter("Mute Sound", ConfiguratorType.Filepath)] [JsonPropertyName("muteSound")]
+    public string MuteSound
     {
-        get => _playSound;
-        set => SetParameter(ref _playSound, value);
+        get => _muteSound;
+        set => SetParameter(ref _muteSound, value);
     }
 
+    [ConfigurableParameter("Unmute Sound", ConfiguratorType.Filepath)] [JsonPropertyName("unmuteSound")]
+    public string UnmuteSound
+    {
+        get => _unmuteSound;
+        set => SetParameter(ref _unmuteSound, value);
+    }
 
 
 
@@ -65,9 +72,10 @@ public class MuteVoicemeeterAction : ActionBlock
 
     public MuteVoicemeeterAction()
     {
-        _setType = GetSetTypeMenuItems()[0];
-        _inputTarget = GetInputTargetMenuItems()[0];
-        _playSound = true;
+        _setType = "Toggle";
+        _channel = "Stereo Input 1";
+        _muteSound = "";
+        _unmuteSound = "";
     }
 
 
@@ -77,10 +85,13 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
     public static List<string> GetSetTypeMenuItems() => ["Mute", "Unmute", "Toggle"];
+    public static List<string> GetChannelMenuItems() => VoicemeeterChannels.Names(ChannelsNow());
 
 
 
-    public static List<string> GetInputTargetMenuItems() => ["All", "Misc", "Obs"];
+    // the connected Voicemeeter's channels, Banana's until one connects
+    public static IReadOnlyList<VoicemeeterChannel> ChannelsNow() =>
+        GlobalContext.VoicemeeterManager?.Channels ?? VoicemeeterChannels.For(VoicemeeterChannels.Banana);
 
 
 
@@ -90,52 +101,23 @@ public class MuteVoicemeeterAction : ActionBlock
 
     protected override Task ExecuteAsync(TriggerContext context)
     {
-        var _voicemeeterManager = GlobalContext.VoicemeeterManager;
+        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
 
-        if (_voicemeeterManager == null)
+        // one read of what Voicemeeter has now decides both the new state and the sound, so they always agree
+        // (e.g. after unmuting in Voicemeeter's own window, a toggle mutes and plays the mute sound)
+        if (!voicemeeter.TryGetMute(_channel, out var muted)) throw new BlockFailedException("mute not read");
+
+        var newState = _setType switch
         {
-            AppLog.WriteError($"{Name}: voicemeeter not set up");
-            return Task.CompletedTask;
-        }
+            "Mute" => true,
+            "Unmute" => false,
+            _ => !muted,
+        };
 
-        var target = VoicemeeterManager.StereoInputTarget.All;
-        switch (_inputTarget)
-        {
-            case "All": target = VoicemeeterManager.StereoInputTarget.All; break;
-            case "Misc": target = VoicemeeterManager.StereoInputTarget.Misc; break;
-            case "Obs": target = VoicemeeterManager.StereoInputTarget.Obs; break;
-        }
+        if (!voicemeeter.TrySetMute(_channel, newState)) throw new BlockFailedException("mute not set");
 
-        _voicemeeterManager.TryGetMute(target, out bool muted);
-        var newState = false;
-
-        switch (_setType)
-        {
-            case "Mute":
-                _voicemeeterManager.TrySetMute(target, true);
-                newState = true;
-                break;
-
-            case "Unmute":
-                _voicemeeterManager.TrySetMute(target, false);
-                newState = false;
-                break;
-
-            case "Toggle":
-                _voicemeeterManager.TryToggleSetMute(target);
-                newState = !muted;
-                break;
-        }
-
-        if (_playSound && muted != newState)
-        {
-            string filepath;
-
-            if (newState) filepath = "C:\\Users\\benhe\\Music\\mute.mp3";
-            else filepath = "C:\\Users\\benhe\\Music\\unmute.mp3";
-
-            AudioHelper.TryPlaySound(filepath);
-        }
+        var sound = newState ? _muteSound : _unmuteSound;
+        if (newState != muted && sound.Trim() != "") AudioHelper.TryPlaySound(sound);
 
         return Task.CompletedTask;
     }

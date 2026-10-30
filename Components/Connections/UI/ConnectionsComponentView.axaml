@@ -30,7 +30,7 @@
                     <ContentControl Content="{Binding TwitchStreamer}"
                                     ToolTip.Tip="Listens to your chat, redeems, subs, raids, ... (the first time it shows a login link in the console)"/>
                     <ContentControl Content="{Binding TwitchBot}"
-                                    ToolTip.Tip="Optional, only sends chat (log in through the console link in a private browser window as the bot). Without it, chat is sent as the streamer"/>
+                                    ToolTip.Tip="Optional, only sends chat (log in through the console link while logged in to twitch as the bot). Without it, chat is sent as the streamer, unless Chat only as bot is ticked: then chat and moderation only ever go out as the bot, and fail while it isn't connected"/>
                 </StackPanel>
 
                 <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
@@ -42,18 +42,41 @@
 
                 <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
 
-                <!-- not built yet -->
+                <!-- obs: its websocket server (OBS: Tools > WebSocket Server Settings), password hidden like twitch's -->
 
                 <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
                     <TextBlock Classes="Title" Text="OBS"/>
-                    <TextBlock Classes="Description" Text="Not available yet"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Classes="Label" Text="Address" Width="100"/>
+                        <TextBox Text="{Binding ObsAddressInput}" Width="260" PlaceholderText="localhost:4455"/>
+                        <TextBlock Classes="Label" Text="Password"/>
+                        <TextBox Text="{Binding ObsPasswordInput}" Width="260"
+                                 PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From OBS"/>
+                    </StackPanel>
+
+                    <ContentControl Content="{Binding Obs}"
+                                    ToolTip.Tip="Lets blocks switch scenes, show/hide and move sources, set volumes and text (turn on OBS's WebSocket server in Tools > WebSocket Server Settings)"/>
                 </StackPanel>
 
                 <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
 
+                <!-- spotify: your app on developer.spotify.com (hidden like twitch's), whose Redirect URI has to be the one shown -->
+
                 <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
                     <TextBlock Classes="Title" Text="Spotify"/>
-                    <TextBlock Classes="Description" Text="Not available yet"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Classes="Label" Text="Client ID" Width="100"/>
+                        <TextBox Text="{Binding SpotifyClientIdInput}" Width="260"
+                                 PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From developer.spotify.com"/>
+                        <TextBlock Classes="Label" Text="Redirect URI"/>
+                        <SelectableTextBlock Classes="Description" Text="{Binding SpotifyRedirectUri}" VerticalAlignment="Center"
+                                             ToolTip.Tip="Add this exactly to your app on developer.spotify.com"/>
+                    </StackPanel>
+
+                    <ContentControl Content="{Binding Spotify}"
+                                    ToolTip.Tip="Lets blocks play, queue and skip songs and add them to playlists, on the Spotify app that's open (needs Premium). The first time it shows a login link in the console"/>
                 </StackPanel>
 
             </StackPanel>

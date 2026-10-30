@@ -51,11 +51,12 @@ public class KeybindViewModel : BindableEditorViewModel
 
 
 
-    // the selected key was cleared, go back to an unsaved default
+    // the selected key was cleared (e.g. its last block was removed): it stays selected with an empty draft, the
+    // default On Pressed only comes with selecting an unbound key, never from editing
     private void OnKeyUnbound(ushort vk, BindableModel _)
     {
         if (vk != _key?.VK) return;
-        ShowKeybind(null);
+        ShowKeybind(null, startWithOnPressed: false);
     }
 
 
@@ -99,8 +100,9 @@ public class KeybindViewModel : BindableEditorViewModel
 
 
 
-    // the key's binding, or an unsaved draft that's bound to the key on its first change
-    private void ShowKeybind(BindableModel? bindable)
+    // the key's binding, or an unsaved draft that's bound to the key on its first change (starting with an empty
+    // On Pressed when the key was just selected)
+    private void ShowKeybind(BindableModel? bindable, bool startWithOnPressed = true)
     {
         if (_key == null || _config == null) return;
 
@@ -109,7 +111,7 @@ public class KeybindViewModel : BindableEditorViewModel
         var vk = _key.VK;
 
         if (bindable != null) ShowBindable(bindable, label);
-        else ShowDraft(label, draft => config.TryBindKey(vk, draft));
+        else ShowDraft(label, draft => config.TryBindKey(vk, draft), startWithOnPressed: startWithOnPressed);
     }
 
 

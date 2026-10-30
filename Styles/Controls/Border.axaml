@@ -87,4 +87,15 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
     </Style>
 
+    <!-- a bind's label keeps its green / red while its key or bind box is hovered or dragged over (the rules above
+         brighten every other text in it; this comes after them so it wins) -->
+
+    <Style Selector="Border.Clickable:pointerover TextBlock.BindLabel, Border.Draggable:pointerover TextBlock.BindLabel, Border.Droppable.Dragover TextBlock.BindLabel">
+        <Setter Property="Foreground" Value="{DynamicResource Bound}"/>
+    </Style>
+
+    <Style Selector="Border.Clickable:pointerover TextBlock.BindLabel.Disabled, Border.Draggable:pointerover TextBlock.BindLabel.Disabled, Border.Droppable.Dragover TextBlock.BindLabel.Disabled">
+        <Setter Property="Foreground" Value="{DynamicResource Disabled}"/>
+    </Style>
+
 </Styles>

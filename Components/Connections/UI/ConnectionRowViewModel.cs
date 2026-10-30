@@ -22,15 +22,18 @@ public partial class ConnectionRowViewModel : ViewModelBase
     private readonly Action _disconnect;
     private readonly Func<bool> _getConnectOnStartup;
     private readonly Action<bool> _setConnectOnStartup;
+    private readonly string _optionLabel;
+    private readonly Func<bool>? _getOption;
+    private readonly Action<bool>? _setOption;
     private ConnectionStatus _status;
 
     [ObservableProperty] private string _statusText;
-    [ObservableProperty] private string _detail; // tooltip, e.g. "Connected as budderbot"
-    [ObservableProperty] private string _connectedText; // the detail again after the row while connected (which account), else empty
+    [ObservableProperty] private string _detail; // the status box's tooltip, e.g. "Connected to budderbot" (only shown on hover)
     [ObservableProperty] private string _buttonText;
     [ObservableProperty] private bool _isConnected; // green outline
-    [ObservableProperty] private bool _isFailed; // red outline
+    [ObservableProperty] private bool _isDown; // red outline: not connected or failed (only connecting stays grey)
     [ObservableProperty] private bool _connectOnStartup;
+    [ObservableProperty] private bool _option; // the extra checkbox, if the row has one
 
 
 
@@ -39,6 +42,8 @@ public partial class ConnectionRowViewModel : ViewModelBase
 
 
     public string Label => _label;
+    public string OptionLabel => _optionLabel;
+    public bool HasOption => _getOption != null;
 
 
 
@@ -47,7 +52,8 @@ public partial class ConnectionRowViewModel : ViewModelBase
 
 
     public ConnectionRowViewModel(string label, Func<(ConnectionStatus, string)> getStatus, Action connect, Action disconnect,
-        Func<bool> getConnectOnStartup, Action<bool> setConnectOnStartup)
+        Func<bool> getConnectOnStartup, Action<bool> setConnectOnStartup,
+        string optionLabel = "", Func<bool>? getOption = null, Action<bool>? setOption = null)
     {
         _label = label;
         _getStatus = getStatus;
@@ -55,13 +61,16 @@ public partial class ConnectionRowViewModel : ViewModelBase
         _disconnect = disconnect;
         _getConnectOnStartup = getConnectOnStartup;
         _setConnectOnStartup = setConnectOnStartup;
+        _optionLabel = optionLabel;
+        _getOption = getOption;
+        _setOption = setOption;
 
         _status = ConnectionStatus.NotConnected;
         _statusText = "";
         _detail = "";
-        _connectedText = "";
         _buttonText = "";
         _connectOnStartup = false;
+        _option = false;
 
         Refresh();
     }
@@ -95,10 +104,10 @@ public partial class ConnectionRowViewModel : ViewModelBase
         };
 
         Detail = detail;
-        ConnectedText = status == ConnectionStatus.Connected ? detail : "";
         IsConnected = status == ConnectionStatus.Connected;
-        IsFailed = status == ConnectionStatus.Failed;
+        IsDown = status is ConnectionStatus.Failed or ConnectionStatus.NotConnected;
         ConnectOnStartup = _getConnectOnStartup();
+        if (_getOption != null) Option = _getOption();
     }
 
 
@@ -116,6 +125,10 @@ public partial class ConnectionRowViewModel : ViewModelBase
 
 
     partial void OnConnectOnStartupChanged(bool value) => _setConnectOnStartup(value);
+
+
+
+    partial void OnOptionChanged(bool value) => _setOption?.Invoke(value);
 
 
 

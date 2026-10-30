@@ -23,6 +23,8 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     private readonly ChatbotComponentModel _model;
     private readonly BlockSlotViewModel _child;
     private BindableModel? _bindable;
+
+    [ObservableProperty] private string _bindLabel; // the binding's label as a second line, "" for none
     private readonly Flash _flash; // lights up IsTriggered when it runs
 
     [ObservableProperty] private bool _isBound;
@@ -53,6 +55,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
         _model = model;
         _child = new(_target.Child);
         _bindable = null;
+        _bindLabel = "";
         _flash = new(isOn => IsTriggered = isOn);
 
         _isSelected = ChatTargetSelection.Selected == _target;
@@ -157,6 +160,10 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
 
 
+    private void OnBindableLabelChanged() => BindLabel = _bindable?.Label.Trim() ?? "";
+
+
+
     // bindings run off the ui thread
     private void OnBindableTriggered() => _flash.Trigger();
 
@@ -177,6 +184,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
         _bindable = bindable;
         IsBound = _bindable?.HasBlock ?? false;
         IsDisabled = _bindable?.IsDisabled ?? false;
+        BindLabel = _bindable?.Label.Trim() ?? "";
 
         SubscribeToBindable(_bindable);
     }
@@ -200,6 +208,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     {
         bindable?.Changed += OnBindableChanged;
         bindable?.IsDisabledChanged += OnBindableIsDisabledChanged;
+        bindable?.LabelChanged += OnBindableLabelChanged;
         bindable?.Triggered += OnBindableTriggered;
     }
 
@@ -209,6 +218,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     {
         bindable?.Changed -= OnBindableChanged;
         bindable?.IsDisabledChanged -= OnBindableIsDisabledChanged;
+        bindable?.LabelChanged -= OnBindableLabelChanged;
         bindable?.Triggered -= OnBindableTriggered;
     }
 

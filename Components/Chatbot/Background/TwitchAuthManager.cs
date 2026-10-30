@@ -67,6 +67,16 @@ public class TwitchAuthManager
             "user:write:chat",                 // send chat when there's no bot account
             "channel:read:redemptions",        // channel point redeems
             "channel:manage:redemptions",      // read, change and create channel point rewards (Get / Set Reward Setting, New reward)
+            "moderator:manage:announcements",  // Send Announcement
+            "moderator:manage:chat_settings",  // Set Chat Mode
+            "moderator:manage:shoutouts",      // Shoutout
+            "channel:manage:broadcast",        // Set Stream Info, Create Stream Marker
+            "clips:edit",                      // Create Clip
+            "channel:edit:commercial",         // Run Ad
+            "channel:manage:polls",            // Start / End Poll
+            "channel:manage:predictions",      // Start / End Prediction
+            "channel:manage:vips",             // Set VIP
+            "channel:manage:moderators",       // Set Moderator
             "channel:read:subscriptions",      // subs, resubs, gift subs
             "bits:read",                       // cheers
             "moderator:read:followers",        // follows
@@ -78,6 +88,8 @@ public class TwitchAuthManager
             "user:write:chat",                 // send chat
             "moderator:manage:banned_users",   // ban / timeout (the bot must be a mod)
             "moderator:manage:chat_messages",  // delete messages (the bot must be a mod)
+            "moderator:manage:announcements",  // announcements (the bot must be a mod)
+            "moderator:manage:chat_settings",  // slow mode, followers only, ... (the bot must be a mod)
         ];
 
 

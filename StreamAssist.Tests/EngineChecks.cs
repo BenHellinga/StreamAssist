@@ -1,3 +1,13 @@
+using StreamAssist.Components.OBS.Model;
+using StreamAssist.Components.Spotify.Actions;
+using StreamAssist.Components.Spotify.Background;
+using StreamAssist.Components.Spotify.Model;
+using StreamAssist.Components.Spotify.Values;
+using System.Net;
+using StreamAssist.Components.OBS.Background;
+using StreamAssist.Components.OBS.Conditions;
+using StreamAssist.Components.OBS.Values;
+using StreamAssist.Components.OBS.Actions;
 using StreamAssist.Components.OutputConsole.Actions;
 using StreamAssist.Components.Keyboard.Conditions;
 using StreamAssist.Components.Audio.Actions;
@@ -363,14 +373,21 @@ internal static class EngineChecks
                 && chatbot.Redeems.Rows.Count(r => r.Title != "") == 1 && chatbot.Redeems.Rows[^1].IsEmpty);
         }
 
-        // ---- connection rows: which account, after the row, while connected ----
+        // ---- connection rows: which account only in the status box's tooltip ----
         {
-            var status = (Status: ConnectionStatus.Connected, Detail: "Connected as budderbot");
+            var status = (Status: ConnectionStatus.Connected, Detail: "Connected to budderbot");
             var row = new StreamAssist.Components.Connections.UI.ConnectionRowViewModel("Bot", () => status, () => { }, () => { }, () => false, _ => { });
-            Check("connection row: shows which account while connected", row.ConnectedText == "Connected as budderbot");
+            Check("connection row: which account is in the tooltip", row.Detail == "Connected to budderbot" && row.IsConnected);
             status = (ConnectionStatus.Failed, "Could not log in");
             row.Refresh();
-            Check("connection row: nothing after the row otherwise", row.ConnectedText == "" && row.Detail == "Could not log in");
+            Check("connection row: the tooltip follows the status", row.Detail == "Could not log in");
+            Check("connection row: failed is red", row.IsDown);
+            status = (ConnectionStatus.NotConnected, "");
+            row.Refresh();
+            Check("connection row: not connected is red too", row.IsDown);
+            status = (ConnectionStatus.Connecting, "");
+            row.Refresh();
+            Check("connection row: connecting is grey", !row.IsDown);
         }
 
         // ---- Expression: typed formulas (main thread, errors are counted) ----
@@ -456,6 +473,365 @@ internal static class EngineChecks
             Check("set parameter: set deep inside Ifs, seen after them", RunList(given, "deep", deep) == "found");
             var copied = (SetParameterAction)BlockResolver.DeepCopy(SetP("otherCost", Expr("{cost}+1")))!;
             Check("set parameter: saved and loaded keeps its name and value", copied.ParameterName == "otherCost" && RunList(given, "otherCost", copied) == "26");
+        }
+
+        // ---- OBS, against a pretend OBS (main thread, blocking instead of awaiting, so console errors can be counted) ----
+        {
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
+            string LastWarning() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.LastOrDefault(l => l.Contains("] warning - ")) ?? ""; }
+            T Wait<T>(Task<T> task) => task.GetAwaiter().GetResult();
+            bool Until(Func<bool> done)
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    if (done()) return true;
+                    Thread.Sleep(30);
+                }
+                return false;
+            }
+
+            using var fake = new FakeObsServer();
+            var obsModel = new ObsComponentModel();
+            var obs = new ObsManager(obsModel);
+
+            // connecting
+            Check("obs: off until asked", !obs.IsConnected && obs.Status == ConnectionStatus.NotConnected);
+            var e0 = Errors();
+            obsModel.SetConnectionDetails(fake.Address, "wrong");
+            obsModel.SetIsEnabled(true);
+            Check("obs: wrong password fails with one error", Until(() => obs.Status == ConnectionStatus.Failed) && !obs.IsConnected
+                && Errors() == e0 + 1 && LastError().Contains("error - can't connect to obs (authentication failed)"));
+            obsModel.SetConnectionDetails(fake.Address, FakeObsServer.Password);
+            Check("obs: the right password connects", Until(() => obs.IsConnected && obs.Status == ConnectionStatus.Connected) && obs.StatusMessage == $"Connected to {fake.Address}");
+            var nowhereModel = new ObsComponentModel();
+            nowhereModel.SetConnectionDetails("127.0.0.1:1", "");
+            var nowhere = new ObsManager(nowhereModel);
+            var e1 = Errors();
+            nowhereModel.SetIsEnabled(true);
+            Check("obs: nothing listening fails with one error", Until(() => nowhere.Status == ConnectionStatus.Failed) && Errors() == e1 + 1 && LastError().Contains("nothing at that address"));
+            nowhere.Dispose();
+            Check("obs: an empty address means the default", new Func<bool>(() => { var m = new ObsComponentModel(); m.SetConnectionDetails("  ", "x"); return m.Address == ObsComponentModel.DefaultAddress; })());
+
+            // reading
+            Check("obs: live scene", Wait(obs.TryGetCurrentSceneAsync()) == (true, "Gaming"));
+            Check("obs: scenes top to bottom", Wait(obs.TryGetScenesAsync()).Value!.SequenceEqual(new[] { "Gaming", "Just Chatting" }));
+            Check("obs: sources of the live scene, top to bottom", Wait(obs.TryGetSourcesAsync("")).Value!.SequenceEqual(new[] { "Cam", "Title" }));
+            Check("obs: sources of a named scene", Wait(obs.TryGetSourcesAsync("Just Chatting")).Value!.SequenceEqual(new[] { "Cam" }));
+
+            // the blocks
+            StreamAssist.Shell.GlobalContext.ObsManager = obs;
+            var ctx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "bob" });
+            T Block<T>(T block, params string[] slotTexts) where T : BlockModel
+            {
+                for (int i = 0; i < slotTexts.Length; i++) ((ValueSlot)block.Slots[i]).SetText(slotTexts[i]);
+                return block;
+            }
+            bool RunObs(ExecutableBlock block) { RecordBlock.Log.Clear(); var list = new ListBlock(); var slot = (BlockSlotList)list.Slots[0]; slot.TryInsertBlock(block, 0); slot.TryInsertBlock(new RecordBlock { Tag = "after" }, 1); list.SafeRunAsync(ctx).GetAwaiter().GetResult(); return RecordBlock.Log.Count == 1; }
+            object Eval(ValueBlock block) => block.EvaluateObjectAsync(ctx).GetAwaiter().GetResult();
+
+            Check("obs blocks: get scene / scenes / sources", Eval(new GetObsSceneBlock()) is "Gaming" && Eval(new GetObsScenesBlock()) is "Gaming, Just Chatting" && Eval(Block(new GetObsSourcesBlock(), "")) is "Cam, Title");
+            Check("obs blocks: hide a source in the live scene", RunObs(Block(new SetObsSourceVisibleAction { Change = "Hide" }, "", "Title")) && !fake.Scenes["Gaming"][1].Enabled);
+            Check("obs blocks: visible condition", Eval(Block(new ObsSourceVisibleCondition(), "", "Title")) is false && Eval(Block(new ObsSourceVisibleCondition(), "Gaming", "Cam")) is true);
+            Check("obs blocks: toggle shows it again", RunObs(Block(new SetObsSourceVisibleAction(), "Gaming", "Title")) && fake.Scenes["Gaming"][1].Enabled);
+            Check("obs blocks: volume in dB", RunObs(Block(new SetObsVolumeAction(), "Mic", "-20")) && fake.Inputs["Mic"].VolumeDb == -20 && Eval(Block(new GetObsVolumeBlock(), "Mic")) is -20.0);
+            Check("obs blocks: volume is kept in OBS's range", RunObs(Block(new SetObsVolumeAction(), "Mic", "40")) && fake.Inputs["Mic"].VolumeDb == 26);
+            Check("obs blocks: mute toggles, muted condition", RunObs(Block(new SetObsMuteAction(), "Mic")) && fake.Inputs["Mic"].Muted && Eval(Block(new ObsSourceMutedCondition(), "Mic")) is true);
+            Check("obs blocks: unmute", RunObs(Block(new SetObsMuteAction { Change = "Unmute" }, "Mic")) && !fake.Inputs["Mic"].Muted);
+            Check("obs blocks: text fills in parameters", RunObs(Block(new SetObsTextAction(), "Title", "{user} raided")) && fake.Inputs["Title"].Settings["text"]!.GetValue<string>() == "bob raided");
+            Check("obs blocks: move a source", RunObs(Block(new SetObsTransformAction { Setting = "Position X" }, "", "Title", "100")) && fake.Scenes["Gaming"][1].Transform["positionX"]!.GetValue<double>() == 100
+                && Eval(Block(new GetObsTransformBlock { Setting = "Position X" }, "", "Title")) is 100.0);
+            Check("obs blocks: width resizes through the scale", RunObs(Block(new SetObsTransformAction { Setting = "Width" }, "", "Title", "800")) && fake.Scenes["Gaming"][1].Transform["scaleX"]!.GetValue<double>() == 2);
+            Check("obs blocks: a never changed setting reads its default", Eval(Block(new GetObsSourceSettingBlock { As = "Int" }, "Title", "opacity")) is 100);
+            Check("obs blocks: a typed setting keeps the setting's kind", RunObs(Block(new SetObsSourceSettingAction(), "Title", "opacity", "50")) && fake.Inputs["Title"].Settings["opacity"]!.GetValueKind() == System.Text.Json.JsonValueKind.Number
+                && RunObs(Block(new SetObsSourceSettingAction(), "Title", "vertical", "true")) && fake.Inputs["Title"].Settings["vertical"]!.GetValueKind() == System.Text.Json.JsonValueKind.True);
+            Check("obs blocks: a new text setting stays text", RunObs(Block(new SetObsSourceSettingAction(), "Title", "font_face", "Arial")) && fake.Inputs["Title"].Settings["font_face"]!.GetValue<string>() == "Arial");
+            Check("obs blocks: get a setting as text or a number", Eval(Block(new GetObsSourceSettingBlock(), "Title", "text")) is "bob raided" && Eval(Block(new GetObsSourceSettingBlock { As = "Int" }, "Title", "opacity")) is 50);
+            Check("obs blocks: switch scene", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && fake.CurrentScene == "Just Chatting");
+
+            // failures: one error with OBS's reason, and the run stops
+            var e2 = Errors();
+            Check("obs blocks: a missing source fails with OBS's reason and stops", !RunObs(Block(new SetObsSourceVisibleAction(), "", "Nope")) && Errors() == e2 + 1
+                && LastError().Contains("error - can't show/hide 'Nope' (No source was found by the name of `Nope`.)"));
+
+            // obs going away: one warning, failed, and requests say obs isn't connected
+            fake.Drop();
+            Check("obs: closing says so once", Until(() => !obs.IsConnected && obs.Status == ConnectionStatus.Failed) && LastWarning().Contains("warning - obs disconnected (obs is shutting down)"));
+            var e3 = Errors();
+            Check("obs: not connected fails with one error", !RunObs(Block(new SetObsSceneAction(), "Gaming")) && Errors() == e3 + 1 && LastError().Contains("error - can't switch to scene 'Gaming', obs not connected"));
+
+            StreamAssist.Shell.GlobalContext.ObsManager = null;
+            obs.Dispose();
+        }
+
+        // ---- Spotify, against a pretend Spotify (blocking like OBS's, so console errors can be counted) ----
+        {
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
+            string LastWarning() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.LastOrDefault(l => l.Contains("] warning - ")) ?? ""; }
+            int Prompts() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] prompt - ")); }
+            string LastPrompt() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.LastOrDefault(l => l.Contains("] prompt - ")) ?? ""; }
+            T Wait<T>(Task<T> task) => task.GetAwaiter().GetResult();
+            bool Until(Func<bool> done)
+            {
+                for (int i = 0; i < 100; i++)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    if (done()) return true;
+                    Thread.Sleep(30);
+                }
+                return false;
+            }
+
+            // links
+            Check("spotify: a share link is a song", SpotifyManager.TryParseLink("https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT?si=abc", out var link1) && link1 == "spotify:track:4cOdK2wGLETKBW3PvgPWqT");
+            Check("spotify: spotify: links and other countries' links", SpotifyManager.TryParseLink("spotify:playlist:37i9dQZF1DX", out var link2) && link2 == "spotify:playlist:37i9dQZF1DX"
+                && SpotifyManager.TryParseLink(" open.spotify.com/intl-de/album/abc123 ", out var link3) && link3 == "spotify:album:abc123");
+            Check("spotify: words and other sites aren't links", !SpotifyManager.TryParseLink("never gonna give you up", out _) && !SpotifyManager.TryParseLink("https://example.com/track/abc", out _));
+
+            using var fake = new FakeSpotifyServer();
+            var store = new MemorySpotifyLoginStore();
+            var spotifyModel = new SpotifyComponentModel();
+            var spotify = new SpotifyManager(spotifyModel, store, TimeSpan.FromMilliseconds(50)); // checks the login often
+
+            // connecting: no client id, then the first login through the browser
+            Check("spotify: off until asked", !spotify.IsConnected && spotify.Status == ConnectionStatus.NotConnected);
+            var s0 = Errors();
+            spotifyModel.SetIsEnabled(true);
+            Check("spotify: no client id fails with one error", Until(() => spotify.Status == ConnectionStatus.Failed) && Errors() == s0 + 1 && LastError().Contains("error - can't connect to spotify, no client id"));
+            var p0 = Prompts();
+            spotifyModel.SetClientId(" my-app ");
+            Check("spotify: the first time it shows a login link", Until(() => Prompts() == p0 + 1) && LastPrompt().Contains("prompt - spotify login, open: http://localhost:")
+                && LastPrompt().Contains("client_id=my-app") && LastPrompt().Contains("redirect_uri=http%3A%2F%2F127.0.0.1%3A8974%2Fcallback")
+                && LastPrompt().Contains("code_challenge_method=S256") && LastPrompt().Contains("playlist-modify-private") && spotify.StatusMessage == "Waiting for login");
+            var state = System.Text.RegularExpressions.Regex.Match(LastPrompt(), "state=([0-9a-f]+)").Groups[1].Value;
+            using (var browser = new HttpClient())
+            {
+                var favicon = Wait(browser.GetAsync("http://127.0.0.1:8974/favicon.ico"));
+                var page = Wait(browser.GetStringAsync($"http://127.0.0.1:8974/callback?code=the-code&state={state}"));
+                Check("spotify: the browser coming back logs in", favicon.StatusCode == HttpStatusCode.NotFound && page.Contains("logged in to Spotify")
+                    && Until(() => spotify.Status == ConnectionStatus.Connected) && spotify.StatusMessage == "Connected to Budder");
+            }
+            Check("spotify: the login is kept with the app that made it", store.Login is { ClientId: "my-app", RefreshToken: FakeSpotifyServer.GoodRefreshToken } && store.Login.AccessToken == fake.Token);
+            spotifyModel.SetIsEnabled(false);
+            Check("spotify: disconnecting keeps the login", Until(() => spotify.Status == ConnectionStatus.NotConnected) && !spotify.IsConnected && store.Login.RefreshToken != "");
+            var p1 = Prompts();
+            spotifyModel.SetIsEnabled(true);
+            Check("spotify: connecting again uses the saved login", Until(() => spotify.Status == ConnectionStatus.Connected) && Prompts() == p1);
+
+            // the blocks
+            StreamAssist.Shell.GlobalContext.SpotifyManager = spotify;
+            var sctx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["input"] = "sandstorm" });
+            T Block<T>(T block, params string[] slotTexts) where T : BlockModel
+            {
+                for (int i = 0; i < slotTexts.Length; i++) ((ValueSlot)block.Slots[i]).SetText(slotTexts[i]);
+                return block;
+            }
+            bool RunSpotify(ExecutableBlock block) { RecordBlock.Log.Clear(); var list = new ListBlock(); var slot = (BlockSlotList)list.Slots[0]; slot.TryInsertBlock(block, 0); slot.TryInsertBlock(new RecordBlock { Tag = "after" }, 1); list.SafeRunAsync(sctx).GetAwaiter().GetResult(); return RecordBlock.Log.Count == 1; }
+            object Eval(ValueBlock block) => block.EvaluateObjectAsync(sctx).GetAwaiter().GetResult();
+            int Sent(string start) { lock (fake.Requests) return fake.Requests.Count(r => r.StartsWith(start)); }
+
+            Check("spotify blocks: nothing playing reads as not playing", Eval(new GetSpotifyPlaybackBlock { Setting = "Playing" }) is false && Eval(new GetSpotifyPlaybackBlock()) is "");
+            Check("spotify blocks: play a searched song on the computer when nothing is playing", RunSpotify(Block(new PlaySpotifyAction(), "rick astley"))
+                && Sent("PUT me/player/play?device_id=pc {\"uris\":[\"spotify:track:never\"]}") == 1 && fake.Song!["name"]!.GetValue<string>() == "Never Gonna Give You Up");
+            Check("spotify blocks: play a link where it's playing", RunSpotify(Block(new PlaySpotifyAction(), "https://open.spotify.com/track/sand?si=1"))
+                && Sent("PUT me/player/play {\"uris\":[\"spotify:track:sand\"]}") == 1);
+            Check("spotify blocks: play one of your playlists by name", RunSpotify(Block(new PlaySpotifyAction { Find = "Playlist" }, " stream LIKES "))
+                && Sent("PUT me/player/play {\"context_uri\":\"spotify:playlist:likes\"}") == 1);
+            var s1 = Errors();
+            Check("spotify blocks: a playlist you don't have fails once and stops", !RunSpotify(Block(new PlaySpotifyAction { Find = "Playlist" }, "Nope"))
+                && Errors() == s1 + 1 && LastError().Contains("error - can't play 'Nope' (you have no playlist by that name)"));
+            Check("spotify blocks: a search with no song fails", !RunSpotify(Block(new QueueSpotifySongAction(), "asdfgh")) && LastError().Contains("error - can't queue 'asdfgh' (no song found)"));
+            Check("spotify blocks: queue a redeem's text", RunSpotify(Block(new QueueSpotifySongAction(), "{input}")) && fake.Queue.SequenceEqual(new[] { "spotify:track:sand" }));
+
+            Check("spotify blocks: what's playing", Eval(new GetSpotifyPlaybackBlock()) is "Sandstorm" && Eval(new GetSpotifyPlaybackBlock { Setting = "Artist" }) is "Darude, Someone"
+                && Eval(new GetSpotifyPlaybackBlock { Setting = "Playing" }) is true && Eval(new GetSpotifyPlaybackBlock { Setting = "Progress Seconds" }) is 61
+                && Eval(new GetSpotifyPlaybackBlock { Setting = "Length Seconds" }) is 225 && Eval(new GetSpotifyPlaybackBlock { Setting = "Link" }) is "https://open.spotify.com/track/sand");
+            Check("spotify blocks: pause", RunSpotify(new SetSpotifyPlaybackAction { Change = "Pause" }) && !fake.Playing);
+            Check("spotify blocks: pausing while paused asks nothing", RunSpotify(new SetSpotifyPlaybackAction { Change = "Pause" }) && Sent("PUT me/player/pause") == 1);
+            Check("spotify blocks: toggle resumes", RunSpotify(new SetSpotifyPlaybackAction()) && fake.Playing && Sent("PUT me/player/play {}") + Sent("PUT me/player/play") >= 1);
+            Check("spotify blocks: next", RunSpotify(new SetSpotifyPlaybackAction { Change = "Next" }) && Sent("POST me/player/next") == 1);
+            Check("spotify blocks: volume is kept to 0-100", RunSpotify(Block(new SetSpotifyVolumeAction(), "150")) && fake.Volume == 100 && Eval(new GetSpotifyPlaybackBlock { Setting = "Volume" }) is 100);
+            Check("spotify blocks: shuffle toggles, on while on asks nothing", RunSpotify(new SetSpotifyShuffleAction()) && fake.Shuffle
+                && RunSpotify(new SetSpotifyShuffleAction { Change = "On" }) && Sent("PUT me/player/shuffle") == 1);
+            Check("spotify blocks: repeat the song", RunSpotify(new SetSpotifyRepeatAction { Repeat = "Song" }) && fake.Repeat == "track" && Eval(new GetSpotifyPlaybackBlock { Setting = "Repeat" }) is "Song");
+            Check("spotify blocks: add the song playing to a playlist", RunSpotify(Block(new AddToSpotifyPlaylistAction(), "Stream Likes", "")) && fake.Playlist.SequenceEqual(new[] { "spotify:track:never", "spotify:track:sand" }));
+            Check("spotify blocks: a song already in the playlist isn't added again", RunSpotify(Block(new AddToSpotifyPlaylistAction(), "spotify:playlist:likes", "rick")) && fake.Playlist.Count == 2);
+            Check("spotify blocks: find a song", Eval(Block(new FindSpotifySongBlock { Setting = "Length Seconds" }, "rick astley")) is 213
+                && Eval(Block(new FindSpotifySongBlock(), "spotify:track:sand")) is "Sandstorm");
+            var savedPlay = (PlaySpotifyAction)BlockResolver.DeepCopy(Block(new PlaySpotifyAction { Find = "Album" }, "{rest}"))!;
+            Check("spotify blocks: saved and loaded keeps its settings", savedPlay.Find == "Album" && ((ValueSlot)savedPlay.Slots[0]).Text == "{rest}"
+                && ((GetSpotifyPlaybackBlock)BlockResolver.DeepCopy(new GetSpotifyPlaybackBlock { Setting = "Shuffle" })!).Kind == ValueKind.Bool);
+
+            // logins: a request never refreshes or retries, a refused token disconnects (the login is kept for Retry)
+            fake.Token = "rotated";
+            var s2 = Errors();
+            var refreshes = fake.Refreshes;
+            var volumeBefore = fake.Volume;
+            Check("spotify: a refused token fails the request, once disconnected, no refresh", !RunSpotify(Block(new SetSpotifyVolumeAction(), "30")) && fake.Volume == volumeBefore
+                && Until(() => spotify.Status == ConnectionStatus.Failed) && spotify.StatusMessage == "Disconnected" && !spotify.IsConnected && fake.Refreshes == refreshes
+                && LastWarning().Contains("warning - spotify disconnected (login refused)") && Errors() == s2 + 1 && LastError().Contains("error - can't set spotify volume (login refused)"));
+            var warnings = AppLog.Lines.Count(l => l.Contains("] warning - "));
+            Check("spotify: later requests just say it isn't connected", !RunSpotify(Block(new SetSpotifyVolumeAction(), "30")) && Errors() == s2 + 2
+                && LastError().Contains("error - can't set spotify volume, spotify not connected") && AppLog.Lines.Count(l => l.Contains("] warning - ")) == warnings);
+            spotifyModel.Reconnect();
+            Check("spotify: retry uses the saved login again", Until(() => spotify.Status == ConnectionStatus.Connected) && store.Login.RefreshToken == FakeSpotifyServer.GoodRefreshToken
+                && RunSpotify(Block(new SetSpotifyVolumeAction(), "30")) && fake.Volume == 30);
+
+            // the background check refreshes a login with under 15 minutes left, a refused refresh token is a lost login
+            fake.ExpiresIn = 600;
+            spotifyModel.Reconnect();
+            Check("spotify: the background check refreshes a login that's running out", Until(() => spotify.Status == ConnectionStatus.Connected)
+                && Until(() => fake.Refreshes >= refreshes + 3) && store.Login.AccessToken == fake.Token);
+            fake.RefuseRefresh = true;
+            Check("spotify: a lost login says so once", Until(() => spotify.Status == ConnectionStatus.Failed) && spotify.StatusMessage == "Login expired"
+                && LastWarning().Contains("warning - spotify login expired, press retry") && store.Login.RefreshToken == "" && !spotify.IsConnected);
+            fake.ExpiresIn = 3600;
+
+            StreamAssist.Shell.GlobalContext.SpotifyManager = null;
+            spotify.Dispose();
+        }
+
+        // ---- bind labels ----
+        {
+            var bind = BindableModel.CreateDefault();
+            int labelEvents = 0, labelChanges = 0;
+            bind.LabelChanged += () => labelEvents++;
+            bind.Changed += () => labelChanges++;
+            Check("label: none by default, and not saved", bind.Label == "" && !JsonSerializer.Serialize(bind).Contains("label"));
+            bind.SetLabel("On Hold");
+            Check("label: setting it says so (keys / bind boxes / saving listen)", bind.Label == "On Hold" && labelEvents == 1 && labelChanges == 1);
+            bind.SetLabel("On Hold");
+            Check("label: setting the same one does nothing", labelEvents == 1);
+            var labelled = JsonSerializer.Deserialize<BindableModel>(JsonSerializer.Serialize(bind))!;
+            Check("label: saved and loaded", labelled.Label == "On Hold" && BindableModel.DeepCopy(bind).Label == "On Hold");
+            bind.SetLabel("");
+            Check("label: cleared is not saved again", !JsonSerializer.Serialize(bind).Contains("label"));
+            bind.SetLabel("Again");
+            bind.Root.RemoveBlock(bind.Root.Block!);
+            Check("label: removing the last block clears it", bind.Label == "" && !bind.HasBlock);
+            bind.SetLabel("Nothing bound");
+            Check("label: no blocks, no label", bind.Label == "");
+
+            // the editor's label box: only a saved binding with blocks can be labelled
+            var editor = new StreamAssist.Components.Blocks.UI.BindableEditorViewModel(new StreamAssist.Shell.WindowLayoutModel(), "nothing");
+            BindableModel? saved = null;
+            editor.ShowDraft("Key: X", draft => { saved = draft; return true; });
+            Check("editor label: a draft can't be labelled yet", !editor.CanEditBindLabel);
+            ((BlockSlot)editor.Bindable!.Root.Block!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
+            Check("editor label: once the draft is saved it can", saved != null && editor.CanEditBindLabel);
+            editor.BindLabel = "My bind";
+            Check("editor label: typing sets the binding's label", saved!.Label == "My bind");
+            saved.Root.RemoveBlock(saved.Root.Block!);
+            Check("editor label: removing the last block clears it and locks the box", saved.Label == "" && editor.BindLabel == "" && !editor.CanEditBindLabel);
+            editor.Dispose();
+
+            // the key editor: the default On Pressed only comes with selecting an unbound key
+            var keyEditor = new StreamAssist.Components.Keyboard.UI.KeybindViewModel(new StreamAssist.Shell.WindowLayoutModel());
+            var keyConfig = new KeybindConfigModel("Test", null);
+            var key7 = new StreamAssist.Components.Keyboard.UI.KeyViewModel("7", 103, 0, 0, 1, 1, keyEditor);
+            keyEditor.SetSelectedKey(key7, null, keyConfig);
+            Check("key editor: selecting an unbound key starts with On Pressed", keyEditor.Bindable?.Root.Block is OnPressedBlock);
+            ((BlockSlot)keyEditor.Bindable!.Root.Block!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
+            var boundKey = keyConfig.Keybinds[103];
+            Check("key editor: its first change binds it", keyEditor.Bindable == boundKey);
+            boundKey.Root.RemoveBlock(boundKey.Root.Block!);
+            Check("key editor: removing every block unbinds it and nothing comes back", !keyConfig.Keybinds.ContainsKey(103) && keyEditor.Bindable != null && keyEditor.Bindable.Root.Block == null);
+            keyEditor.Bindable!.Root.TrySetBlock(new RecordBlock { Tag = "y" });
+            Check("key editor: dropping a block in binds it again", keyConfig.Keybinds.ContainsKey(103));
+            keyEditor.SetSelectedKey(new StreamAssist.Components.Keyboard.UI.KeyViewModel("8", 104, 0, 0, 1, 1, keyEditor), null, keyConfig);
+            Check("key editor: selecting another unbound key starts with On Pressed again", keyEditor.Bindable?.Root.Block is OnPressedBlock);
+            keyEditor.Dispose();
+        }
+
+        // ---- Voicemeeter channels and Twitch info blocks (no Voicemeeter or Twitch here: they say so and stop) ----
+        {
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
+            string Names(int edition) => string.Join(", ", StreamAssist.Components.Audio.Background.VoicemeeterChannels.For(edition).Select(c => $"{c.Name}={c.Prefix}"));
+
+            // voicemeeter's channels, as each edition's window names them
+            Check("voicemeeter: banana's channels", Names(2) == "Stereo Input 1=Strip[0], Stereo Input 2=Strip[1], Stereo Input 3=Strip[2], Voicemeeter Input=Strip[3], Voicemeeter AUX=Strip[4], A1=Bus[0], A2=Bus[1], A3=Bus[2], B1=Bus[3], B2=Bus[4]");
+            Check("voicemeeter: basic's channels", Names(1) == "Stereo Input 1=Strip[0], Stereo Input 2=Strip[1], Voicemeeter Input=Strip[2], A1=Bus[0], B1=Bus[1]");
+            Check("voicemeeter: potato's channels", Names(3).StartsWith("Stereo Input 1=Strip[0]") && Names(3).Contains("Voicemeeter VAIO3=Strip[7]") && Names(3).EndsWith("B3=Bus[7]"));
+            var banana = StreamAssist.Components.Audio.Background.VoicemeeterChannels.For(2);
+            Check("voicemeeter: inputs and buses lists", StreamAssist.Components.Audio.Background.VoicemeeterChannels.Names(banana, inputs: true).Count == 5
+                && StreamAssist.Components.Audio.Background.VoicemeeterChannels.Names(banana, inputs: false).SequenceEqual(new[] { "A1", "A2", "A3", "B1", "B2" }));
+
+            var vmManager = new StreamAssist.Components.Audio.Background.VoicemeeterManager(new StreamAssist.Components.Audio.Model.AudioComponentModel());
+            var v0 = Errors();
+            Check("voicemeeter: not connected says so", !vmManager.TryGetMute("B1", out _) && Errors() == v0 + 1 && LastError().Contains("can't read voicemeeter Bus[3].Mute, not connected"));
+            Check("voicemeeter: an unknown channel says so", !vmManager.TrySetMute("Stereo Input 9", true) && LastError().Contains("voicemeeter has no channel 'Stereo Input 9'"));
+            Check("voicemeeter: a route goes from an input to a bus", !vmManager.TrySetRoute("B1", "A1", true) && LastError().Contains("it goes from an input to an output bus"));
+            vmManager.Dispose();
+
+            var mute = BlockResolver.DeepCopy(new MuteVoicemeeterAction { Channel = "B2", MuteSound = "m.mp3", UnmuteSound = "u.mp3" }) as MuteVoicemeeterAction;
+            Check("voicemeeter: the mute block saves its channel and sounds", mute is { Channel: "B2", MuteSound: "m.mp3", UnmuteSound: "u.mp3", SetType: "Toggle" });
+            var vmList = new ListBlock();
+            ((BlockSlotList)vmList.Slots[0]).TryInsertBlock(new MuteVoicemeeterAction(), 0);
+            ((BlockSlotList)vmList.Slots[0]).TryInsertBlock(new RecordBlock { Tag = "after" }, 1);
+            RecordBlock.Log.Clear();
+            var v1 = Errors();
+            vmList.SafeRunAsync(new TriggerContext(TriggerPhase.Once, default)).GetAwaiter().GetResult();
+            Check("voicemeeter: without voicemeeter the block fails once and stops", RecordBlock.Log.Count == 0 && Errors() == v1 + 1 && LastError().Contains("Mute/Unmute Voicemeeter: voicemeeter not set up"));
+
+            // twitch info blocks pick their type from the setting
+            Check("twitch info: settings and kinds", TwitchInfos.Names(TwitchInfos.Stream).SequenceEqual(new[] { "Title", "Category", "Live", "Viewers", "Uptime Minutes", "Followers" })
+                && TwitchInfos.Find(TwitchInfos.Follower, "Following")!.Kind == ValueKind.Bool && TwitchInfos.Find(TwitchInfos.User, "Account Age Days")!.Kind == ValueKind.Int);
+            var stream = new GetStreamInfoBlock { Setting = "Live" };
+            Check("twitch info: Live reads true/false", stream.Kind == ValueKind.Bool);
+            stream.Setting = "Viewers";
+            Check("twitch info: Viewers reads a whole number", stream.Kind == ValueKind.Int);
+            var follow = (GetFollowerInfoBlock)BlockResolver.DeepCopy(new GetFollowerInfoBlock { Setting = "Followed On" })!;
+            Check("twitch info: saved and loaded keeps the setting and type", follow.Setting == "Followed On" && follow.Kind == ValueKind.Text);
+            Check("twitch info: user starts as whoever triggered it", ((ValueSlot)new GetTwitchUserBlock().Slots[0]).Text == "{userLogin}" && ((ValueSlot)new ShoutoutAction().Slots[0]).Text == "{userLogin}");
+
+            // twitch blocks without twitch: one error each, the run stops
+            var chatbot = new ChatbotManager(new ChatbotComponentModel());
+            StreamAssist.Shell.GlobalContext.ChatbotManager = chatbot;
+            string RunTwitch(BlockModel block)
+            {
+                RecordBlock.Log.Clear();
+                var list = new ListBlock();
+                ((BlockSlotList)list.Slots[0]).TryInsertBlock(block, 0);
+                ((BlockSlotList)list.Slots[0]).TryInsertBlock(new RecordBlock { Tag = "after" }, 1);
+                list.SafeRunAsync(new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["userLogin"] = "viewer" })).GetAwaiter().GetResult();
+                return RecordBlock.Log.Count == 0 ? LastError() : "ran on";
+            }
+            Check("twitch: unban, not connected", RunTwitch(new UnbanUserAction()).Contains("can't unban 'viewer', twitch not connected"));
+            Check("twitch: chat mode, not connected", RunTwitch(new SetChatModeAction { Mode = "Emote Only", Change = "On" }).Contains("can't set emote only, twitch not connected"));
+            Check("twitch: chat mode duration has to be a number", RunTwitch(Block(new SetChatModeAction(), "lots")).Contains("Set Chat Mode: Duration 'lots' isn't a whole number"));
+            Check("twitch: clip link name has to be valid", RunTwitch(new CreateClipAction { ParameterName = "my link" }).Contains("'my link' isn't a valid name"));
+            Check("twitch: run ad keeps twitch's lengths", RunTwitch(Block(new RunAdAction(), "500")).Contains("500s not allowed, 30 to 180"));
+            Check("twitch: stream info, not connected", RunTwitch(Block(new SetStreamInfoAction(), "New title")).Contains("can't set stream title, twitch not connected"));
+            StartPollAction Poll(params string[] choices)
+            {
+                var poll = Block(new StartPollAction(), "Best snack?");
+                foreach (var c in choices) poll.Choices.Items[^1].SetText(c);
+                return poll;
+            }
+            Check("twitch: poll choices grow like Join's parts", Poll("Chips", "Fruit").Choices.Items.Count == 3);
+            Check("twitch: poll needs 2 to 5 choices", RunTwitch(Poll("Chips")).Contains("Start Poll: 1 choices, twitch takes 2 to 5"));
+            Check("twitch: poll keeps twitch's lengths", RunTwitch(Block(Poll("Chips", "Fruit"), "Best snack?", "5")).Contains("5s not allowed, 15 to 1800"));
+            Check("twitch: poll, not connected", RunTwitch(Poll("Chips", "Fruit")).Contains("can't start poll, twitch not connected"));
+            var savedPoll = (StartPollAction)BlockResolver.DeepCopy(Poll("Chips", "Fruit"))!;
+            Check("twitch: poll saved and loaded keeps its choices", savedPoll.Choices.Items.Select(i => i.Text).SequenceEqual(new[] { "Chips", "Fruit", "" }) && savedPoll.Title.Text == "Best snack?");
+            var prediction = Block(new StartPredictionAction(), "Win?");
+            foreach (var o in new[] { "Yes", "No" }) prediction.Outcomes.Items[^1].SetText(o);
+            Check("twitch: prediction, not connected", RunTwitch(prediction).Contains("can't start prediction, twitch not connected"));
+            Check("twitch: resolve needs a winner", RunTwitch(new EndPredictionAction()).Contains("End Prediction: Resolve needs a Winner"));
+            Check("twitch: end poll, not connected", RunTwitch(new EndPollAction()).Contains("can't end poll, twitch not connected"));
+            Check("twitch: vip, not connected", RunTwitch(new SetVipAction()).Contains("can't add vip 'viewer', twitch not connected"));
+            Check("twitch: moderator, not connected", RunTwitch(new SetModeratorAction { Change = "Remove" }).Contains("can't remove moderator 'viewer', twitch not connected"));
+            StreamAssist.Shell.GlobalContext.ChatbotManager = null;
+            chatbot.Dispose();
+
+            T Block<T>(T block, params string[] texts) where T : BlockModel
+            {
+                for (int i = 0; i < texts.Length; i++) ((ValueSlot)block.Slots[i]).SetText(texts[i]);
+                return block;
+            }
         }
 
         // ---- Parse Parameter spacing ----
@@ -1063,6 +1439,16 @@ internal static class EngineChecks
             startup.SetBotConnectOnStartup(true);
             Check("connect on startup is saved", saves == 1 && JsonSerializer.Serialize(startup).Contains("\"botConnectOnStartup\":true"));
             Check("session state isn't saved", !JsonSerializer.Serialize(startup).Contains("isEnabled"));
+            Check("chat only as bot: off by default", !startup.ChatOnlyAsBot && !new ChatbotComponentModel().ChatOnlyAsBot);
+            startup.SetChatOnlyAsBot(true);
+            startup.SetChatOnlyAsBot(true);
+            Check("chat only as bot: saved once, without reconnecting", saves == 2 && reconnects == 3 && botReconnects == 1
+                && JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(startup))!.ChatOnlyAsBot);
+            var botRow = new StreamAssist.Components.Connections.UI.ConnectionRowViewModel("Bot", () => (ConnectionStatus.NotConnected, ""), () => { }, () => { },
+                () => startup.BotConnectOnStartup, startup.SetBotConnectOnStartup, "Chat only as bot", () => startup.ChatOnlyAsBot, startup.SetChatOnlyAsBot);
+            Check("chat only as bot: the bot row shows and changes it", botRow.HasOption && botRow.Option && botRow.OptionLabel == "Chat only as bot"
+                && new Func<bool>(() => { botRow.Option = false; return !startup.ChatOnlyAsBot; })());
+            Check("chat only as bot: other rows have no extra checkbox", !new StreamAssist.Components.Connections.UI.ConnectionRowViewModel("OBS", () => (ConnectionStatus.NotConnected, ""), () => { }, () => { }, () => false, _ => { }).HasOption);
 
             var audio = JsonSerializer.Deserialize<StreamAssist.Components.Audio.Model.AudioComponentModel>("{\"voicemeeterConnectOnStartup\":true}")!;
             int vmChanges = 0; audio.VoicemeeterConnectionChanged += () => vmChanges++;
