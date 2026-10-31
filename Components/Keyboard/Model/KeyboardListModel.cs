@@ -3,21 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Core.Mvvm;
-using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Blocks.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-// contains data for the list of keybind configs and keyboard slots
+// contains the keyboard slots and the tab's configs: one config is in use for the whole tab, and holds every slot's keys
+// (with no config, a slot has no keys: nothing runs and keys can't be bound)
 public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 {
     // constants
 
 
 
-    public const string NoneConfig = "None"; // reserved for ui
     public const string NoneDevice = "None"; // reserved for ui
 
 
@@ -27,7 +26,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
     private IReadOnlyList<InputDeviceModel>? _devices;
-    private List<KeybindConfigModel> _configs;
+    private readonly ConfigSet<KeyboardConfigModel> _configs;
     private List<KeyboardSlotModel> _slots;
 
 
@@ -36,7 +35,7 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    [JsonIgnore] public IReadOnlyList<KeybindConfigModel> Configs => _configs;
+    [JsonIgnore] public ConfigSet<KeyboardConfigModel> Configs => _configs;
     [JsonIgnore] public IReadOnlyList<KeyboardSlotModel> Slots => _slots;
     [JsonIgnore] public IReadOnlyList<InputDeviceModel>? Devices => _devices;
 
@@ -47,10 +46,17 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
     [JsonInclude] [JsonPropertyName("configs")]
-    private List<KeybindConfigModel> JsonConfigs
+    private List<KeyboardConfigModel> JsonConfigs
     {
-        get => _configs;
-        set => _configs = value;
+        get => _configs.Items.ToList();
+        set => _configs.LoadItems(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("config")]
+    private string? JsonConfig
+    {
+        get => _configs.SelectedName;
+        set => _configs.LoadSelected(value);
     }
 
     [JsonInclude] [JsonPropertyName("slots")]
@@ -68,8 +74,8 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
     public event Action<KeyboardSlotModel>? SlotCreated;
     public event Action<KeyboardSlotModel>? SlotDeleted;
-    public event Action<KeybindConfigModel>? ConfigCreated;
-    public event Action<KeybindConfigModel>? ConfigDeleted;
+    public event Action? DevicesChanged; // the keyboards plugged in changed (each slot has looked for its own again)
+    public event Action? Changed; // the configs' contents, the config in use, or which configs there are changed (saved)
 
 
 
@@ -79,9 +85,12 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
     public KeyboardListModel()
     {
-        _configs = [];
+        _configs = new("keyboard config", () => new KeyboardConfigModel());
         _slots = [];
         _devices = null; // set later through AttachDevices
+
+        _configs.SelectedChanged += OnSelectedConfigChanged;
+        _configs.Changed += OnConfigsChanged;
     }
 
 
@@ -90,11 +99,19 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    // json deserialization is done in reverse, so this has to be done after all slots are already made
+    // json deserialization is done in reverse, so this has to be done after all slots are already made: slots without an
+    // id (or sharing one) get a new one, then each slot shows its keys in the config in use
     void IJsonOnDeserialized.OnDeserialized()
     {
+        var used = new HashSet<int>();
         foreach (var slot in _slots)
-            slot.AttachConfigs(_configs);
+            if (slot.Id <= 0 || !used.Add(slot.Id))
+            {
+                slot.SetId(NextSlotId());
+                used.Add(slot.Id);
+            }
+
+        ShowSelectedConfig();
     }
 
 
@@ -103,14 +120,17 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    // TODO should add AddDevice/RemoveDevice methods with device plugged/unplugged callbacks from KeyboardInputManager?
-    // devices are obtained later during runtime, so attachment happens after list and slots are already made
+    // the keyboards plugged in: at startup (after the list and slots are loaded), and again whenever one is plugged in
+    // or removed (KeyboardComponentManager passes KeyboardInputManager's list)
     public void AttachDevices(IReadOnlyList<InputDeviceModel> devices)
     {
+        var changed = _devices != null;
         _devices = devices;
 
         foreach (var slot in _slots)
             slot.AttachDevices(_devices);
+
+        if (changed) DevicesChanged?.Invoke();
     }
 
 
@@ -121,13 +141,15 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
     public void CreateSlot(out KeyboardSlotModel slot)
     {
-        slot = new KeyboardSlotModel(_devices, _configs);
+        slot = new KeyboardSlotModel(_devices, NextSlotId());
+        slot.ShowConfig(_configs.Selected?.ForSlot(slot.Id));
         _slots.Add(slot);
         SlotCreated?.Invoke(slot);
     }
 
 
 
+    // its keys go with it, in every config
     public bool TryDeleteSlot(KeyboardSlotModel slot)
     {
         if (!_slots.Contains(slot)) return true; // already gone, nothing to say
@@ -142,73 +164,40 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
     {
         _slots.Remove(slot);
         SlotDeleted?.Invoke(slot);
+        slot.ShowConfig(null);
         slot.Dispose();
+
+        foreach (var config in _configs.Items)
+            config.RemoveSlot(slot.Id);
     }
 
 
 
-    // config management
+    // model events
 
 
 
-    public bool TryCreateConfig(string name, Dictionary<ushort, BindableModel>? keybinds, out KeybindConfigModel config)
-    {
-        config = null!;
-        var trimmed = name.Trim();
-        
-        if (string.IsNullOrWhiteSpace(trimmed))
-        {
-            AppLog.WriteError("config needs a name");
-            return false;    
-        }
-
-        if (trimmed == NoneConfig)
-        {
-            AppLog.WriteError($"config can't be named '{NoneConfig}'");
-            return false;
-        }
-
-        if (_configs.Any(c => c.Name == trimmed))
-        {
-            AppLog.WriteError($"config '{trimmed}' already exists");
-            return false;
-        }
-
-        CreateConfig(trimmed, keybinds, out config);
-        return true;
-    }
+    private void OnSelectedConfigChanged(KeyboardConfigModel? _, KeyboardConfigModel? __) => ShowSelectedConfig();
 
 
 
-    private void CreateConfig(string name, Dictionary<ushort, BindableModel>? keybinds, out KeybindConfigModel config)
-    {
-        config = new KeybindConfigModel(name, keybinds);
-        _configs.Add(config);
-        ConfigCreated?.Invoke(config);
-    }
+    private void OnConfigsChanged() => Changed?.Invoke();
 
 
 
-    public bool TryDeleteConfig(KeybindConfigModel config)
-    {
-        if (!_configs.Contains(config)) return true; // already gone, nothing to say
-
-        DeleteConfig(config);
-        return true;
-    }
+    // helpers
 
 
 
-    private void DeleteConfig(KeybindConfigModel config)
+    private void ShowSelectedConfig()
     {
         foreach (var slot in _slots)
-            if (slot.SelectedConfig == config)
-                slot.TrySetSelectedConfig(null);
-
-        _configs.Remove(config);
-        ConfigDeleted?.Invoke(config);
-        config.Dispose();
+            slot.ShowConfig(_configs.Selected?.ForSlot(slot.Id));
     }
+
+
+
+    private int NextSlotId() => _slots.Count == 0 ? 1 : _slots.Max(s => s.Id) + 1;
 
 
 
@@ -218,10 +207,12 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
     public override void Dispose()
     {
+        _configs.SelectedChanged -= OnSelectedConfigChanged;
+        _configs.Changed -= OnConfigsChanged;
+
         foreach (var slot in _slots)
             slot.Dispose();
 
-        foreach (var config in _configs)
-            config.Dispose();
+        _configs.Dispose();
     }
 }

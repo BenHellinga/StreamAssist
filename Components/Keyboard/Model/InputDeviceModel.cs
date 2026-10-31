@@ -16,6 +16,7 @@ public class InputDeviceModel : ModelBase
     private string _manufacturerName;
     private int _productId;
     private int _vendorId;
+    private int _number;
 
 
 
@@ -42,6 +43,7 @@ public class InputDeviceModel : ModelBase
         _manufacturerName = manufacturerName;
         _productId = productId;
         _vendorId = vendorId;
+        _number = 1;
     }
 
 
@@ -54,8 +56,14 @@ public class InputDeviceModel : ModelBase
     {
         string productName = string.IsNullOrWhiteSpace(ProductName) ? "Unknown" : ProductName;
         string manufacturerName = string.IsNullOrWhiteSpace(ManufacturerName) ? "Unknown" : ManufacturerName;
-        return $"{productName} - {manufacturerName} - {VendorId:X4}:{ProductId:X4}";
+        var label = $"{productName} - {manufacturerName} - {VendorId:X4}:{ProductId:X4}";
+        return _number > 1 ? $"{label} #{_number}" : label;
     }
+
+
+
+    // with identical keyboards plugged in, which one this is (1 = the first, its label has no number)
+    public void SetNumber(int number) => _number = number;
 
 
 

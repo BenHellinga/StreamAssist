@@ -1,7 +1,4 @@
 bin/
 obj/
-Config/keyboard.json
-Config/window.json
-Config/chatbot.json
-Config/auth.json
-Config/audio.json
+Config/
+Assets/

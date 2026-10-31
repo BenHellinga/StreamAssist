@@ -1,0 +1,188 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Data.UI.TableGridView"
+             x:DataType="ui:TableGridViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Data.UI">
+
+    <!-- header: the table (rename / delete, and Delete columns mode, green while on, for custom tables), then search rows |
+         a line | the grid: the id column, a line, then a column per table column (its header: name with the sort button
+         over its right end, and type), an empty box after the last one to make a new column, a line under the headers, a
+         row per table row, then an empty row to make a new one. Every box is the same width. Every box in the grid looks
+         like plain text (a border only while typing, a type dropdown keeps its arrow), Enter or clicking away saves -->
+
+    <UserControl.Styles>
+        <Style Selector="TextBox.Cell">
+            <Setter Property="Width" Value="160"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <!-- a column name: room on the right for the sort (and, in delete mode, delete) buttons over it -->
+        <Style Selector="TextBox.Name">
+            <Setter Property="Padding" Value="6,0,52,0"/>
+        </Style>
+        <!-- Delete columns while it's on -->
+        <Style Selector="Button.Active /template/ ContentPresenter, Button.Active:pointerover /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>
+        </Style>
+        <Style Selector="ComboBox.Kind">
+            <Setter Property="Width" Value="160"/>
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+        </Style>
+        <!-- its text the size of the cells' (the app's TextBlock style would make it bigger) -->
+        <Style Selector="ComboBox.Kind TextBlock">
+            <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+        </Style>
+        <Style Selector="Border.VerticalDivider">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource Border}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <!-- every row is this tall, so the id column and the cells beside it always line up -->
+        <Style Selector="Grid.Row">
+            <Setter Property="Height" Value="33"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+
+        <!-- the table -->
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10"
+                    Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}">
+            <TextBlock Classes="Label" Text="{Binding TableName}" VerticalAlignment="Center" IsVisible="{Binding !IsCustom}"/>
+            <TextBox Text="{Binding TableNameInput}" Width="200" Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                     IsVisible="{Binding IsCustom}"/>
+            <Button Content="Rename" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding RenamePressedCommand}" IsVisible="{Binding IsCustom}"/>
+            <Button Content="{Binding DeleteTableText}" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteTablePressedCommand}" IsVisible="{Binding IsCustom}"/>
+            <Button Content="Delete columns" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteColumnsPressedCommand}" IsVisible="{Binding IsCustom}"
+                    Classes.Active="{Binding IsDeleteColumnsMode}"
+                    ToolTip.Tip="While it's on (green), a − on every column deletes it and everything in it"/>
+            <Button Content="Renumber ids" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding RenumberPressedCommand}"
+                    ToolTip.Tip="Closes the gaps deleted rows left: the rows keep their order and become 1, 2, 3, …"/>
+        </StackPanel>
+
+        <!-- search rows (as you type) | a query (Run query or Enter applies it, see RowQuery) -->
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="5,0,5,5">
+            <TextBox Text="{Binding SearchText}" Width="200" Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Search rows…"/>
+            <TextBox Classes="Query" Text="{Binding QueryText}" Width="400" Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Query, e.g. user:bud points>100"
+                     ToolTip.Tip="Terms (all must match): word or &quot;a phrase&quot; (any cell), col:text (contains), col=text, col!=text, col&gt;5, col&lt;=5 (numbers, or alphabetical). id works as a column. Empty + Run shows every row">
+                <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding RunQueryPressedCommand}"/>
+                </TextBox.KeyBindings>
+            </TextBox>
+            <Button Content="Run query" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding RunQueryPressedCommand}"/>
+        </StackPanel>
+
+        <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+        <!-- the grid: id | line | columns, a line under the headers -->
+
+        <ScrollViewer Classes="Gapped" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="0,5,0,0">
+            <Border Padding="{StaticResource ScrollEndPadding}">
+                <Grid ColumnDefinitions="50,11,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="5,0,10,0" HorizontalAlignment="Left">
+
+                    <!-- the id header: its sort button -->
+                    <Grid Grid.Row="0" Grid.Column="0" VerticalAlignment="Top" Height="28">
+                        <TextBlock Classes="Label" Text="id" VerticalAlignment="Center"/>
+                        <Button Classes="Square Small" Content="{Binding IdSortText}" Command="{Binding SortByIdPressedCommand}"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="Sort by id"/>
+                    </Grid>
+
+                    <!-- the line between the id column and the rest, all the way down -->
+                    <Border Grid.Row="0" Grid.RowSpan="4" Grid.Column="1" Classes="VerticalDivider"/>
+
+                    <!-- column headers, then the box that makes a new column -->
+                    <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Spacing="5">
+                        <ItemsControl ItemsSource="{Binding Columns}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="5"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="ui:ColumnHeaderViewModel">
+                                    <StackPanel Width="160" Spacing="3">
+                                        <Grid Height="28">
+                                            <TextBox Classes="Cell Name Commit" Classes.Plain="{Binding !IsEditable}" Text="{Binding NameInput}" IsReadOnly="{Binding !IsEditable}"
+                                                     ToolTip.Tip="Clearing the name removes the column, if it's empty"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                <Button Classes="Square Small" Content="－" Command="{Binding DeletePressedCommand}" IsVisible="{Binding IsDeleteMode}"
+                                                        ToolTip.Tip="Delete this column and everything in it"/>
+                                                <Button Classes="Square Small" Content="{Binding SortText}" Command="{Binding SortPressedCommand}" ToolTip.Tip="Sort by this column"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <ComboBox Classes="Kind" ItemsSource="{Binding Kinds}" SelectedItem="{Binding KindName}" IsVisible="{Binding IsEditable}"/>
+                                        <TextBlock Classes="Description" Text="{Binding KindName}" IsVisible="{Binding !IsEditable}" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBox Classes="Cell New Commit" Text="{Binding NewColumnName}" PlaceholderText="New column…"
+                                 VerticalAlignment="Top" IsVisible="{Binding IsCustom}" ToolTip.Tip="Type a name to add a column"/>
+                    </StackPanel>
+
+                    <!-- the line under the headers -->
+                    <Border Grid.Row="1" Grid.ColumnSpan="3" Classes="Divider" Margin="0,5,0,0"/>
+
+                    <!-- the ids -->
+                    <ItemsControl Grid.Row="2" Grid.Column="0" ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="ui:RowViewModel">
+                                <Grid Classes="Row">
+                                    <TextBlock Classes="Description" Text="{Binding Id}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- the cells, a − at the end of each row deletes it -->
+                    <ItemsControl Grid.Row="2" Grid.Column="2" ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="ui:RowViewModel">
+                                <Grid Classes="Row" ColumnDefinitions="Auto,Auto">
+                                    <ItemsControl ItemsSource="{Binding Cells}" VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="5"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="ui:CellViewModel">
+                                                <TextBox Classes="Cell Commit" Text="{Binding Text}"
+                                                         ToolTip.Tip="Clearing every cell of a row deletes it"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Grid.Column="1" Classes="Square Small" Content="－" Command="{Binding DeletePressedCommand}"
+                                            VerticalAlignment="Center" Margin="5,0,0,0" ToolTip.Tip="Delete this row"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- the empty row: a value typed in any of its cells makes a new row (no id until then) -->
+                    <Grid Grid.Row="3" Grid.Column="0" Classes="Row"/>
+                    <ItemsControl Grid.Row="3" Grid.Column="2" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Center" Height="33">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="ui:CellViewModel">
+                                <TextBox Classes="Cell New Commit" Text="{Binding Text}" PlaceholderText="{Binding Placeholder}"
+                                         ToolTip.Tip="Type a value to add a row"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </Grid>
+            </Border>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

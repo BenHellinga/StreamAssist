@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using StreamAssist.Core.Utilities;
 
@@ -9,7 +8,7 @@ namespace StreamAssist.Components.Blocks.Model;
 
 
 
-// a growing list of value slots of one kind (e.g. Join's text parts, Operation's numbers): there's always one empty
+// a growing list of value slots of one kind (e.g. Operation's numbers, Pick Random's texts): there's always one empty
 // slot at the end (typing in it or placing a block adds the next), and a slot disappears once it has no text and no
 // block (see GrowingList)
 public sealed class ValueSlotList : BlockSlotBase
@@ -78,18 +77,6 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
     // public api
-
-
-
-    // every item's text, top to bottom, run together (spaces aren't added)
-    public async Task<string> EvaluateJoinedAsync(TriggerContext context)
-    {
-        var joined = new StringBuilder();
-        foreach (var item in _items.Items.OfType<ValueSlot<string>>().ToArray())
-            joined.Append(await item.EvaluateAsync(context));
-
-        return joined.ToString();
-    }
 
 
 

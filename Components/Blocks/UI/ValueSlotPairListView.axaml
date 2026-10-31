@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.ValueSlotPairListView"
+             x:DataType="ui:ValueSlotPairListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- one row per name / value (like Match Text's rows): the name's slot | the value's slot, the last row always empty.
+         The name column is as wide as Match Text's pattern boxes, so the values line up (a block placed there can be wider) -->
+
+    <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Spacing="5"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="ui:ValueSlotPairViewModel">
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+                    <ContentControl Grid.Column="0" Content="{Binding Key}" MinWidth="160" VerticalAlignment="Top"/>
+                    <ContentControl Grid.Column="1" Content="{Binding Value}" VerticalAlignment="Top"/>
+                </Grid>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+</UserControl>

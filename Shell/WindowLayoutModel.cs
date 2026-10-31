@@ -39,6 +39,7 @@ public class WindowLayoutModel : ModelBase
     private WindowMode _mode;
     private string? _selectedTab;
     private Dictionary<string, double> _panelSizes;
+    private List<string> _collapsedBlockGroups;
 
 
 
@@ -110,6 +111,13 @@ public class WindowLayoutModel : ModelBase
         set => _panelSizes = value;
     }
 
+    [JsonInclude] [JsonPropertyName("collapsedBlockGroups")]
+    private List<string> JsonCollapsedBlockGroups
+    {
+        get => _collapsedBlockGroups;
+        set => _collapsedBlockGroups = value;
+    }
+
 
 
     // events
@@ -120,6 +128,7 @@ public class WindowLayoutModel : ModelBase
     public event Action<WindowMode>? ModeChanged;
     public event Action<string?>? SelectedTabChanged;
     public event Action<string, double>? PanelSizeChanged;
+    public event Action<string>? BlockGroupCollapsedChanged; // a block list heading was collapsed or expanded (its name)
     public event Action? Changed; // any of the above (used for saving)
 
 
@@ -137,6 +146,7 @@ public class WindowLayoutModel : ModelBase
         _mode = WindowMode.Normal;
         _selectedTab = null;
         _panelSizes = [];
+        _collapsedBlockGroups = [];
     }
 
 
@@ -203,6 +213,27 @@ public class WindowLayoutModel : ModelBase
 
         _panelSizes[panel] = size;
         PanelSizeChanged?.Invoke(panel, size);
+        Changed?.Invoke();
+    }
+
+
+
+    // block list headings (by name, e.g. "Twitch"), collapsed ones show only their heading
+
+
+
+    public bool IsBlockGroupCollapsed(string group) => _collapsedBlockGroups.Contains(group);
+
+
+
+    public void SetBlockGroupCollapsed(string group, bool collapsed)
+    {
+        if (collapsed == IsBlockGroupCollapsed(group)) return;
+
+        if (collapsed) _collapsedBlockGroups.Add(group);
+        else _collapsedBlockGroups.Remove(group);
+
+        BlockGroupCollapsedChanged?.Invoke(group);
         Changed?.Invoke();
     }
 

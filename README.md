@@ -74,5 +74,6 @@ Actions work similarly: `ActionModel` is a small abstract base with one `Execute
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | 8.4.1 | MVVM source generators (`[ObservableProperty]`, `[RelayCommand]`) |
 | [NAudio](https://github.com/naudio/NAudio) | 2.3.0 | Audio playback for the Play Sound action |
 | [RawInput.Sharp](https://github.com/mfakane/rawinput-sharp) | 0.1.3 | Raw keyboard input, per-device identification |
+| [Microsoft.Data.Sqlite](https://learn.microsoft.com/dotnet/standard/data/sqlite/) | 10.0.14 | Tables and variables (`Config/data.db`) |
 
 Voicemeeter (Banana) integration is done via direct API calls rather than a NuGet package, and is required at runtime for the Mute Voicemeeter action to function.

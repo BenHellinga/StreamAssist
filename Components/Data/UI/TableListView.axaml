@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Data.UI.TableListView"
+             x:DataType="ui:TableListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Data.UI">
+
+    <!-- search | Built-in and Custom tables (click a heading to collapse it) | a new custom table -->
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="ui:TableGroupViewModel">
+            <StackPanel Spacing="5">
+                <!-- the title, then the arrow: only the arrow (a small button) collapses / expands -->
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                    <TextBlock Classes="Label" Text="{Binding HeadingText}" VerticalAlignment="Center"/>
+                    <Button Classes="Square Small" Content="{Binding Arrow}" Command="{Binding HeadingPressedCommand}"
+                            VerticalAlignment="Center" ToolTip.Tip="Collapse / expand"/>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Tables}" IsVisible="{Binding !IsCollapsed}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="5"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="ui:TableItemViewModel">
+                            <Button Content="{Binding Name}" Command="{Binding PressedCommand}"
+                                    Classes.Open="{Binding IsOpen}" Classes="Tab"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <DockPanel>
+
+        <TextBox DockPanel.Dock="Top"
+                 Margin="{StaticResource HeaderMargin}"
+                 Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="Search tables…"/>
+
+        <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+
+        <ScrollViewer Classes="Gapped">
+            <StackPanel Spacing="10" Margin="5,5,5,5">
+                <ContentControl Content="{Binding BuiltIn}"/>
+                <ContentControl Content="{Binding Custom}"/>
+
+                <!-- a new custom table: type its name (letters, digits and _), Enter or clicking away makes it -->
+                <TextBox Classes="New Commit" Text="{Binding NewTableName}" PlaceholderText="New table…"
+                         ToolTip.Tip="Type a name to make a custom table"/>
+            </StackPanel>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

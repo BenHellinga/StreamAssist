@@ -47,7 +47,7 @@ public class SpotifySaveManager : IDisposable
 
     public static SpotifyComponentModel Load()
     {
-        var model = JsonFileStore.Load<SpotifyComponentModel>(FileName);
+        var model = JsonFileStore.LoadOrReset<SpotifyComponentModel>(FileName);
         model.LoadClientId(CredentialStore.Load<SpotifyAppData>(CredentialsSection).ClientId);
         return model;
     }

@@ -11,7 +11,7 @@ namespace StreamAssist.Components.Chatbot.UI;
 
 
 
-// the Chatbot tab: the chat command tree, with its own chat block list beside it
+// the Chat tab: the chat command tree, with its own chat block list beside it
 // the collapsible test panel sends a made-up chat message through the tree, like a real one
 public partial class ChatCommandsViewModel : ViewModelBase
 {
@@ -55,9 +55,9 @@ public partial class ChatCommandsViewModel : ViewModelBase
     {
         _model = model;
         _layout = layout;
-        _root = new(model.Root);
-        _editableRoot = new(model.EditableRoot);
-        _chatPalette = new(("Chat Blocks", BlockCategory.Chat));
+        _root = new(model.Root!); // only made while there's a chat config (see ChatbotComponentViewModel)
+        _editableRoot = new(model.EditableRoot!);
+        _chatPalette = new(_layout, BlockGroup.Chat);
         _chatBlockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.ChatBlockListPanel, 200));
 
         _isTestOpen = false;

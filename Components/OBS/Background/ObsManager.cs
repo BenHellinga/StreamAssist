@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using StreamAssist.Components.OBS.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Connections;
+using StreamAssist.Core.Persistence;
 
 namespace StreamAssist.Components.OBS.Background;
 
@@ -291,6 +292,13 @@ public class ObsManager : IDisposable
     private async Task ConnectAsync(string address, string password, CancellationToken ct)
     {
         SetStatus(ConnectionStatus.Connecting, "Connecting...");
+
+        if (!CredentialStore.IsReadable)
+        {
+            SetStatus(ConnectionStatus.Failed, "Not connected");
+            AppLog.WriteError("can't connect to obs, auth.json can't be read");
+            return;
+        }
 
         ObsClient client;
         try

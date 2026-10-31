@@ -5,27 +5,31 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- label | typed value (a drop target for value blocks) or the placed value block's card -->
+    <!-- label | typed value (a drop target for value blocks) or the placed value block's card, with an optional
+         connector line above the value (e.g. Equals: value, ==, value) -->
 
-    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8">
 
-        <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+        <TextBlock Grid.Column="1" Grid.Row="0" Classes="Label" Text="{Binding Connector}" IsVisible="{Binding HasConnector}"
+                   Margin="4,0,0,4"/>
+
+        <TextBlock Grid.Column="0" Grid.Row="1" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
 
         <!-- empty or typed: the placeholder says what fits, e.g. "+ int" (the border lights up when a block can be dropped) -->
 
-        <Border Grid.Column="1" Classes="Droppable ValueDrop"
+        <Border Grid.Column="1" Grid.Row="1" Classes="Droppable ValueDrop"
                 IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNull}}"
                 DragDrop.AllowDrop="True"
                 DragDrop.DragOver="OnDragOver"
                 DragDrop.DragLeave="OnDragLeave"
                 DragDrop.Drop="OnDrop">
-            <TextBox Text="{Binding Text}" PlaceholderText="{Binding Placeholder}" MinWidth="100"
+            <TextBox Text="{Binding Text}" PlaceholderText="{Binding Placeholder}" MinWidth="100" Classes.New="{Binding IsNewEntry}"
                      AcceptsReturn="{Binding IsText}" AcceptsTab="False" TextWrapping="Wrap"/>
         </Border>
 
         <!-- a value block placed here (a BlockView through the ViewLocator) -->
 
-        <ContentControl Grid.Column="1" Content="{Binding Block}"
+        <ContentControl Grid.Column="1" Grid.Row="1" Content="{Binding Block}"
                         IsVisible="{Binding Block, Converter={x:Static ObjectConverters.IsNotNull}}"/>
 
     </Grid>

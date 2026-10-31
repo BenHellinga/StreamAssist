@@ -17,7 +17,7 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public override string Name => "Get Reward Setting";
-    [JsonIgnore] public override string Description => "Reads a channel point reward's setting from twitch right now (e.g. its Cost), as the streamer. The reward is its title (or id), {reward} is the one that was just redeemed. Works on any reward. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string Description => "Reads a channel point reward's setting from Twitch right now (e.g. its Cost). The reward is its title (or id), {reward} is the one that was just redeemed. Works on any reward. Done as the streamer. Twitch actions wait their turn, one per second.";
 
 
 

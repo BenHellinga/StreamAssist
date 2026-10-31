@@ -10,7 +10,9 @@ namespace StreamAssist.Components.Blocks.Model;
 
 // which heading a block is listed under in the block list (Chat blocks only appear in the chatbot's list)
 // value blocks are listed by the type they return: Condition (bool), Text, Int, Double, Char, or Any (they can return any)
-public enum BlockCategory { Container, Condition, Action, Chat, Text, Int, Double, Char, Any }
+// the heading a block is listed under in the block list (in this order): the general blocks by what they do, then one
+// per integration. Chat is the chatbot tab's own list (Match Text, ...)
+public enum BlockGroup { Control, Logic, Math, Text, Parameters, Data, App, Twitch, Obs, Voicemeeter, Spotify, Chat }
 
 
 
@@ -32,7 +34,9 @@ public abstract class BlockModel : ModelBase
 
     [JsonIgnore] public abstract string Name { get; }
     [JsonIgnore] public abstract string Description { get; }
-    [JsonIgnore] public abstract BlockCategory Category { get; }
+    // the heading it's listed under: the integration its component folder is (e.g. Components/OBS/... is OBS), or for the
+    // general blocks in Components/Blocks what kind of block it is (KindGroup). A block can pick its own (e.g. Play Sound)
+    [JsonIgnore] public virtual BlockGroup Group => ComponentGroup(GetType().Namespace) ?? KindGroup;
     [JsonIgnore] public virtual IReadOnlyList<BlockSlotBase> Slots => [];
     [JsonIgnore] public virtual bool SlotsBesideSettings => false; // the editor shows the slots to the right of the settings, not under them
     [JsonIgnore] public bool IsDisabled => _isDisabled;
@@ -147,6 +151,11 @@ public abstract class BlockModel : ModelBase
 
 
     // logs why this block can't go on (here, where the most is known about it) and returns the exception to throw,
+    // the heading of a general block (Container, Action, Condition, a value's type), see Group
+    [JsonIgnore] protected abstract BlockGroup KindGroup { get; }
+
+
+
     // e.g. throw Fail("there's no parameter 'viewers'"), the run stops and the root doesn't log it again
     protected BlockFailedException Fail(string reason)
     {
@@ -173,4 +182,20 @@ public abstract class BlockModel : ModelBase
         foreach (var slot in Slots)
             slot.Dispose();
     }
+
+
+
+    // the integration a block's namespace (its component folder) belongs to, null for the general blocks
+    private static BlockGroup? ComponentGroup(string? ns) => ns switch
+    {
+        null => null,
+        _ when ns.Contains(".Chatbot.ChatBlocks") => BlockGroup.Chat,
+        _ when ns.Contains(".Data.") => BlockGroup.Data,
+        _ when ns.Contains(".Chatbot.") => BlockGroup.Twitch,
+        _ when ns.Contains(".OBS.") => BlockGroup.Obs,
+        _ when ns.Contains(".Spotify.") => BlockGroup.Spotify,
+        _ when ns.Contains(".Audio.") => BlockGroup.Voicemeeter,
+        _ when ns.Contains(".Keyboard.") || ns.Contains(".OutputConsole.") => BlockGroup.App,
+        _ => null,
+    };
 }

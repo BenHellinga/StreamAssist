@@ -30,6 +30,29 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
+    <!-- a ghost field: a box you type in to make a new thing (the empty row at the end of a list, "New table…"), barely
+         there (ghost border and placeholder). Pointing at it or typing in it lights it up like any box -->
+    <Style Selector="TextBox.New">
+        <Setter Property="BorderBrush" Value="{DynamicResource GhostBorder}"/>
+    </Style>
+    <Style Selector="TextBox.New /template/ TextBlock#PART_Placeholder">
+        <Setter Property="Foreground" Value="{DynamicResource GhostText}"/>
+    </Style>
+
+    <!-- plain: editable, but just the text on the background until it's being typed in (e.g. the Data tab's cells) -->
+    <Style Selector="TextBox.Plain">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="TextBox.Plain:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="TextBox.Plain:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderToggle}"/>
+    </Style>
+
     <!-- the bottom editor's label box: its text coloured like the label on the key / bind box -->
     <Style Selector="TextBox.BindLabel">
         <Setter Property="Foreground" Value="{DynamicResource Bound}"/>

@@ -8,7 +8,7 @@ public class SwapConfigBlock : ActionBlock
 {
     [JsonIgnore] public override string Name => "Swap";
     [JsonIgnore] public override string Description => "test";
-    [JsonIgnore] public KeyboardSlotModel? Slot { get; set; }
-    [JsonIgnore] public KeybindConfigModel? To { get; set; }
-    protected override Task ExecuteAsync(TriggerContext context) { Slot!.TrySetSelectedConfig(To); return Task.CompletedTask; }
+    [JsonIgnore] public KeyboardListModel? List { get; set; }
+    [JsonIgnore] public string To { get; set; } = "";
+    protected override Task ExecuteAsync(TriggerContext context) { List!.Configs.TrySelect(To); return Task.CompletedTask; }
 }

@@ -14,7 +14,7 @@ public class DeleteChatMessageAction : ActionBlock
 
 
 
-    [JsonIgnore] public override string Name => "Delete Message";
+    [JsonIgnore] public override string Name => "Delete Chat Message";
     [JsonIgnore] public override string Description => "Deletes a chat message by its id, {messageId} is the message that triggered this chat command. The bot (or you) has to be a moderator. Twitch actions wait their turn, one per second.";
 
 

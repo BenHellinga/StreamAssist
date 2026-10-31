@@ -16,7 +16,7 @@ public class AddCommandAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Add Command";
-    [JsonIgnore] public override string Description => "Adds a command to the Editable commands that replies with the response (e.g. for !addcom). Fails if it already exists. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
+    [JsonIgnore] public override string Description => "Adds a command to the Custom commands that replies with the response (e.g. for !addcom). Fails if it already exists. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
 
 
 

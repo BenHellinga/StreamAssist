@@ -24,6 +24,14 @@ public sealed class BlockCardViewModel : ViewModelBase, IDraggable
     public string Name => _block.Name;
     public string Description => _block.Description;
 
+    // what a value block gives, e.g. "Bool" (fits condition slots), "Text", "Any type" (fits any slot), empty for the rest
+    public string TypeText => _block switch
+    {
+        AdaptableValueBlock => "Any type",
+        ValueBlock value => value.Kind.ToString(),
+        _ => "",
+    };
+
 
 
     // constructor

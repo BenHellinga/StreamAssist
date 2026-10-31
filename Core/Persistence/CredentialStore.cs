@@ -13,12 +13,28 @@ public static class CredentialStore
 
 
 
-    private const string FileName = "auth";
+    public const string FileName = "auth";
     private static readonly object FileLock = new(); // sections can be saved from different threads
 
 
 
     // public api
+
+
+
+    // false while auth.json can't be read: nothing is saved to it then, and connections refuse to start (they'd log in
+    // without being able to keep the login)
+    public static bool IsReadable
+    {
+        get
+        {
+            lock (FileLock)
+            {
+                JsonFileStore.Load<Dictionary<string, JsonElement>>(FileName); // finds out (and reports it once) if it isn't
+                return !JsonFileStore.IsBroken(FileName);
+            }
+        }
+    }
 
 
 
@@ -42,11 +58,14 @@ public static class CredentialStore
 
 
 
-    // replaces one section, leaving the others as they are
+    // replaces one section, leaving the others as they are (nothing is written while the file can't be read, so the other
+    // sections are never lost)
     public static void Save<T>(string section, T data)
     {
         lock (FileLock)
         {
+            if (JsonFileStore.IsBroken(FileName)) return;
+
             var file = JsonFileStore.Load<Dictionary<string, JsonElement>>(FileName);
             file[section] = JsonSerializer.SerializeToElement(data);
             JsonFileStore.Save(FileName, file);

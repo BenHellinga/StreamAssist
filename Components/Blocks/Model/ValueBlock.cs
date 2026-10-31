@@ -28,14 +28,12 @@ public abstract class ValueBlock<T> : ValueBlock where T : notnull
 
     [JsonIgnore] public override ValueKind Kind => ValueTypes.KindOf(typeof(T));
 
-    // listed under the heading of the type it returns
-    [JsonIgnore] public override BlockCategory Category => Kind switch
+    // a general value block is listed by what it gives: text, true/false (Logic) or a number (Math)
+    [JsonIgnore] protected override BlockGroup KindGroup => Kind switch
     {
-        ValueKind.Text => BlockCategory.Text,
-        ValueKind.Int => BlockCategory.Int,
-        ValueKind.Double => BlockCategory.Double,
-        ValueKind.Char => BlockCategory.Char,
-        _ => BlockCategory.Condition,
+        ValueKind.Text or ValueKind.Char => BlockGroup.Text,
+        ValueKind.Bool => BlockGroup.Logic,
+        _ => BlockGroup.Math,
     };
 
 

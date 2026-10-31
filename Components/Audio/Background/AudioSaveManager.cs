@@ -35,7 +35,7 @@ public class AudioSaveManager : IDisposable
 
 
 
-    public static AudioComponentModel Load() => JsonFileStore.Load<AudioComponentModel>(FileName);
+    public static AudioComponentModel Load() => JsonFileStore.LoadOrReset<AudioComponentModel>(FileName);
 
 
 

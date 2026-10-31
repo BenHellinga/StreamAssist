@@ -3,6 +3,10 @@ using StreamAssist.Components.Spotify.Actions;
 using StreamAssist.Components.Spotify.Background;
 using StreamAssist.Components.Spotify.Model;
 using StreamAssist.Components.Spotify.Values;
+using StreamAssist.Components.Data.Model;
+using StreamAssist.Components.Data.Background;
+using StreamAssist.Components.Data.Actions;
+using StreamAssist.Components.Data.Values;
 using System.Net;
 using StreamAssist.Components.OBS.Background;
 using StreamAssist.Components.OBS.Conditions;
@@ -23,10 +27,12 @@ using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Blocks.Conditions;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Keyboard.UI;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Blocks.Containers;
+using StreamAssist.Components.Blocks.UI;
 
 namespace StreamAssist.Tests;
 
@@ -42,8 +48,10 @@ internal static class EngineChecks
         var failed = new List<string>();
         int fails = 0;
         void Check(string name, bool ok) { log($"{(ok ? "PASS" : "FAIL")}  {name}"); if (!ok) { fails++; failed.Add(name); } }
-        GetParameterBlock IntParam(string name) => new() { ParameterName = name, As = "Int" };
-        GetParameterBlock DoubleParam(string name) => new() { ParameterName = name, As = "Double" };
+        ChatbotComponentModel Chatbot() { var c = new ChatbotComponentModel(); c.ChatConfigs.TryCreate("Default"); c.EventsConfigs.TryCreate("Default"); return c; }
+        KeyboardListModel Keyboards() { var k = new KeyboardListModel(); k.Configs.TryCreate("Default"); return k; }
+        ConvertBlock IntParam(string name) { var c = new ConvertBlock { To = "Int" }; ((ValueSlot)c.Slots[0]).SetText($"{{{name}}}"); return c; }
+        ConvertBlock DoubleParam(string name) { var c = new ConvertBlock { To = "Double" }; ((ValueSlot)c.Slots[0]).SetText($"{{{name}}}"); return c; }
         ConvertBlock MakeConvert(string to, string text) { var c = new ConvertBlock { To = to }; ((ValueSlot)c.Slots[0]).SetText(text); return c; }
 
         // ---- value errors (first, while the main thread still owns the dispatcher that AppLog posts to) ----
@@ -67,15 +75,15 @@ internal static class EngineChecks
                 return (Errors() - before, RecordBlock.Log.ToList());
             }
 
-            var missing = RunConsole(c => Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(new GetParameterBlock { ParameterName = "user" }), noParams);
+            var missing = RunConsole(c => Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(IntParam("user")), noParams);
             Check("missing parameter: one error, run stopped", missing.Errors == 1 && missing.Ran.Count == 0);
-            Check("the error names the block", LastError().Contains("error - Get Parameter: no parameter 'user'"));
+            Check("the error names the block", LastError().Contains("error - Convert: '{user}'"));
 
             var notANumber = RunConsole(c => Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(IntParam("bad")), ctx);
-            Check("bad int parameter: one error", notANumber.Errors == 1 && LastError().Contains("bad is 'lots', not a whole number"));
+            Check("bad int parameter: one error", notANumber.Errors == 1 && LastError().Contains("'lots' is not a whole number"));
 
-            var typedBad = RunConsole(c => { var r = new RoundBlock(); Slot<ValueSlot>(r, 0).SetText("abc"); Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(r); }, ctx);
-            Check("typed value that isn't a number: one error naming block + slot", typedBad.Errors == 1 && LastError().Contains("error - Round: Number 'abc' is not a number"));
+            var typedBad = RunConsole(c => { var r = new RandomNumberBlock(); Slot<ValueSlot>(r, 0).SetText("abc"); Slot<ValueSlot>(c, 0).BlockSlot.TrySetBlock(r); }, ctx);
+            Check("typed value that isn't a number: one error naming block + slot", typedBad.Errors == 1 && LastError().Contains("error - Random Number: Min 'abc' is not"));
 
             var crash = RunConsole(c => Slot<ValueSlot>(c, 0).SetText("fine"), ctx);
             Check("a working run logs no error and carries on", crash.Errors == 0 && crash.Ran.SequenceEqual(new[] { "after" }));
@@ -96,7 +104,7 @@ internal static class EngineChecks
 
             // protected: "#" -> Has Permission (mod) -> Match Text [x -> rec X], "!clash" -> rec P
             // editable: Match Text [!lurk -> send, !sub -> Match Text [a -> rec A], !rec -> rec R, !clash -> rec E, /.*/ -> anything else]
-            var model = new ChatbotComponentModel();
+            var model = Chatbot();
             var top = (MatchTextChatBlock)model.Root.Block!;
             var custom = (MatchTextChatBlock)model.EditableRoot.Block!;
             MatchTextRow? Cmd(string pattern) => custom.Rows.Rows.FirstOrDefault(r => r.Pattern == pattern);
@@ -124,13 +132,13 @@ internal static class EngineChecks
             }
 
             // the roots
-            Check("roots: a fresh chatbot has an empty Match Text in the editable root", new ChatbotComponentModel().EditableRoot.Block is MatchTextChatBlock);
-            Check("roots: editable root only takes a Match Text", !model.EditableRoot.Accepts(new HasPermissionChatBlock()) && !model.EditableRoot.Accepts(new ParameterChatBlock()));
-            Check("roots: protected wins over editable", Send("!clash", Chat()) == "P");
+            Check("roots: a fresh chatbot has an empty Match Text in the custom root", Chatbot().EditableRoot.Block is MatchTextChatBlock);
+            Check("roots: the custom root only takes a Match Text", !model.EditableRoot.Accepts(new HasPermissionChatBlock()) && !model.EditableRoot.Accepts(new ParameterChatBlock()));
+            Check("roots: built-in wins over custom", Send("!clash", Chat()) == "P");
 
             // matching
-            Check("editable: plain row matches the whole word", Send("!rec", Chat()) == "R" && Send("!REC and more", Chat()) == "R");
-            Check("editable: plain row doesn't match part of a word", Send("!recording", Chat()) == "");
+            Check("custom: plain row matches the whole word", Send("!rec", Chat()) == "R" && Send("!REC and more", Chat()) == "R");
+            Check("custom: plain row doesn't match part of a word", Send("!recording", Chat()) == "");
             Check("permission: moderator passes", Send("#x", Chat(mod: true)) == "X");
             Check("permission: higher level passes too", Send("#x", Chat(broadcaster: true)) == "X");
             Check("permission: lower levels are stopped", Send("#x", Chat(vip: true, sub: true)) == "");
@@ -167,7 +175,7 @@ internal static class EngineChecks
             Check("delete: a regex row isn't a command", !model.TryDeleteCommand(".*") && !model.TryDeleteCommand("!anything") && anyRow.Target.Bindable != null);
             Check("edit: a plain typed row is a command", model.TryEditCommand("!LURK", "lurking") && lurkSend.Message.Text == "lurking");
             Check("delete: a row leading into blocks is refused", !model.TryDeleteCommand("!sub") && Cmd("!sub") != null);
-            Check("delete: protected commands can't be touched", !model.TryDeleteCommand("#x") && !model.TryDeleteCommand("#") && xTarget.Bindable != null);
+            Check("delete: built-in commands can't be touched", !model.TryDeleteCommand("#x") && !model.TryDeleteCommand("#") && xTarget.Bindable != null);
             var rowsBefore = custom.Rows.Rows.Count;
             Check("delete: whole command", model.TryDeleteCommand("!hello") && Cmd("!hello") == null && custom.Rows.Rows.Count == rowsBefore - 1);
             Check("delete: still one empty row at the end", custom.Rows.Rows.Count(r => r.IsEmpty) == 1 && custom.Rows.Rows[^1].IsEmpty);
@@ -191,26 +199,59 @@ internal static class EngineChecks
             StreamAssist.Shell.GlobalContext.ChatbotComponentModel = null;
 
             // no Match Text (removed from the editable root)
-            var bare = new ChatbotComponentModel();
+            var bare = Chatbot();
             bare.EditableRoot.RemoveBlock(bare.EditableRoot.Block!);
-            Check("no block: refused", !bare.TryAddCommand("!a", "b") && LastError().Contains("no editable Match Text"));
+            Check("no block: refused", !bare.TryAddCommand("!a", "b") && LastError().Contains("no custom Match Text"));
 
             // save round trip
             var savedJson = JsonSerializer.Serialize(model);
             var loadedModel = JsonSerializer.Deserialize<ChatbotComponentModel>(savedJson)!;
             Check("round trip: json stable", JsonSerializer.Serialize(loadedModel) == savedJson);
-            Check("round trip: commands still editable", loadedModel.TryAddCommand("!again", "x") && !loadedModel.TryAddCommand("!fresh", "x"));
+            Check("round trip: custom commands still work", loadedModel.TryAddCommand("!again", "x") && !loadedModel.TryAddCommand("!fresh", "x"));
             var emptyEditable = JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(bare))!;
             Check("round trip: a removed Match Text stays removed", emptyEditable.EditableRoot.Block == null);
-            var oldFile = JsonSerializer.Deserialize<ChatbotComponentModel>("{\"rootBlock\":null}")!;
-            Check("round trip: an older file gets an empty Match Text", oldFile.EditableRoot.Block is MatchTextChatBlock);
+            var noConfig = JsonSerializer.Deserialize<ChatbotComponentModel>("{}")!;
+            Check("no config: a fresh chatbot has none, so nothing runs or can be bound", noConfig.ChatConfigs.SelectedName == null && noConfig.Root == null
+                && noConfig.EventsConfigs.SelectedName == null && noConfig.Redeems == null && noConfig.Events.Count == 0
+                && !noConfig.TryMatchMessage(new ChatMatchState("!x", 0, Chat())) && !noConfig.TryRunEvent("raid", Chat())
+                && !noConfig.TryAddCommand("!x", "y", logErrors: false) && !new ChatbotComponentModel().TryRequestCreateReward("Hydrate", "100", "", false));
+            Check("no config: the first one starts with empty Match Texts", noConfig.ChatConfigs.TryCreate("First") && noConfig.Root!.Block is MatchTextChatBlock
+                && noConfig.EditableRoot!.Block is MatchTextChatBlock && noConfig.EventsConfigs.TryCreate("First") && noConfig.Redeems != null);
             model = loadedModel;
             Check("round trip: permission still gates", Send("#x", Chat()) == "" && Send("#x", Chat(mod: true)) == "X");
+
+            // Has Permission: Anyone lets everyone past
+            var levels = Chatbot();
+            var gate = new HasPermissionChatBlock { Level = "Anyone" };
+            gate.Target.TryBind(Bind(new RecordBlock { Tag = "A" }));
+            ((MatchTextChatBlock)levels.Root.Block!).Rows.AddRow("?").Target.Child.TrySetBlock(gate);
+            RecordBlock.Log.Clear();
+            levels.TryMatchMessage(new ChatMatchState("?", 0, Chat()));
+            Check("has permission: Anyone lets everyone through", string.Join("", RecordBlock.Log) == "A"
+                && HasPermissionChatBlock.GetLevelMenuItems().SequenceEqual(new[] { "Anyone", "Subscriber", "VIP", "Moderator", "Broadcaster" }));
+
+            // configs: each holds both trees, switching swaps them, a new one starts as a copy of the one in use
+            var configs = Chatbot();
+            configs.TryAddCommand("!normal", "hi");
+            Check("chat configs: a new one is a copy of the one in use, switched to", configs.ChatConfigs.TryCreate("April Fools") && configs.ChatConfigs.SelectedName == "April Fools"
+                && configs.TryDeleteCommand("!normal"));
+            Check("chat configs: names are unique (case ignored) and needed", !configs.ChatConfigs.TryCreate("april fools") && !configs.ChatConfigs.TryCreate(" "));
+            configs.ChatConfigs.TrySelect("Default");
+            Check("chat configs: switching back brings its own tree", configs.TryEditCommand("!normal", "hello"));
+            var configsLoaded = JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(configs))!;
+            Check("chat configs: saved and loaded with the one in use", configsLoaded.ChatConfigs.Names.SequenceEqual(new[] { "Default", "April Fools" })
+                && configsLoaded.ChatConfigs.SelectedName == "Default" && !configsLoaded.TryAddCommand("!normal", "x", logErrors: false));
+            configs.Redeems.AddRow("Hydrate");
+            Check("events configs: a copy has the redeems too, deleting the one in use switches back", configs.EventsConfigs.TryCreate("Quiet") && configs.Redeems.Rows.Any(r => r.Title == "Hydrate")
+                && configs.EventsConfigs.TryDelete("Quiet") && configs.EventsConfigs.SelectedName == "Default");
+            Check("configs: deleting the last one leaves none", configs.EventsConfigs.TryDelete("Default") && configs.EventsConfigs.SelectedName == null && configs.Redeems == null
+                && configs.ChatConfigs.TryDelete("Default") && configs.ChatConfigs.TryDelete("April Fools") && configs.Root == null
+                && JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(configs))!.ChatConfigs.SelectedName == null);
         }
 
         // ---- editable commands under a prefix row (Editable: Match Text [! -> Match Text [lurk -> send]]) ----
         {
-            var m = new ChatbotComponentModel();
+            var m = Chatbot();
             var editable = (MatchTextChatBlock)m.EditableRoot.Block!;
             var bangMenu = new MatchTextChatBlock();
             editable.Rows.AddRow("!").Target.Child.TrySetBlock(bangMenu);
@@ -243,7 +284,7 @@ internal static class EngineChecks
 
         // ---- plain text rows vs /regex/ rows ----
         {
-            var m = new ChatbotComponentModel();
+            var m = Chatbot();
             var top = (MatchTextChatBlock)m.Root.Block!;
             var bang = new MatchTextChatBlock();
             top.Rows.AddRow("!").Target.Child.TrySetBlock(bang);
@@ -272,7 +313,7 @@ internal static class EngineChecks
             Check("a /regex/ row is a regex, plain text isn't", any.IsRegex && !bang.Rows.Rows[0].IsRegex);
 
             // a parameter right after a symbol reads straight away
-            var m2 = new ChatbotComponentModel();
+            var m2 = Chatbot();
             var p = new ParameterChatBlock { ParameterName = "cmd" }; p.Target.TryBind(Seen("cmd"));
             ((MatchTextChatBlock)m2.Root.Block!).Rows.AddRow("!").Target.Child.TrySetBlock(p);
             string Cmd(string text) { ParamRecordBlock.Seen = null; m2.TryMatchMessage(new ChatMatchState(text, 0, new Dictionary<string, string>())); return ParamRecordBlock.Seen ?? "(none)"; }
@@ -280,13 +321,13 @@ internal static class EngineChecks
             Check("param: shown glued to a symbol", m2.Describe(p.Target)?.Text == "!{cmd}");
 
             // editable commands only ever touch plain rows
-            var e = new ChatbotComponentModel();
+            var e = Chatbot();
             var editable = (MatchTextChatBlock)e.EditableRoot.Block!;
             var catchAll = editable.Rows.AddRow("//"); catchAll.Target.TryBind(Rec("X"));
             var regexRow = editable.Rows.AddRow("/!r.*/"); regexRow.Target.TryBind(Rec("R"));
-            Check("editable: a regex row isn't a command", !e.TryDeleteCommand("//", logErrors: false) && !e.TryDeleteCommand("/!r.*/", logErrors: false) && !e.TryDeleteCommand("!run", logErrors: false) && catchAll.Target.Bindable != null && regexRow.Target.Bindable != null);
-            Check("editable: a command in slashes is refused", !e.TryAddCommand("/x/", "y", out var f, logErrors: false) && f == CommandFailure.Invalid);
-            Check("editable: added commands are plain words", e.TryAddCommand("!hi", "yo") && editable.Rows.Rows.Any(r => r.Pattern == "!hi"));
+            Check("custom: a regex row isn't a command", !e.TryDeleteCommand("//", logErrors: false) && !e.TryDeleteCommand("/!r.*/", logErrors: false) && !e.TryDeleteCommand("!run", logErrors: false) && catchAll.Target.Bindable != null && regexRow.Target.Bindable != null);
+            Check("custom: a command in slashes is refused", !e.TryAddCommand("/x/", "y", out var f, logErrors: false) && f == CommandFailure.Invalid);
+            Check("custom: added commands are plain words", e.TryAddCommand("!hi", "yo") && editable.Rows.Rows.Any(r => r.Pattern == "!hi"));
         }
 
         // ---- Math, reward settings, Get / Set Reward Setting, New reward (main thread, errors are counted) ----
@@ -295,32 +336,7 @@ internal static class EngineChecks
             string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
             var redeem = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["cost"] = "100", ["rewardId"] = "abc" });
             object Eval(ValueBlock block) => block.EvaluateObjectAsync(redeem).GetAwaiter().GetResult();
-            // typing in the empty number at the end adds the next one, like the editor
-            OperationBlock Op(string op, params string[] numbers)
-            {
-                var block = new OperationBlock { Operator = op };
-                foreach (var number in numbers) block.Numbers.Items[^1].SetText(number);
-                return block;
-            }
-
-            // operation: whole numbers stay whole like C# (a decimal block gives 101.0, an int slot gets 101)
-            Check("operation: {cost} + 1", Eval(Op("+", "{cost}", "1")) is 101.0);
-            Check("operation: the other operators", Eval(Op("−", "10", "4")) is 6.0 && Eval(Op("×", "6", "7")) is 42.0);
-            Check("operation: whole numbers divide like C#", Eval(Op("÷", "7", "2")) is 3.0);
-            Check("operation: a decimal anywhere gives a decimal answer", Eval(Op("÷", "7", "2.5")) is 2.8 && Eval(Op("+", "1.5", "1")) is 2.5);
-            Check("operation: any number of numbers, top to bottom", Eval(Op("+", "1", "2", "3", "4")) is 10.0 && Eval(Op("−", "10", "3", "2")) is 5.0 && Eval(Op("÷", "100", "2", "5")) is 10.0);
-            Check("operation: one empty slot always at the end", Op("+", "1", "2").Numbers.Items.Count == 3 && Op("+").Numbers.Items.Count == 1);
             var e0 = Errors();
-            var divided = false;
-            try { Eval(Op("÷", "1", "0")); } catch (BlockFailedException) { divided = true; }
-            Check("operation: dividing by zero fails with one error", divided && Errors() == e0 + 1 && LastError().Contains("can't divide by zero"));
-            Check("operation: is an any-type block", new OperationBlock().Category == BlockCategory.Any);
-            var intSlot = new ValueSlot<int>("x");
-            var placed = Op("+", "{cost}", "1");
-            Check("operation: dropped in a whole number slot it gives a whole number", intSlot.BlockSlot.TrySetBlock(placed) && placed.Kind == ValueKind.Int && Eval(placed) is 101);
-            var copied = (OperationBlock)BlockResolver.DeepCopy(placed)!;
-            Check("operation: saved and loaded keeps its numbers and type", copied.Kind == ValueKind.Int && Eval(copied) is 101 && copied.Numbers.Items.Count == 3);
-
             // reward settings: read from and write to twitch's reward json
             var rewardJson = JsonDocument.Parse("""{"id":"abc","title":"Hydrate","prompt":"drink","cost":100,"is_enabled":true,"is_paused":false,"is_user_input_required":false,"should_redemptions_skip_request_queue":true,"background_color":"#9147FF","global_cooldown_setting":{"is_enabled":true,"global_cooldown_seconds":60},"max_per_stream_setting":{"is_enabled":false,"max_per_stream":0},"max_per_user_per_stream_setting":{"is_enabled":true,"max_per_user_per_stream":2}}""").RootElement;
             object Read(string name) => RewardSettings.Find(name)!.Read(rewardJson);
@@ -344,7 +360,8 @@ internal static class EngineChecks
             var getLoaded = (GetRewardSettingBlock)BlockResolver.DeepCopy(new GetRewardSettingBlock { Setting = "Cost", As = "Text" })!;
             Check("get reward setting: a saved type is kept", getLoaded.Setting == "Cost" && getLoaded.Kind == ValueKind.Text);
             var set = new SetRewardSettingAction();
-            ((ValueSlot)set.Slots[1]).BlockSlot.TrySetBlock(Op("+", "{cost}", "1"));
+            ((ValueSlot)set.Slots[1]).BlockSlot.TrySetBlock(new ExpressionBlock());
+            ((ExpressionBlock)((ValueSlot)set.Slots[1]).BlockSlot.Block!).Formula.SetText("{cost}+1");
             var setList = new ListBlock();
             ((BlockSlotList)setList.Slots[0]).TryInsertBlock(set, 0);
             ((BlockSlotList)setList.Slots[0]).TryInsertBlock(new RecordBlock { Tag = "after" }, 1);
@@ -355,7 +372,7 @@ internal static class EngineChecks
             Check("set reward setting: starts on the reward just redeemed", ((ValueSlot)new SetRewardSettingAction().Slots[0]).Text == "{reward}");
 
             // new reward: the model checks it, then asks the background
-            var chatbot = new ChatbotComponentModel();
+            var chatbot = Chatbot();
             NewReward? asked = null;
             chatbot.CreateRewardRequested += r => asked = r;
             var e3 = Errors();
@@ -417,21 +434,40 @@ internal static class EngineChecks
             var exprFailed = false;
             try { Eval(Expr("{cost}/0")); } catch (BlockFailedException) { exprFailed = true; }
             Check("expression: a bad formula fails with one error naming it", exprFailed && Errors() == e0 + 1 && LastError().Contains("error - Expression: '25/0' can't divide by zero"));
-            var join = new JoinBlock();
-            var parts = (ValueSlotList)join.Slots[0];
-            parts.Items[^1].SetText("total: ");
-            parts.Items[^1].BlockSlot.TrySetBlock(Expr("{cost}*({cost}+1)/2"));
-            Check("expression: a whole answer reads cleanly as text", Eval(join) is "total: 325");
+            var builder = new StringBuilderBlock();
+            builder.Text.SetText("total: {t}");
+            var tRow = builder.Values.Items[^1];
+            tRow.Key.SetText("t");
+            tRow.Value.BlockSlot.TrySetBlock(Expr("{cost}*({cost}+1)/2"));
+            Check("expression: a whole answer reads cleanly as text", Eval(builder) is "total: 325");
+
+            // true/false: comparisons and logic, like C#
+            bool? Bf(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var r, out _) && r.IsBool ? r.AsBool : null;
+            Check("formula: comparisons", Bf("3 == 3.0") == true && Bf("3 != 3") == false && Bf("2 < 3") == true && Bf("3 <= 2") == false && Bf("4 >= 4") == true && Bf("5 ≥ 6") == false);
+            Check("formula: && || ! and true / false, C#'s precedence", Bf("1 < 2 && 2 < 3") == true && Bf("false || 1 == 1") == true && Bf("!(1 == 1)") == false
+                && Bf("true && !false") == true && Bf("1 + 1 == 2 || false && false") == true && Bf("TRUE") == true);
+            Check("formula: maths and true/false don't mix", Err("true + 1").Contains("needs numbers") && Err("5 && 1").Contains("needs true/false")
+                && Err("5 == true").Contains("can't compare") && Err("1 = 1") != "" && Bf("5") == null);
+            var ifCondition = new BlockBranchList("");
+            ifCondition.TryInsertBranch(Expr("{cost} == 25 && !({cost} > 30)"), 0);
+            var asCondition = (ExpressionBlock)ifCondition.Branches[0].Condition.Block!;
+            Check("expression: in an If it gives true/false", asCondition.Kind == ValueKind.Bool && Eval(asCondition) is true);
+            var e1 = Errors();
+            var mixFailed = false;
+            try { Eval(Expr("{cost} > 1")); } catch (BlockFailedException) { mixFailed = true; }
+            Check("expression: true/false in a number slot fails naming it", mixFailed && Errors() == e1 + 1 && LastError().Contains("gives true/false, not a number"));
         }
 
         // ---- Set Parameter (main thread, errors are counted) ----
         {
             int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
             string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
-            SetParameterAction SetP(string name, object value)
+            SetParametersAction SetP(string name, object value)
             {
-                var set = new SetParameterAction { ParameterName = name };
-                if (value is BlockModel block) set.Value.BlockSlot.TrySetBlock(block); else set.Value.SetText((string)value);
+                var set = new SetParametersAction();
+                var row = set.Rows.Items[^1];
+                row.Key.SetText(name);
+                if (value is BlockModel block) row.Value.BlockSlot.TrySetBlock(block); else row.Value.SetText((string)value);
                 return set;
             }
             ExpressionBlock Expr(string text) { var e = new ExpressionBlock(); e.Formula.SetText(text); return e; }
@@ -458,7 +494,7 @@ internal static class EngineChecks
             Check("set parameter: the next run starts without it", RunList(given, "otherCost") == "(missing)");
 
             var e0 = Errors();
-            Check("set parameter: no name fails and stops the run", RunList(given, "x", SetP(" ", "1")) == "(didn't run)" && Errors() == e0 + 1 && LastError().Contains("error - Set Parameter: needs a name"));
+            Check("set parameter: no name fails and stops the run", RunList(given, "x", SetP(" ", "1")) == "(didn't run)" && Errors() == e0 + 1 && LastError().Contains("error - Set Parameters: a row needs a name"));
             Check("set parameter: a name {} can't use fails", RunList(given, "x", SetP("my cost", "1")) == "(didn't run)" && LastError().Contains("'my cost' isn't a valid name"));
             // one scope per run: set four Ifs deep, still there after the Ifs finish
             BlockModel deep = SetP("deep", "found");
@@ -471,8 +507,29 @@ internal static class EngineChecks
                 deep = ifBlock;
             }
             Check("set parameter: set deep inside Ifs, seen after them", RunList(given, "deep", deep) == "found");
-            var copied = (SetParameterAction)BlockResolver.DeepCopy(SetP("otherCost", Expr("{cost}+1")))!;
-            Check("set parameter: saved and loaded keeps its name and value", copied.ParameterName == "otherCost" && RunList(given, "otherCost", copied) == "26");
+            var copied = (SetParametersAction)BlockResolver.DeepCopy(SetP("otherCost", Expr("{cost}+1")))!;
+            Check("set parameter: saved and loaded keeps its name and value", copied.Rows.Items[0].Key.Text == "otherCost" && RunList(given, "otherCost", copied) == "26");
+
+            // set parameters: name / value rows
+            SetParametersAction SetMany(params (string Name, object Value)[] rows)
+            {
+                var set = new SetParametersAction();
+                foreach (var (name, value) in rows)
+                {
+                    var row = set.Rows.Items[^1];
+                    row.Key.SetText(name);
+                    if (value is BlockModel block) row.Value.BlockSlot.TrySetBlock(block); else row.Value.SetText((string)value);
+                }
+                return set;
+            }
+            var many = SetMany(("a", "4"), ("b", Expr("{a}*{a}")), ("c", "{b}!"));
+            Check("set parameters: always one empty row at the end", many.Rows.Items.Count == 4 && many.Rows.Items[^1].IsEmpty);
+            Check("set parameters: rows set top to bottom, a later row sees an earlier one", RunList(given, "c", many) == "16!");
+            many.Rows.Items[0].Key.SetText("");
+            many.Rows.Items[0].Value.SetText("");
+            Check("set parameters: an emptied row disappears", many.Rows.Items.Count == 3 && many.Rows.Items[0].Key.Text == "b");
+            var manyCopy = (SetParametersAction)BlockResolver.DeepCopy(SetMany(("x", "1"), ("y", Expr("{x}+{cost}"))))!;
+            Check("set parameters: saved and loaded keeps its rows", manyCopy.Rows.Items.Count == 3 && RunList(given, "y", manyCopy) == "26");
         }
 
         // ---- OBS, against a pretend OBS (main thread, blocking instead of awaiting, so console errors can be counted) ----
@@ -774,7 +831,7 @@ internal static class EngineChecks
             RecordBlock.Log.Clear();
             var v1 = Errors();
             vmList.SafeRunAsync(new TriggerContext(TriggerPhase.Once, default)).GetAwaiter().GetResult();
-            Check("voicemeeter: without voicemeeter the block fails once and stops", RecordBlock.Log.Count == 0 && Errors() == v1 + 1 && LastError().Contains("Mute/Unmute Voicemeeter: voicemeeter not set up"));
+            Check("voicemeeter: without voicemeeter the block fails once and stops", RecordBlock.Log.Count == 0 && Errors() == v1 + 1 && LastError().Contains("Set Voicemeeter Mute: voicemeeter not set up"));
 
             // twitch info blocks pick their type from the setting
             Check("twitch info: settings and kinds", TwitchInfos.Names(TwitchInfos.Stream).SequenceEqual(new[] { "Title", "Category", "Live", "Viewers", "Uptime Minutes", "Followers" })
@@ -788,7 +845,7 @@ internal static class EngineChecks
             Check("twitch info: user starts as whoever triggered it", ((ValueSlot)new GetTwitchUserBlock().Slots[0]).Text == "{userLogin}" && ((ValueSlot)new ShoutoutAction().Slots[0]).Text == "{userLogin}");
 
             // twitch blocks without twitch: one error each, the run stops
-            var chatbot = new ChatbotManager(new ChatbotComponentModel());
+            var chatbot = new ChatbotManager(Chatbot());
             StreamAssist.Shell.GlobalContext.ChatbotManager = chatbot;
             string RunTwitch(BlockModel block)
             {
@@ -836,7 +893,7 @@ internal static class EngineChecks
 
         // ---- Parse Parameter spacing ----
         {
-            var m = new ChatbotComponentModel();
+            var m = Chatbot();
             var top = (MatchTextChatBlock)m.Root.Block!;
             var so = new ParameterChatBlock { ParameterName = "target" };
             var soBind = new BindableModel(); soBind.Root.TrySetBlock(new ParamRecordBlock { Key = "target" }); so.Target.TryBind(soBind);
@@ -1043,15 +1100,10 @@ internal static class EngineChecks
             }
             var and = new AndCondition();
             var or = new OrCondition();
-            var one = new XorCondition();
             var not = new NotCondition();
-            Check("empty logic blocks are false", !await Eval(and) && !await Eval(or) && !await Eval(one) && !await Eval(not));
+            Check("empty logic blocks are false", !await Eval(and) && !await Eval(or) && !await Eval(not));
             Check("and", await Eval(WithList(new AndCondition(), true, true, true)) && !await Eval(WithList(new AndCondition(), true, false, true)));
             Check("or", await Eval(WithList(new OrCondition(), false, true)) && !await Eval(WithList(new OrCondition(), false, false)));
-            Check("xor = odd number true", await Eval(WithList(new XorCondition(), false, true, false))
-                && await Eval(WithList(new XorCondition(), true, true, true))
-                && !await Eval(WithList(new XorCondition(), true, true))
-                && !await Eval(WithList(new XorCondition(), false, false)));
             ((BlockSlot)not.Slots[0]).TrySetBlock(new FixedCondition { Value = false });
             Check("not", await Eval(not));
             Check("logic list only takes conditions", !((BlockSlotList)and.Slots[0]).TryInsertBlock(new RecordBlock(), 0));
@@ -1077,13 +1129,13 @@ internal static class EngineChecks
             void Up(string dev, ushort vk) { held.Remove((dev, vk)); Raise("KeyUp", dev, vk); }
             StreamAssist.Shell.GlobalContext.KeyboardInputManager = input;
 
-            var list = new KeyboardListModel();
+            var list = Keyboards();
             var dev1 = new InputDeviceModel("dev1", "p", "m", 1, 2);
             var dev2 = new InputDeviceModel("dev2", "p", "m", 3, 4);
             list.AttachDevices(new List<InputDeviceModel> { dev1, dev2 });
             list.CreateSlot(out var slot);
-            list.TryCreateConfig("c", null, out var cfg);
-            slot.TrySetSelectedConfig(cfg); slot.TrySetSelectedDevice(dev1);
+            var cfg = slot.SelectedConfig!; // the slot's keys in the Default config
+            slot.TrySetSelectedDevice(dev1);
             var km = new KeybindManager(list, input);
 
             // T: if shift held -> "S" else "T"; on release -> "R"
@@ -1102,13 +1154,13 @@ internal static class EngineChecks
             async Task<string> Do(Action a) { RecordBlock.Log.Clear(); a(); await Task.Delay(50); return string.Join("", RecordBlock.Log); }
             Check("T alone -> else", await Do(() => Down("dev1", 0x54)) == "T");
             Check("release -> on released", await Do(() => Up("dev1", 0x54)) == "R");
-            Check("shift+T -> then", await Do(() => { Down("dev1", 0x10); Down("dev1", 0x54); }) == "S");
+            Check("shift+T -> then", await Do(() => { Down("dev1", KeyboardDevices.LeftShift); Down("dev1", 0x54); }) == "S");
             Check("repeat key down ignored", await Do(() => Down("dev1", 0x54)) == "");
-            await Do(() => { Up("dev1", 0x54); Up("dev1", 0x10); });
+            await Do(() => { Up("dev1", 0x54); Up("dev1", KeyboardDevices.LeftShift); });
             Check("other keyboard doesn't trigger", await Do(() => Down("dev2", 0x54)) == "");
             Up("dev2", 0x54);
-            Check("shift on other keyboard counts for Any keyboard", await Do(() => { Down("dev2", 0x10); Down("dev1", 0x54); }) == "S");
-            Up("dev1", 0x54); Up("dev2", 0x10);
+            Check("right shift on other keyboard counts for Any keyboard", await Do(() => { Down("dev2", KeyboardDevices.RightShift); Down("dev1", 0x54); }) == "S");
+            Up("dev1", 0x54); Up("dev2", KeyboardDevices.RightShift);
 
             Down("dev2", 0x41);
             var heldOk = input.IsKeyDown(0x41) && input.IsKeyDown("dev2", 0x41) && !input.IsKeyDown("dev1", 0x41);
@@ -1116,9 +1168,10 @@ internal static class EngineChecks
             Check("IsKeyDown any/specific", heldOk && !input.IsKeyDown(0x41));
 
             // switching config/device takes effect immediately (no cached lookup)
-            list.TryCreateConfig("c2", null, out var cfg2);
+            list.Configs.TryCreate("c2"); // a copy of Default, switched to
+            var cfg2 = slot.SelectedConfig!;
+            cfg2.UnbindKey(0x54);
             var b2 = BindableModel.CreateDefault(); ((BlockSlot)b2.Root.Block!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "2" }); cfg2.TryBindKey(0x54, b2);
-            slot.TrySetSelectedConfig(cfg2);
             Check("config switch used right away", await Do(() => Down("dev1", 0x54)) == "2");
             Up("dev1", 0x54);
             slot.TrySetSelectedDevice(dev2);
@@ -1126,11 +1179,120 @@ internal static class EngineChecks
             Up("dev2", 0x54);
 
             // a bind that changes config while the trigger loop runs doesn't crash
-            var swap = new BindableModel(); swap.Root.TrySetBlock(new SwapConfigBlock { Slot = slot, To = cfg });
+            var swap = new BindableModel(); swap.Root.TrySetBlock(new SwapConfigBlock { List = list, To = "Default" });
             cfg2.TryBindKey(0x55, swap);
             Check("bind can switch config mid-trigger", await Do(() => Down("dev2", 0x55)) == "" && slot.SelectedConfig == cfg);
             Up("dev2", 0x55);
             km.Dispose();
+
+            // tab configs: one config for every keyboard, switching swaps every slot's keys at once
+            list.CreateSlot(out var slotB);
+            Check("configs: a new slot gets its own keys in the config in use", slotB.Id != slot.Id && slotB.SelectedConfig != null && slotB.SelectedConfig != slot.SelectedConfig);
+            slotB.SelectedConfig!.TryBindKey(0x41, BindableModel.CreateDefault());
+            list.Configs.TrySelect("c2");
+            Check("configs: switching swaps every slot's keys", slot.SelectedConfig == cfg2 && !slotB.SelectedConfig!.Keybinds.ContainsKey(0x41));
+            list.Configs.TrySelect("Default");
+            Check("configs: and back", slot.SelectedConfig == cfg && slotB.SelectedConfig!.Keybinds.ContainsKey(0x41));
+            var listJson = JsonSerializer.Serialize(list);
+            var listLoaded = JsonSerializer.Deserialize<KeyboardListModel>(listJson)!;
+            Check("configs: saved and loaded with the one in use, each slot finds its keys by id", listLoaded.Configs.SelectedName == "Default"
+                && listLoaded.Configs.Names.SequenceEqual(new[] { "Default", "c2" }) && listLoaded.Slots[1].SelectedConfig!.Keybinds.ContainsKey(0x41)
+                && listLoaded.Slots[0].SelectedConfig!.Keybinds.ContainsKey(0x54) && JsonSerializer.Serialize(listLoaded) == listJson);
+            list.TryDeleteSlot(slotB);
+            Check("configs: a deleted slot's keys go, in every config", list.Configs.Items.All(c => !c.Keyboards.ContainsKey(slotB.Id)));
+            Check("configs: deleting the last config leaves the keyboards with no keys", list.Configs.TryDelete("c2") && list.Configs.TryDelete("Default")
+                && list.Configs.Items.Count == 0 && slot.SelectedConfig == null);
+            list.CreateSlot(out var slotC);
+            Check("configs: with none, a new slot has no keys either, the first config gives them some", slotC.SelectedConfig == null
+                && list.Configs.TryCreate("Fresh") && slotC.SelectedConfig != null && slotC.SelectedConfig.Keybinds.Count == 0 && slot.SelectedConfig!.Keybinds.Count == 0);
+
+            // either side: Shift / Ctrl / Alt typed by name mean either, a side's own code only that side
+            Down("dev1", KeyboardDevices.RightCtrl);
+            Check("held keys: ctrl means either side", input.IsKeyDown(0x11) && input.IsKeyDown("dev1", 0x11) && input.IsKeyDown(KeyboardDevices.RightCtrl)
+                && !input.IsKeyDown(KeyboardDevices.LeftCtrl) && !input.IsKeyDown("dev2", 0x11));
+            Up("dev1", KeyboardDevices.RightCtrl);
+
+            // keyboards plugged in and removed: slots let go of a removed one (keeping it saved) and find it again
+            var plug = Keyboards();
+            var kbA = new InputDeviceModel("pathA", "Keys", "Maker", 1, 2);
+            var kbB = new InputDeviceModel("pathB", "Keys", "Maker", 3, 4);
+            plug.AttachDevices(new List<InputDeviceModel> { kbA, kbB });
+            plug.CreateSlot(out var plugSlot);
+            plugSlot.TrySetSelectedDevice(kbA);
+            int devicesChanged = 0;
+            plug.DevicesChanged += () => devicesChanged++;
+            plug.AttachDevices(new List<InputDeviceModel> { kbB });
+            Check("keyboards: a removed keyboard leaves its slot, still saved", plugSlot.SelectedDevice == null && JsonSerializer.Serialize(plugSlot).Contains("\"selectedDevice\":\"pathA\"") && devicesChanged == 1);
+            plug.AttachDevices(new List<InputDeviceModel> { kbB, kbA });
+            Check("keyboards: plugged back in, the slot has it again", plugSlot.SelectedDevice == kbA && devicesChanged == 2);
+            plug.AttachDevices(new List<InputDeviceModel> { kbB });
+            plugSlot.TrySetSelectedDevice(null);
+            plug.AttachDevices(new List<InputDeviceModel> { kbA, kbB });
+            Check("keyboards: picking none forgets the one that was waiting", plugSlot.SelectedDevice == null && !JsonSerializer.Serialize(plugSlot).Contains("pathA"));
+
+            // layouts: the keyboard picture or every key code, saved per slot; switching remakes the keys, binds stay
+            Check("layouts: a slot starts on the keyboard picture", plugSlot.Layout == KeyboardSlotModel.KeyboardLayout && KeyboardSlotModel.Layouts.Count == 2);
+            int layoutChanges = 0;
+            plugSlot.LayoutChanged += _ => layoutChanges++;
+            Check("layouts: an unknown one is refused", !plugSlot.TrySetLayout("Piano") && plugSlot.Layout == KeyboardSlotModel.KeyboardLayout && layoutChanges == 0);
+            Check("layouts: switching says so and is saved", plugSlot.TrySetLayout(KeyboardSlotModel.AllKeysLayout) && layoutChanges == 1
+                && JsonSerializer.Deserialize<KeyboardSlotModel>(JsonSerializer.Serialize(plugSlot))!.Layout == KeyboardSlotModel.AllKeysLayout
+                && JsonSerializer.Deserialize<KeyboardSlotModel>("{\"layout\":\"Piano\"}")!.Layout == KeyboardSlotModel.KeyboardLayout);
+            var (allKeys, _, _) = DeviceDisplayHelper.InitGenericDisplayKeys(25, 3);
+            Check("layouts: all keys has F13-F24 and media keys, no mouse buttons or either-side codes", allKeys.Any(k => k.VK == 0x7C && k.Label == "F13") && allKeys.Any(k => k.VK == 0x87)
+                && allKeys.Any(k => k.Label == "MEDIA\nPLAY\nPAUSE" && k.VK == 0xB3 && k.X == 19 * 28 && k.Y == 5 * 28 && k.W == k.H) && allKeys.All(k => k.VK > 0x06 && k.VK is < 0x10 or > 0x12)
+                && allKeys.Select(k => k.VK).Distinct().Count() == allKeys.Count && allKeys.Any(k => k.VK == KeyboardDevices.RightShift));
+            var layoutConfig = plugSlot.SelectedConfig!;
+            layoutConfig.TryBindKey(0x7C, BindableModel.CreateDefault());
+            var layoutView = new KeyboardSlotViewModel(plugSlot, input, []);
+            Check("layouts: the slot shows every key code", layoutView.Keys.Count == allKeys.Count && layoutView.MenuLayout == KeyboardSlotModel.AllKeysLayout
+                && layoutView.Keys.Single(k => k.VK == 0x7C).IsBound);
+            Check("layouts: only bound keys make edit buttons", layoutView.Keys.Single(k => k.VK == 0x7C).EditButtonsContext != null
+                && layoutView.Keys.Where(k => k.VK != 0x7C).All(k => k.EditButtonsContext == null));
+            layoutView.MenuLayout = KeyboardSlotModel.KeyboardLayout;
+            Check("layouts: the dropdown switches the slot back, the keys are remade", plugSlot.Layout == KeyboardSlotModel.KeyboardLayout && layoutView.Keys.All(k => k.VK != 0x7C)
+                && layoutView.Keys.Any(k => k.VK == KeyboardDevices.LeftShift));
+            layoutView.Dispose();
+
+            // the keyboards on this PC (read only, logged for a look, how many depends on the PC)
+            foreach (var device in KeyboardInputManager.Devices) log($"  keyboard here: {device.GetDisplayLabel()}  [{device.DevicePath}]");
+        }
+
+        // ---- raw keys and keyboard connections ----
+        {
+            Check("raw keys: the two shifts, ctrls and alts are told apart", KeyboardDevices.KeyCode(0x10, 0x2A, false) == KeyboardDevices.LeftShift
+                && KeyboardDevices.KeyCode(0x10, 0x36, false) == KeyboardDevices.RightShift && KeyboardDevices.KeyCode(0x11, 0x1D, false) == KeyboardDevices.LeftCtrl
+                && KeyboardDevices.KeyCode(0x11, 0x1D, true) == KeyboardDevices.RightCtrl && KeyboardDevices.KeyCode(0x12, 0x38, false) == KeyboardDevices.LeftAlt
+                && KeyboardDevices.KeyCode(0x12, 0x38, true) == KeyboardDevices.RightAlt);
+            Check("raw keys: numpad Enter is its own key", KeyboardDevices.KeyCode(0x0D, 0x1C, true) == KeyboardDevices.NumpadEnter && KeyboardDevices.KeyCode(0x0D, 0x1C, false) == 0x0D);
+            Check("raw keys: numpad keys with Num Lock off are still numpad keys", KeyboardDevices.KeyCode(0x24, 0x47, false) == 0x67 && KeyboardDevices.KeyCode(0x2E, 0x53, false) == 0x6E
+                && KeyboardDevices.KeyCode(0x24, 0x47, true) == 0x24 && KeyboardDevices.KeyCode(0x25, 0x4B, true) == 0x25);
+            Check("raw keys: windows' fake shifts and 'no key' are ignored, other keys pass", KeyboardDevices.KeyCode(0x10, 0x2A, true) == null && KeyboardDevices.KeyCode(0xFF, 0, false) == null
+                && KeyboardDevices.KeyCode(0x41, 0x1E, false) == 0x41);
+            Check("raw keys: the layout and names know the new keys", DeviceDisplayHelper.VKToKeyboardLabel(KeyboardDevices.RightShift) == "Shift" && DeviceDisplayHelper.VKToKeyboardLabel(KeyboardDevices.NumpadEnter) == "Enter"
+                && DeviceDisplayHelper.TryParseKeyName("shift", out var shiftCode) && KeyboardDevices.CodesFor(shiftCode).SequenceEqual(new[] { KeyboardDevices.LeftShift, KeyboardDevices.RightShift })
+                && DeviceDisplayHelper.TryParseKeyName("rshift", out var rshift) && rshift == KeyboardDevices.RightShift
+                && DeviceDisplayHelper.TryParseKeyName("numpadenter", out var npEnter) && npEnter == KeyboardDevices.NumpadEnter);
+
+            var g1 = Guid.NewGuid();
+            var g2 = Guid.NewGuid();
+            var none = new Guid("00000000-0000-0000-ffff-ffffffffffff");
+            var interfaces = new List<KeyboardInterface>
+            {
+                new(@"\\?\HID#VID_1&PID_2&MI_00#a", 1, 2, "Maker", "Keys", g1),
+                new(@"\\?\HID#VID_1&PID_2&MI_01&Col01#b", 1, 2, "Maker", "Keys", g1),
+                new(@"\\?\HID#VID_1&PID_2&MI_00#c", 1, 2, "Maker", "Keys", g2),
+                new(@"\\?\ACPI#laptop", 9, 9, "", "", none),
+                new(@"\\?\HID#other", 7, 7, "Other", "Board", null),
+            };
+            var groups = KeyboardDevices.Group(interfaces);
+            Check("keyboards: one per physical keyboard, every connection of it counts", groups.Count == 4 && groups[0].Paths.Count == 2 && groups[0].Device.DevicePath.EndsWith("#a"));
+            Check("keyboards: identical keyboards stay separate and are numbered", groups[1].Device.DevicePath.EndsWith("#c") && groups[1].Device.GetDisplayLabel().EndsWith("#2")
+                && !groups[0].Device.GetDisplayLabel().Contains('#'));
+            Check("keyboards: no known container means a keyboard of its own", groups[2].Paths.Count == 1 && groups[3].Paths.Count == 1 && groups[2].Device.ProductName == "Unknown");
+            Check("keyboards: the main path skips sub-collections", KeyboardDevices.Group(new[] { interfaces[1], interfaces[0] })[0].Device.DevicePath.EndsWith("#a"));
+            var again = KeyboardDevices.Group(interfaces, groups.Select(g => g.Device).ToList());
+            Check("keyboards: reading them again keeps the same models", again.Select(g => g.Device).SequenceEqual(groups.Select(g => g.Device)));
         }
 
 
@@ -1239,7 +1401,7 @@ internal static class EngineChecks
             var bothTarget = bothBlock.Rows.Rows[0].Target;
             Check("a saved row with both keeps the binding and drops the block", bothTarget.Bindable != null && bothTarget.Child.Block == null);
 
-            var model = new ChatbotComponentModel();
+            var model = Chatbot();
             int chatChanges = 0; model.Changed += () => chatChanges++;
             var lurkBlock = M(("lurk", B("L")));
             var tree = M(("!", lurkBlock));
@@ -1259,7 +1421,7 @@ internal static class EngineChecks
 
         // ---- chat matching ----
         {
-            var model = new ChatbotComponentModel();
+            var model = Chatbot();
             var disabled = B("OFF"); disabled.SetIsDisabled(true);
             var tree = M(("!", M(
                 ("lurk", B("LURK")),
@@ -1358,7 +1520,7 @@ internal static class EngineChecks
             BindableModel Rec(string key) { var b = new BindableModel(); b.Root.TrySetBlock(new ParamRecordBlock { Key = key }); return b; }
             async Task<string?> Seen(Action run) { ParamRecordBlock.Seen = null; run(); await Task.Delay(50); return ParamRecordBlock.Seen; }
 
-            var model = new ChatbotComponentModel();
+            var model = Chatbot();
             Check("fresh redeem list has one empty row", model.Redeems.Rows.Count == 1 && model.Redeems.Rows[0].IsEmpty);
             model.Redeems.Rows[0].SetTitle("Hydrate!");
             Check("typing a title adds a new empty row", model.Redeems.Rows.Count == 2);
@@ -1439,7 +1601,7 @@ internal static class EngineChecks
             startup.SetBotConnectOnStartup(true);
             Check("connect on startup is saved", saves == 1 && JsonSerializer.Serialize(startup).Contains("\"botConnectOnStartup\":true"));
             Check("session state isn't saved", !JsonSerializer.Serialize(startup).Contains("isEnabled"));
-            Check("chat only as bot: off by default", !startup.ChatOnlyAsBot && !new ChatbotComponentModel().ChatOnlyAsBot);
+            Check("chat only as bot: off by default", !startup.ChatOnlyAsBot && !Chatbot().ChatOnlyAsBot);
             startup.SetChatOnlyAsBot(true);
             startup.SetChatOnlyAsBot(true);
             Check("chat only as bot: saved once, without reconnecting", saves == 2 && reconnects == 3 && botReconnects == 1
@@ -1484,9 +1646,8 @@ internal static class EngineChecks
 
             // which blocks fit
             Check("text slot takes an int block", textSlot.BlockSlot.Accepts(IntParam("x")));
-            Check("int slot refuses a text block", !intSlot.BlockSlot.Accepts(new JoinBlock()));
+            Check("int slot refuses a text block", !intSlot.BlockSlot.Accepts(new StringBuilderBlock()));
             Check("double slot takes an int block", doubleSlot.BlockSlot.Accepts(IntParam("x")));
-            Check("double slot takes Round (int)", doubleSlot.BlockSlot.Accepts(new RoundBlock()));
             Check("value slots refuse actions", !textSlot.BlockSlot.Accepts(new RecordBlock()));
             Check("bool blocks still fit condition slots", new BlockSlot("", typeof(ConditionBlock)).Accepts(new EqualsCondition()));
 
@@ -1515,39 +1676,44 @@ internal static class EngineChecks
             Slot<ValueSlot>(equals, 1).SetText("57");
             Check("Equals block: viewers == 57", await equals.EvaluateAsync(ctx));
 
-            var compare = new CompareCondition { Operator = "≥" };
-            Slot<ValueSlot>(compare, 0).SetText("{viewers}");
-            Slot<ValueSlot>(compare, 1).SetText("50");
-            Check("Compare: viewers ≥ 50", await compare.EvaluateAsync(ctx));
-            compare.Operator = "<";
-            Check("Compare: viewers < 50 is false", !await compare.EvaluateAsync(ctx));
-
-            var ignoreCase = new EqualsIgnoreCaseCondition();
+            var ignoreCase = new EqualsCondition { Case = "Ignore Case" };
             Slot<ValueSlot>(ignoreCase, 0).SetText("{user}"); Slot<ValueSlot>(ignoreCase, 1).SetText("VIEWER");
-            Check("Equals Ignore Case", await ignoreCase.EvaluateAsync(ctx));
+            Check("Equals: Ignore Case", await ignoreCase.EvaluateAsync(ctx));
+            ignoreCase.Case = "Match Case";
+            Check("Equals: Match Case (the default) doesn't", !await ignoreCase.EvaluateAsync(ctx) && new EqualsCondition().Case == "Match Case"
+                && BlockResolver.DeepCopy(new EqualsCondition { Case = "Ignore Case" }) is EqualsCondition { Case: "Ignore Case" });
 
             Check("Convert to Bool", (bool)await MakeConvert("Bool", "{mod}").EvaluateObjectAsync(ctx));
 
-            async Task<int> RoundWith(string mode, string number) { var r = new RoundBlock { Mode = mode }; Slot<ValueSlot>(r, 0).SetText(number); return await r.EvaluateAsync(ctx); }
-            Check("Round modes", await RoundWith("Round", "2.5") == 3 && await RoundWith("Floor", "2.7") == 2 && await RoundWith("Ceiling", "2.1") == 3 && await RoundWith("Truncate", "-2.7") == -2);
+            // Expression's functions (Round is gone)
+            double? Fn(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var n, out _) ? n.Value : null;
+            Check("expression functions", Fn("round(2.5)") == 3 && Fn("round(-2.5)") == -3 && Fn("floor(2.7)") == 2 && Fn("ceil(2.1)") == 3 && Fn("truncate(-2.7)") == -2
+                && Fn("abs(-4)") == 4 && Fn("max(1, 7, 3)") == 7 && Fn("min(2.5, 1)") == 1 && Fn("ROUND(10 / 4.0) * 2") == 6);
+            Check("expression functions: rounding gives a whole number, mistakes fail", StreamAssist.Core.Utilities.Formula.TryEvaluate("round(7 / 2.0)", out var rounded, out _) && rounded.IsWhole && rounded.Value == 4
+                && !StreamAssist.Core.Utilities.Formula.TryEvaluate("sqrt(4)", out _, out var noFunction) && noFunction.Contains("no function 'sqrt'")
+                && Fn("round(1, 2)") == null && Fn("max()") == null && Fn("abs(true)") == null && Fn("round(2") == null);
 
-            var join = new JoinBlock();
-            var parts = Slot<ValueSlotList>(join, 0);
-            Check("Join starts with one empty part", parts.Items.Count == 1 && parts.Items[0].Text == "");
-            parts.Items[0].SetText("{user} raided with ");
-            Check("typing in the last part adds an empty one below", parts.Items.Count == 2);
-            parts.Items[1].BlockSlot.TrySetBlock(IntParam("viewers"));
-            Check("placing a block in it adds another", parts.Items.Count == 3);
-            parts.Items[2].SetText("!");
-            Check("Join parts top to bottom, text + int + text", await join.EvaluateAsync(ctx) == "Viewer raided with 57!");
-            var middle = parts.Items[1];
-            middle.RemoveBlock(middle.BlockSlot.Block!);
-            Check("an emptied part disappears", parts.Items.Count == 3 && await join.EvaluateAsync(ctx) == "Viewer raided with !");
-            var joinJson = JsonSerializer.Serialize(BlockResolver.GetData(join));
-            var joinLoaded = (JoinBlock)BlockResolver.Resolve(JsonSerializer.Deserialize<PendingBlockData>(joinJson)!)!;
-            Check("Join round trip (the trailing empty part isn't saved)", JsonSerializer.Serialize(BlockResolver.GetData(joinLoaded)) == joinJson
-                && Slot<ValueSlotList>(joinLoaded, 0).Items.Count == 3 && await joinLoaded.EvaluateAsync(ctx) == "Viewer raided with !");
-            Check("Join parts know their block (for errors)", Slot<ValueSlotList>(joinLoaded, 0).Items.All(i => i.Owner == joinLoaded));
+            // string builder: a text with {name}s, and rows below it that only this block sees
+            var sb = new StringBuilderBlock();
+            Check("string builder starts with one empty row", sb.Values.Items.Count == 1 && sb.Values.Items[0].IsEmpty);
+            sb.Text.SetText("{user} raided with {1}{2}");
+            var row1 = sb.Values.Items[^1];
+            row1.Key.SetText("1");
+            Check("typing a name in the last row adds an empty one below", sb.Values.Items.Count == 2);
+            row1.Value.BlockSlot.TrySetBlock(IntParam("viewers"));
+            var row2 = sb.Values.Items[^1];
+            row2.Key.SetText("2");
+            row2.Value.SetText("! ({1} total)");
+            Check("string builder fills in its rows (a row can use an earlier one) and the run's parameters", await sb.EvaluateAsync(ctx) == "Viewer raided with 57! (57 total)");
+            Check("string builder's rows are only for that block", !ctx.Parameters.ContainsKey("1") && ctx.Format("{1}") == "{1}");
+            row1.Value.RemoveBlock(row1.Value.BlockSlot.Block!);
+            row1.Key.SetText("");
+            Check("an emptied row disappears", sb.Values.Items.Count == 2 && await sb.EvaluateAsync(ctx) == "Viewer raided with {1}! ({1} total)");
+            var sbJson = JsonSerializer.Serialize(BlockResolver.GetData(sb));
+            var sbLoaded = (StringBuilderBlock)BlockResolver.Resolve(JsonSerializer.Deserialize<PendingBlockData>(sbJson)!)!;
+            Check("string builder round trip (the trailing empty row isn't saved)", JsonSerializer.Serialize(BlockResolver.GetData(sbLoaded)) == sbJson
+                && sbLoaded.Values.Items.Count == 2 && await sbLoaded.EvaluateAsync(ctx) == "Viewer raided with {1}! ({1} total)");
+            Check("string builder rows know their block (for errors)", sbLoaded.Values.Items.All(i => i.Key.Owner == sbLoaded && i.Value.Owner == sbLoaded));
 
             Check("Convert to Int / Char / Double", (int)await MakeConvert("Int", "{viewers}").EvaluateObjectAsync(ctx) == 57
                 && (char)await MakeConvert("Char", "!").EvaluateObjectAsync(ctx) == '!' && (double)await MakeConvert("Double", "{price}").EvaluateObjectAsync(ctx) == 2.5);
@@ -1555,13 +1721,46 @@ internal static class EngineChecks
             // saving
             var saved = new ConsoleMessageAction();
             Slot<ValueSlot>(saved, 0).SetText("typed");
-            Slot<ValueSlot>(saved, 0).BlockSlot.TrySetBlock(join);
+            Slot<ValueSlot>(saved, 0).BlockSlot.TrySetBlock(sbLoaded);
             var savedJson = JsonSerializer.Serialize(BlockResolver.GetData(saved));
             var loadedBlock = BlockResolver.Resolve(JsonSerializer.Deserialize<PendingBlockData>(savedJson)!)!;
             Check("value slots round trip (typed text + block)", JsonSerializer.Serialize(BlockResolver.GetData(loadedBlock)) == savedJson && savedJson.Contains("\"text\":\"typed\""));
-            Check("block list headings by type", new RoundBlock().Category == BlockCategory.Int && new JoinBlock().Category == BlockCategory.Text
-                && new EqualsCondition().Category == BlockCategory.Condition && new ConvertBlock().Category == BlockCategory.Any && new GetParameterBlock().Category == BlockCategory.Any);
-            Check("value blocks don't fit action slots", !new BlockSlotList("", typeof(ExecutableBlock)).Accepts(new JoinBlock()));
+            Check("block list headings: general blocks by what they do", new RandomNumberBlock().Group == BlockGroup.Math && new StringBuilderBlock().Group == BlockGroup.Text
+                && new EqualsCondition().Group == BlockGroup.Logic && new ConvertBlock().Group == BlockGroup.Parameters
+                && new SetParametersAction().Group == BlockGroup.Parameters && new IfBlock().Group == BlockGroup.Control);
+            Check("block list headings: integrations by their component folder", new GetObsSceneBlock().Group == BlockGroup.Obs && new ObsSourceMutedCondition().Group == BlockGroup.Obs
+                && new SendChatMessageAction().Group == BlockGroup.Twitch && new GetStreamInfoBlock().Group == BlockGroup.Twitch && new MatchTextChatBlock().Group == BlockGroup.Chat
+                && new MuteVoicemeeterAction().Group == BlockGroup.Voicemeeter && new PlaySpotifyAction().Group == BlockGroup.Spotify
+                && new PlaySoundAction().Group == BlockGroup.App && new ConsoleMessageAction().Group == BlockGroup.App && new KeyPressedCondition().Group == BlockGroup.App);
+            Check("block list headings: every block has one", BlockResolver.DiscoverAll().All(b => Enum.IsDefined(b.Group)));
+            Check("block cards: value blocks show their type", new BlockCardViewModel(new StringBuilderBlock()).TypeText == "Text" && new BlockCardViewModel(new EqualsCondition()).TypeText == "Bool"
+                && new BlockCardViewModel(new ConvertBlock()).TypeText == "Any type" && new BlockCardViewModel(new IfBlock()).TypeText == "");
+
+            // collapsing headings: kept in the window layout, every open list follows it, a search shows everything
+            var layout = new StreamAssist.Shell.WindowLayoutModel();
+            var palette = new BlockPaletteViewModel(layout, BlockGroup.Control, BlockGroup.Twitch);
+            var twitchGroup = palette.Groups.Single(g => g.Group == BlockGroup.Twitch);
+            Check("block list: headings in order, expanded at first", palette.Groups.Select(g => g.Title).SequenceEqual(new[] { "Control", "Twitch" }) && twitchGroup.ShowCards && twitchGroup.Heading == "Twitch ▾");
+            var otherPalette = new BlockPaletteViewModel(layout, BlockGroup.Twitch);
+            twitchGroup.HeadingPressedCommand.Execute(null);
+            Check("block list: clicking a heading collapses it, in every list, and it's saved", !twitchGroup.ShowCards && twitchGroup.Heading == "Twitch ▸" && !otherPalette.Groups[0].ShowCards
+                && layout.IsBlockGroupCollapsed("Twitch") && JsonSerializer.Serialize(layout).Contains("\"collapsedBlockGroups\":[\"Twitch\"]"));
+            Check("block list: a loaded layout keeps it collapsed", !new BlockPaletteViewModel(JsonSerializer.Deserialize<StreamAssist.Shell.WindowLayoutModel>(JsonSerializer.Serialize(layout))!, BlockGroup.Twitch).Groups[0].ShowCards);
+            palette.SearchText = "announce";
+            palette.GetType().GetMethod("ApplySearch", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(palette, null);
+            Check("block list: searching keeps a heading collapsed, counting its matches", !twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Cards.Count}) ▸"
+                && twitchGroup.Cards.All(c => c.Name.Contains("announce", StringComparison.OrdinalIgnoreCase)) && twitchGroup.Cards.Count > 0);
+            Check("block list: a heading with no matches is hidden", !palette.Groups.Any(g => g.Group == BlockGroup.Control));
+            twitchGroup.HeadingPressedCommand.Execute(null);
+            Check("block list: a heading can be expanded while searching", twitchGroup.ShowCards && twitchGroup.Heading.EndsWith("▾"));
+            twitchGroup.HeadingPressedCommand.Execute(null);
+            palette.SearchText = "";
+            palette.GetType().GetMethod("ApplySearch", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(palette, null);
+            twitchGroup.HeadingPressedCommand.Execute(null);
+            Check("block list: clicking again expands it", twitchGroup.ShowCards && !layout.IsBlockGroupCollapsed("Twitch"));
+            palette.Dispose();
+            otherPalette.Dispose();
+            Check("value blocks don't fit action slots", !new BlockSlotList("", typeof(ExecutableBlock)).Accepts(new StringBuilderBlock()));
         }
 
         // ---- any-type blocks, conversions, parameter lists ----
@@ -1579,23 +1778,24 @@ internal static class EngineChecks
 
             // dropped into a slot, an any-type block takes the slot's kind (if it doesn't already fit)
             var intSlot = new ValueSlot<int>("Amount");
-            var param = new GetParameterBlock { ParameterName = "viewers" }; // Text by default
-            Check("int slot takes Get Parameter (it can be an int)", intSlot.BlockSlot.Accepts(param));
+            var param = new ConvertBlock(); // Text by default
+            ((ValueSlot)param.Slots[0]).SetText("{viewers}");
+            Check("int slot takes Convert (it can be an int)", intSlot.BlockSlot.Accepts(param));
             intSlot.BlockSlot.TrySetBlock(param);
-            Check("...and it becomes Int there", param.Kind == ValueKind.Int && param.As == "Int" && await intSlot.EvaluateAsync(ctx) == 57);
+            Check("...and it becomes Int there", param.Kind == ValueKind.Int && param.To == "Int" && await intSlot.EvaluateAsync(ctx) == 57);
             Check("changing it to Text is refused (the slot needs an int)", !param.TrySetKind(ValueKind.Text) && param.Kind == ValueKind.Int);
-            param.As = "Text";
-            Check("...through the dropdown too", param.As == "Int");
+            param.To = "Text";
+            Check("...through the dropdown too", param.To == "Int");
             Check("changing to Double is refused too (double doesn't fit int)", !param.TrySetKind(ValueKind.Double));
 
             var textSlot = new ValueSlot<string>("Message");
             var intParam = IntParam("viewers");
             textSlot.BlockSlot.TrySetBlock(intParam);
-            Check("an int Get Parameter already fits a text slot, so it stays Int", intParam.Kind == ValueKind.Int);
+            Check("an int Convert already fits a text slot, so it stays Int", intParam.Kind == ValueKind.Int);
             Check("...and can change to anything, text takes all", intParam.TrySetKind(ValueKind.Bool) && intParam.TrySetKind(ValueKind.Int));
-            Check("Get Parameter can't be a char", !new GetParameterBlock().CanBe(ValueKind.Char) && new ConvertBlock().CanBe(ValueKind.Char));
+            Check("Convert can be a char", new ConvertBlock().CanBe(ValueKind.Char));
 
-            var freeParam = new GetParameterBlock();
+            var freeParam = new ConvertBlock();
             Check("not placed: any allowed kind", freeParam.TrySetKind(ValueKind.Double) && freeParam.Kind == ValueKind.Double);
 
             // condition slots take any bool value block
@@ -1604,7 +1804,7 @@ internal static class EngineChecks
             Check("condition slot takes Convert (it can be Bool)", ifCondition.Accepts(convertToBool));
             ifCondition.TrySetBlock(convertToBool);
             Check("...becomes Bool and evaluates", convertToBool.Kind == ValueKind.Bool && await ifCondition.EvaluateAsync(ctx));
-            Check("condition slot refuses Join (text)", !ifCondition.Accepts(new JoinBlock()));
+            Check("condition slot refuses String Builder (text)", !ifCondition.Accepts(new StringBuilderBlock()));
             var and = new AndCondition();
             ((BlockSlotList)and.Slots[0]).TryInsertBlock(MakeConvert("Bool", "true"), 0);
             ((BlockSlotList)and.Slots[0]).TryInsertBlock(new FixedCondition { Value = true }, 1);
@@ -1613,7 +1813,7 @@ internal static class EngineChecks
             Check("If branches accept bool value blocks", branches.TryInsertBranch(MakeConvert("Text", "false"), 0) && branches.Branches[0].Condition.Block!.ParentSlot == branches.Branches[0].Condition);
 
             // the slot a block is in
-            var slotJoin = new JoinBlock();
+            var slotJoin = new StringBuilderBlock();
             var holder = new ValueSlot<string>("x"); holder.BlockSlot.TrySetBlock(slotJoin);
             Check("a placed block knows its slot", slotJoin.ParentSlot == holder.BlockSlot);
             holder.BlockSlot.RemoveBlock(slotJoin);
@@ -1642,7 +1842,7 @@ internal static class EngineChecks
             Check("redeem test values only use listed parameters", ChatEvents.SampleParameters(null, "U", "5", "1", "t", "R").Keys.All(ChatEvents.Redeem.Select(p => p.Name).Contains));
 
             // what dispatched twitch events give is listed too
-            var model = new ChatbotComponentModel();
+            var model = Chatbot();
             var seenKeys = new Dictionary<string, HashSet<string>>();
             foreach (var (key, _) in ChatEvents.All)
             {
@@ -1708,14 +1908,14 @@ internal static class EngineChecks
             Check("Time Out User defaults to whoever triggered it, 60s",
                 ((ValueSlot)timeout.Slots[0]).Text == "{userLogin}" && ((ValueSlot)timeout.Slots[1]).Text == "60" && ((ValueSlot)timeout.Slots[2]).Text == "");
             Check("Ban User defaults to whoever triggered it", ((ValueSlot)new BanUserAction().Slots[0]).Text == "{userLogin}");
-            Check("Delete Message defaults to the triggering message", ((ValueSlot)new DeleteChatMessageAction().Slots[0]).Text == "{messageId}");
+            Check("Delete Chat Message defaults to the triggering message", ((ValueSlot)new DeleteChatMessageAction().Slots[0]).Text == "{messageId}");
             ((ValueSlot)timeout.Slots[1]).SetText("{seconds}");
             var timeoutJson = JsonSerializer.Serialize(BlockResolver.GetData(timeout));
             var timeoutLoaded = BlockResolver.Resolve(JsonSerializer.Deserialize<PendingBlockData>(timeoutJson)!)!;
             Check("Time Out User round trip (a saved value isn't replaced by the default)",
                 JsonSerializer.Serialize(BlockResolver.GetData(timeoutLoaded)) == timeoutJson && ((ValueSlot)timeoutLoaded.Slots[1]).Text == "{seconds}");
-            Check("moderation blocks are actions, in the block list", new TimeOutUserAction().Category == BlockCategory.Action && new BanUserAction().Category == BlockCategory.Action
-                && new DeleteChatMessageAction().Category == BlockCategory.Action && BlockResolver.DiscoverAll().Any(b => b is SendChatMessageAction));
+            Check("moderation blocks are actions, under Twitch", new TimeOutUserAction() is ActionBlock && new TimeOutUserAction().Group == BlockGroup.Twitch && new BanUserAction().Group == BlockGroup.Twitch
+                && new DeleteChatMessageAction().Group == BlockGroup.Twitch && BlockResolver.DiscoverAll().Any(b => b is SendChatMessageAction));
         }
 
         // ---- duplicate chat messages ----
@@ -1729,6 +1929,479 @@ internal static class EngineChecks
             Check("spaces around don't make it different", ChatbotManager.AvoidDuplicate("yo ", "yo") == "yo " + cgj);
         }
 
+
+        // ---- loops, wait, stop, random, text (runs go on a worker thread: on the UI thread a loop pauses
+        // through the dispatcher, which nothing runs here. Failures are checked by the run stopping, not the console) ----
+        {
+            T Slotted<T>(T block, params string[] slotTexts) where T : BlockModel
+            {
+                for (int i = 0; i < slotTexts.Length; i++) if (slotTexts[i] != null) ((ValueSlot)block.Slots[i]).SetText(slotTexts[i]);
+                return block;
+            }
+            T Holding<T>(T block, int slot, BlockModel child) where T : BlockModel { ((BlockSlot)block.Slots[slot]).TrySetBlock(child); return block; }
+            ListBlock Steps(params BlockModel[] blocks)
+            {
+                var list = new ListBlock();
+                for (int i = 0; i < blocks.Length; i++) ((BlockSlotList)list.Slots[0]).TryInsertBlock(blocks[i], i);
+                return list;
+            }
+            FormatRecordBlock Say(string template) => new() { Template = template };
+            async Task<string> RunTree(ExecutableBlock root, CancellationToken ct = default)
+            {
+                lock (FormatRecordBlock.Log) FormatRecordBlock.Log.Clear();
+                await Task.Run(() => root.SafeRunAsync(new TriggerContext(TriggerPhase.Once, ct, new Dictionary<string, string> { ["message"] = "!so  budder" })));
+                lock (FormatRecordBlock.Log) return string.Join(",", FormatRecordBlock.Log);
+            }
+            async Task<object> Value(ValueBlock block) => await block.EvaluateObjectAsync(new TriggerContext(TriggerPhase.Once, default));
+            async Task<bool> Fails(ValueBlock block) { try { await Value(block); return false; } catch (BlockFailedException) { return true; } }
+
+            // repeat
+            Check("repeat: runs the block inside that many times, {i} counts from 1", await RunTree(Holding(Slotted(new RepeatBlock(), "3"), 1, Say("{i}"))) == "1,2,3");
+            Check("repeat: Number As names the count", await RunTree(Holding(Slotted(new RepeatBlock { NumberName = "round" }, "2"), 1, Say("r{round}"))) == "r1,r2");
+            Check("repeat: 0 times runs nothing", await RunTree(Steps(Holding(Slotted(new RepeatBlock(), "0"), 1, Say("x")), Say("after"))) == "after");
+            Check("repeat: a negative count fails and stops the run", await RunTree(Steps(Holding(Slotted(new RepeatBlock(), "-1"), 1, Say("x")), Say("after"))) == "");
+            Check("repeat: a bad Number As name fails", await RunTree(Steps(Holding(Slotted(new RepeatBlock { NumberName = "my count" }, "2"), 1, Say("x")), Say("after"))) == "");
+
+            // for each
+            Check("for each: each part of a list, trimmed, empty ones skipped", await RunTree(Holding(Slotted(new ForEachBlock(), "Cam, Title, , Mic"), 2, Say("{item}"))) == "Cam,Title,Mic");
+            Check("for each: an empty separator means words", await RunTree(Holding(Slotted(new ForEachBlock { ItemName = "word" }, "{message}", ""), 2, Say("[{word}]"))) == "[!so],[budder]");
+            Check("for each: an empty list runs nothing", await RunTree(Steps(Holding(Slotted(new ForEachBlock(), ""), 2, Say("x")), Say("after"))) == "after");
+
+            // while
+            // is empty
+            Check("is empty: empty or only spaces", await Value(Slotted(new IsEmptyCondition(), "")) is true && await Value(Slotted(new IsEmptyCondition(), "  ")) is true
+                && await Value(Slotted(new IsEmptyCondition(), " x ")) is false && new IsEmptyCondition().Group == BlockGroup.Text);
+            Check("equals: no A / B labels, == shown between the values", ((ValueSlot)new EqualsCondition().Slots[1]).Connector == "==" && ((ValueSlot)new EqualsCondition().Slots[0]).Label == "");
+
+            Check("while: runs while the condition is true", await RunTree(Steps(Holding(Holding(new WhileBlock(), 0, new CountdownCondition { Left = 3 }), 1, Say("x")), Say("after"))) == "x,x,x,after");
+            Check("while: an empty condition is false", await RunTree(Steps(Holding(new WhileBlock(), 1, Say("x")), Say("after"))) == "after");
+            var forever = Holding(new WhileBlock(), 0, new FixedCondition { Value = true });
+            var foreverWatch = System.Diagnostics.Stopwatch.StartNew();
+            Check("while: a loop that never waits is stopped (and the run with it)", await RunTree(Steps(forever, Say("after"))) == "" && foreverWatch.Elapsed < TimeSpan.FromSeconds(20));
+            using (var stopLoop = new CancellationTokenSource(TimeSpan.FromMilliseconds(100)))
+            {
+                var waitingLoop = Holding(Holding(new WhileBlock(), 0, new FixedCondition { Value = true }), 1, Steps(Slotted(new WaitAction(), "0.01"), Say("tick")));
+                var ticks = (await RunTree(waitingLoop, stopLoop.Token)).Split(',', StringSplitOptions.RemoveEmptyEntries).Length;
+                Check("while: cancelling the run (binding removed, app closed) stops a loop", ticks is > 0 and < 50);
+            }
+
+            // wait
+            var waitWatch = System.Diagnostics.Stopwatch.StartNew();
+            Check("wait: waits before the next block", await RunTree(Steps(Slotted(new WaitAction(), "0.1"), Say("after"))) == "after" && waitWatch.ElapsedMilliseconds >= 90);
+            using (var stopWait = new CancellationTokenSource(TimeSpan.FromMilliseconds(50)))
+            {
+                var cancelWatch = System.Diagnostics.Stopwatch.StartNew();
+                Check("wait: cancelling stops it straight away", await RunTree(Steps(Slotted(new WaitAction(), "10"), Say("after")), stopWait.Token) == "" && cancelWatch.Elapsed < TimeSpan.FromSeconds(5));
+            }
+            Check("wait: a negative time fails", await RunTree(Steps(Slotted(new WaitAction(), "-1"), Say("after"))) == "");
+
+            // stop
+            Check("stop: ends the run, quietly", await RunTree(Steps(Say("a"), new StopAction(), Say("b"))) == "a");
+            Check("stop: inside a loop ends the whole run", await RunTree(Steps(Holding(Slotted(new RepeatBlock(), "5"), 1, Steps(Say("{i}"), new StopAction())), Say("after"))) == "1");
+
+            // random values
+            var unit = new List<double>();
+            for (int i = 0; i < 200; i++) unit.Add((double)await Value(new RandomNumberBlock()));
+            Check("random number: a decimal from 0 to 1 by default", unit.All(n => n is >= 0 and <= 1) && unit.Distinct().Count() > 150 && unit.Any(n => n < 0.5) && unit.Any(n => n > 0.5));
+            var dice = new HashSet<object>();
+            var die = new RandomNumberBlock();
+            die.TrySetKind(ValueKind.Int);
+            Slotted(die, "1", "6");
+            for (int i = 0; i < 400; i++) dice.Add(await Value(die));
+            Check("random number: in a whole number slot both ends come up (a dice roll)", dice.SetEquals(new object[] { 1, 2, 3, 4, 5, 6 }));
+            var decimal1 = (double)await Value(Slotted(new RandomNumberBlock(), "2", "1"));
+            Check("random number: decimals in between, Min and Max either way round", decimal1 is >= 1 and <= 2 && decimal1 != Math.Truncate(decimal1));
+            var noWhole = new RandomNumberBlock();
+            noWhole.TrySetKind(ValueKind.Int);
+            Check("random number: no whole number in range fails", await Fails(Slotted(noWhole, "1.2", "1.8")));
+            var chances = new List<bool>();
+            for (int i = 0; i < 200; i++) chances.Add((bool)await Value(new ChanceCondition()));
+            Check("chance: 50% is sometimes true, sometimes false", chances.Contains(true) && chances.Contains(false));
+            Check("chance: 0 is never true, 100 always", !(bool)await Value(Slotted(new ChanceCondition(), "0")) && (bool)await Value(Slotted(new ChanceCondition(), "100"))
+                && (bool)await Value(Slotted(new ChanceCondition(), "250")));
+            var replies = new PickRandomBlock();
+            replies.Choices.Items[^1].SetText("hi");
+            replies.Choices.Items[^1].SetText("hey");
+            var said = new HashSet<object>();
+            for (int i = 0; i < 60; i++) said.Add(await Value(replies));
+            Check("pick random: picks among the filled texts", replies.Choices.Items.Count == 3 && said.SetEquals(new object[] { "hi", "hey" }));
+            Check("pick random: nothing to pick fails", await Fails(new PickRandomBlock()));
+
+            // text
+            Check("text contains: contains / starts / ends, case ignored", (bool)await Value(Slotted(new TextContainsCondition(), "Hello World", "WORLD"))
+                && (bool)await Value(Slotted(new TextContainsCondition { Check = "Starts With" }, "!lurk now", "!LURK"))
+                && !(bool)await Value(Slotted(new TextContainsCondition { Check = "Ends With" }, "!lurk now", "lurk")));
+            Check("text contains: match case", !(bool)await Value(Slotted(new TextContainsCondition { Case = "Match Case" }, "Hello", "hello")));
+            Check("change text: upper / lower / trim / capitalize", (string)await Value(Slotted(new ChangeTextBlock(), "Hi There")) == "HI THERE"
+                && (string)await Value(Slotted(new ChangeTextBlock { Change = "Lower Case" }, "Hi There")) == "hi there"
+                && (string)await Value(Slotted(new ChangeTextBlock { Change = "Trim" }, "  hi  ")) == "hi"
+                && (string)await Value(Slotted(new ChangeTextBlock { Change = "Capitalize" }, "budder")) == "Budder");
+            Check("text length: characters and words", (int)await Value(Slotted(new TextLengthBlock(), "hello")) == 5
+                && (int)await Value(Slotted(new TextLengthBlock { Count = "Words" }, "  hi   there you ")) == 3);
+            Check("replace text: every one, case ignored unless Match Case", (string)await Value(Slotted(new ReplaceTextBlock(), "Hello hello", "HELLO", "bye")) == "bye bye"
+                && (string)await Value(Slotted(new ReplaceTextBlock { Case = "Match Case" }, "Hello hello", "hello", "")) == "Hello ");
+            Check("replace text: an empty Find fails", await Fails(Slotted(new ReplaceTextBlock(), "x", "", "y")));
+            Check("get part: words, from the end, past the end", (string)await Value(Slotted(new GetPartBlock(), "!so  budder", "", "2")) == "budder"
+                && (string)await Value(Slotted(new GetPartBlock(), "a b c", "", "-1")) == "c" && (string)await Value(Slotted(new GetPartBlock(), "a b", "", "5")) == "");
+            Check("get part: a list separator", (string)await Value(Slotted(new GetPartBlock(), "Cam, Title, Mic", ", ", "2")) == "Title");
+            Check("get part: number 0 fails", await Fails(Slotted(new GetPartBlock(), "a", "", "0")));
+
+            // saving, and the block list
+            var savedLoop = (RepeatBlock)BlockResolver.DeepCopy(Holding(Slotted(new RepeatBlock { NumberName = "n" }, "{times}"), 1, Say("{n}")))!;
+            Check("logic blocks: saved and loaded keep their settings and children", savedLoop.NumberName == "n" && ((ValueSlot)savedLoop.Slots[0]).Text == "{times}"
+                && ((BlockSlot)savedLoop.Slots[1]).Block is FormatRecordBlock { Template: "{n}" }
+                && BlockResolver.DeepCopy(new TextContainsCondition { Check = "Ends With", Case = "Match Case" }) is TextContainsCondition { Check: "Ends With", Case: "Match Case" });
+            var listed = BlockResolver.DiscoverAll().ToDictionary(b => b.GetType(), b => b.Group);
+            Check("logic blocks: in the block list under their headings", listed[typeof(RepeatBlock)] == BlockGroup.Control && listed[typeof(WhileBlock)] == BlockGroup.Control
+                && listed[typeof(ForEachBlock)] == BlockGroup.Control && listed[typeof(WaitAction)] == BlockGroup.Control && listed[typeof(StopAction)] == BlockGroup.Control
+                && listed[typeof(ChanceCondition)] == BlockGroup.Logic && listed[typeof(TextContainsCondition)] == BlockGroup.Text
+                && listed[typeof(RandomNumberBlock)] == BlockGroup.Math && listed[typeof(PickRandomBlock)] == BlockGroup.Text
+                && listed[typeof(TextLengthBlock)] == BlockGroup.Text && listed[typeof(GetPartBlock)] == BlockGroup.Text);
+        }
+
+        // ---- config files: a broken one is never overwritten (in a temporary folder, never the real Config/) ----
+        {
+            var realRoot = StreamAssist.Core.Persistence.JsonFileStore.RootDir;
+            var (realError, realWarning) = (StreamAssist.Core.Persistence.JsonFileStore.ReportError, StreamAssist.Core.Persistence.JsonFileStore.ReportWarning);
+            var dir = Path.Combine(Path.GetTempPath(), "StreamAssistTests-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            var reported = new List<string>();
+            var changed = new List<string>();
+            void OnBroken(string name) => changed.Add(name);
+            StreamAssist.Core.Persistence.JsonFileStore.RootDir = dir;
+            StreamAssist.Core.Persistence.JsonFileStore.ReportError = m => reported.Add("error - " + m);
+            StreamAssist.Core.Persistence.JsonFileStore.ReportWarning = m => reported.Add("warning - " + m);
+            StreamAssist.Core.Persistence.JsonFileStore.BrokenChanged += OnBroken;
+            try
+            {
+                Check("files: a missing file loads as defaults, quietly", StreamAssist.Core.Persistence.JsonFileStore.Load<Dictionary<string, int>>("fresh").Count == 0 && reported.Count == 0);
+                StreamAssist.Core.Persistence.JsonFileStore.Save("fresh", new Dictionary<string, int> { ["a"] = 1 });
+                Check("files: saved and loaded, no temporary file left", StreamAssist.Core.Persistence.JsonFileStore.Load<Dictionary<string, int>>("fresh")["a"] == 1
+                    && !File.Exists(Path.Combine(dir, "fresh.json.tmp")));
+
+                File.WriteAllText(Path.Combine(dir, "keys.json"), "{\n  \"a\": 1,\n  \"b\": oops\n}");
+                var keys = StreamAssist.Core.Persistence.JsonFileStore.Load<Dictionary<string, int>>("keys");
+                Check("files: a broken file loads as defaults, marked broken, one error saying where", keys.Count == 0 && StreamAssist.Core.Persistence.JsonFileStore.IsBroken("keys")
+                    && reported.Count == 1 && reported[0].StartsWith("error - keys.json can't be read, not saving it (line 3") && changed.SequenceEqual(new[] { "keys" }));
+                StreamAssist.Core.Persistence.JsonFileStore.Save("keys", new Dictionary<string, int> { ["new"] = 2 });
+                StreamAssist.Core.Persistence.JsonFileStore.Load<Dictionary<string, int>>("keys");
+                Check("files: a broken file is never saved over, and reported once", File.ReadAllText(Path.Combine(dir, "keys.json")).Contains("oops") && reported.Count == 1);
+                Check("files: back up & start fresh renames it and saving carries on", StreamAssist.Core.Persistence.JsonFileStore.TryBackUpAndStartFresh("keys")
+                    && !StreamAssist.Core.Persistence.JsonFileStore.IsBroken("keys") && changed.SequenceEqual(new[] { "keys", "keys" })
+                    && Directory.GetFiles(dir, "keys.broken-*.json").Single() is { } backup && File.ReadAllText(backup).Contains("oops")
+                    && new Func<bool>(() => { StreamAssist.Core.Persistence.JsonFileStore.Save("keys", new Dictionary<string, int> { ["new"] = 2 }); return StreamAssist.Core.Persistence.JsonFileStore.Load<Dictionary<string, int>>("keys")["new"] == 2; })());
+
+                File.WriteAllText(Path.Combine(dir, "small.json"), "not json");
+                var small = StreamAssist.Core.Persistence.JsonFileStore.LoadOrReset<Dictionary<string, int>>("small");
+                Check("files: a broken small settings file is backed up with a warning and reset", small.Count == 0 && !StreamAssist.Core.Persistence.JsonFileStore.IsBroken("small")
+                    && reported.Last().StartsWith("warning - small.json can't be read, backed up as small.broken-") && Directory.GetFiles(dir, "small.broken-*.json").Length == 1
+                    && !File.Exists(Path.Combine(dir, "small.json")));
+
+                File.WriteAllText(Path.Combine(dir, "auth.json"), "{\"twitch\": {\"id\": \"keep me\"}, broken");
+                Check("files: an unreadable auth.json isn't readable", !StreamAssist.Core.Persistence.CredentialStore.IsReadable);
+                StreamAssist.Core.Persistence.CredentialStore.Save("spotifyLogin", new Dictionary<string, string> { ["token"] = "x" });
+                Check("files: saving one login can't wipe the others in a broken auth.json", File.ReadAllText(Path.Combine(dir, "auth.json")).Contains("keep me"));
+                StreamAssist.Core.Persistence.JsonFileStore.TryBackUpAndStartFresh("auth");
+                StreamAssist.Core.Persistence.CredentialStore.Save("spotifyLogin", new Dictionary<string, string> { ["token"] = "x" });
+                Check("files: after backing it up, logins save again", StreamAssist.Core.Persistence.CredentialStore.IsReadable
+                    && StreamAssist.Core.Persistence.CredentialStore.Load<Dictionary<string, string>>("spotifyLogin")["token"] == "x");
+            }
+            finally
+            {
+                StreamAssist.Core.Persistence.JsonFileStore.BrokenChanged -= OnBroken;
+                StreamAssist.Core.Persistence.JsonFileStore.RootDir = realRoot;
+                StreamAssist.Core.Persistence.JsonFileStore.ReportError = realError;
+                StreamAssist.Core.Persistence.JsonFileStore.ReportWarning = realWarning;
+                try { Directory.Delete(dir, true); } catch (IOException) { }
+            }
+        }
+
+        // ---- data: tables, variables and the SQLite store (a temporary database, never the real Config/data.db) ----
+        {
+            var dataDir = Path.Combine(Path.GetTempPath(), "StreamAssistData-" + Guid.NewGuid().ToString("N"));
+            var dbPath = Path.Combine(dataDir, "data.db");
+            var data = new DataModel();
+            var dataStore = new DataStore(data, dbPath);
+
+            Check("data: a new database has the built-in variables table", data.FindTable("variables") is { IsBuiltIn: true } vars
+                && vars.Columns.Select(c => c.Name).SequenceEqual(new[] { "name", "type", "value" }));
+            Check("data: a built-in table keeps its columns, its name and itself", !data.TryAddColumn("variables", "x", ValueKind.Text) && !data.TryDeleteColumn("variables", "value")
+                && !data.TryRenameColumn("variables", "value", "v") && !data.TryDeleteTable("variables") && !data.TryRenameTable("variables", "vars"));
+
+            // variables
+            data.TryAddRow("variables", out var deaths);
+            Check("data: a new variable gets a free name, as text", deaths.Get("name") is "variable1" && data.TryGetVariable("variable1", out var newKind, out var newValue) && newKind == ValueKind.Text && newValue is "");
+            Check("data: making a variable a whole number gives it 0", data.TrySetValue("variables", deaths.Id, "name", "deaths") && data.TrySetValue("variables", deaths.Id, "type", "Int")
+                && data.TryGetVariable("DEATHS", out var deathsKind, out var deathsValue) && deathsKind == ValueKind.Int && deathsValue is 0);
+            Check("data: a variable's value has to fit its type", !data.TrySetValue("variables", deaths.Id, "value", "abc") && data.TrySetValue("variables", deaths.Id, "value", " 12 ")
+                && deaths.Get("value") is "12");
+            data.TryAddRow("variables", out var other);
+            Check("data: variable names are valid and unique", !data.TrySetValue("variables", other.Id, "name", "Deaths") && !data.TrySetValue("variables", other.Id, "name", "my var")
+                && data.TrySetValue("variables", other.Id, "name", "greeting") && data.TrySetValue("variables", other.Id, "value", "hi"));
+            Check("data: a type its value doesn't fit is refused", !data.TrySetValue("variables", other.Id, "type", "Int") && other.Get("type") is "Text");
+            Check("data: change adds to numbers, text can't", data.TryChangeVariable("deaths", 1, out var plusOne) && plusOne is 13 && data.TryChangeVariable("deaths", -3, out _)
+                && !data.TryChangeVariable("greeting", 1, out _) && !data.TryChangeVariable("deaths", 0.5, out _));
+            Check("data: set converts to the variable's type", data.TrySetVariable("deaths", 10.0, ValueKind.Double) && data.TryGetVariable("deaths", out _, out var ten) && ten is 10
+                && !data.TrySetVariable("deaths", "lots"));
+            data.TryAddRow("variables", out var flag);
+            data.TrySetValue("variables", flag.Id, "name", "live");
+            data.TrySetValue("variables", flag.Id, "type", "Bool");
+            Check("data: change flips true/false", data.TryChangeVariable("live", 1, out var flipped) && flipped is true && data.VariableNames().SequenceEqual(new[] { "deaths", "greeting", "live" }));
+
+            // custom tables
+            Check("data: table and column names are checked", !data.TryCreateTable("my table") && !data.TryCreateTable("1st") && data.TryCreateTable("quotes") && !data.TryCreateTable("QUOTES")
+                && data.TryAddColumn("quotes", "text", ValueKind.Text) && data.TryAddColumn("quotes", "year", ValueKind.Int) && !data.TryAddColumn("quotes", "id", ValueKind.Int)
+                && !data.TryAddColumn("quotes", "Text", ValueKind.Int));
+            data.TryAddRow("quotes", out var q1);
+            data.TryAddRow("quotes", out var q2);
+            Check("data: rows get ids 1, 2, ... and empty cells", q1.Id == 1 && q2.Id == 2 && q1.Get("text") is "" && q1.Get("year") == null);
+            Check("data: a cell has to fit its column", data.TrySetValue("quotes", 1, "text", "hello there") && data.TrySetValue("quotes", 1, "year", "2024") && q1.Get("year") is 2024
+                && !data.TrySetValue("quotes", 1, "year", "soon") && q1.Get("year") is 2024 && data.TrySetValue("quotes", 1, "year", "") && q1.Get("year") == null);
+            data.TrySetValue("quotes", 1, "year", 2024, ValueKind.Int);
+            Check("data: a column's type changes only if every value fits", data.TrySetColumnKind("quotes", "year", ValueKind.Text) && q1.Get("year") is "2024"
+                && data.TrySetValue("quotes", 2, "year", "someday") && !data.TrySetColumnKind("quotes", "year", ValueKind.Int) && data.TrySetValue("quotes", 2, "year", "1999")
+                && data.TrySetColumnKind("quotes", "year", ValueKind.Int) && q2.Get("year") is 1999);
+            Check("data: change value adds to a number cell", data.TryChangeValue("quotes", 2, "year", 1) && q2.Get("year") is 2000 && !data.TryChangeValue("quotes", 2, "text", 1));
+            Check("data: columns and tables rename", data.TryRenameColumn("quotes", "text", "quote") && q1.Get("quote") is "hello there" && data.TryRenameTable("quotes", "sayings")
+                && data.FindTable("quotes") == null && data.TryRenameTable("sayings", "quotes"));
+            data.TryCreateTable("scratch");
+            data.TryAddColumn("scratch", "x", ValueKind.Double);
+            Check("data: delete a column, a row and a table", data.TryDeleteColumn("scratch", "x") && data.FindTable("scratch")!.Columns.Count == 0
+                && data.TryAddRow("scratch", out var gone) && data.TryDeleteRow("scratch", gone.Id) && !data.TryDeleteRow("scratch", gone.Id) && data.TryDeleteTable("scratch"));
+
+            // renumbering closes the gaps deleted rows left, in order, and the next row comes after
+            data.TryCreateTable("gaps");
+            data.TryAddColumn("gaps", "v", ValueKind.Text);
+            for (int i = 1; i <= 4; i++) { data.TryAddRow("gaps", out var g); data.TrySetValue("gaps", g.Id, "v", $"r{i}"); }
+            data.TryDeleteRow("gaps", 1); data.TryDeleteRow("gaps", 3);
+            Check("data: renumber rows", data.TryRenumberRows("gaps") && data.FindTable("gaps")!.Rows.Select(r => $"{r.Id}:{r.Get("v")}").SequenceEqual(new[] { "1:r2", "2:r4" })
+                && data.TryAddRow("gaps", out var afterGaps) && afterGaps.Id == 3);
+            // saved: a new model loading the same database has everything
+            dataStore.Dispose();
+            var reloaded = new DataModel();
+            var reloadedStore = new DataStore(reloaded, dbPath);
+            var quotes = reloaded.FindTable("quotes");
+            Check("data: variables are kept in the database", reloaded.TryGetVariable("deaths", out var keptKind, out var kept) && keptKind == ValueKind.Int && kept is 10
+                && reloaded.TryGetVariable("live", out _, out var keptFlag) && keptFlag is true && reloaded.FindTable("variables")!.IsBuiltIn);
+            Check("data: tables, columns, types, ids and values are kept", quotes != null && !quotes.IsBuiltIn && quotes.Columns.Select(c => $"{c.Name}:{c.Kind}").SequenceEqual(new[] { "quote:Text", "year:Int" })
+                && quotes.Rows.Select(r => r.Id).SequenceEqual(new[] { 1, 2 }) && quotes.FindRow(1)!.Get("quote") is "hello there" && quotes.FindRow(2)!.Get("year") is 2000
+                && reloaded.FindTable("scratch") == null && reloaded.TryAddRow("quotes", out var q3) && q3.Id == 3);
+            reloaded.TryDeleteRow("quotes", 3);
+            Check("data: renumbered ids are kept in the database", reloaded.FindTable("gaps")!.Rows.Select(r => $"{r.Id}:{r.Get("v")}").SequenceEqual(new[] { "1:r2", "2:r4", "3:" }));
+
+            // blocks
+            StreamAssist.Shell.GlobalContext.DataModel = reloaded;
+            TriggerContext.VariableText = name => reloaded.VariableKind(name) != null && reloaded.TryGetVariable(name, out _, out var v) ? ValueTypes.ToText(v) : null;
+            var dctx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["userLogin"] = "budder" });
+            async Task<bool> Do(ExecutableBlock block) { RecordBlock.Log.Clear(); var list = new ListBlock(); ((BlockSlotList)list.Slots[0]).TryInsertBlock(block, 0); ((BlockSlotList)list.Slots[0]).TryInsertBlock(new RecordBlock { Tag = "after" }, 1); await list.SafeRunAsync(dctx); return RecordBlock.Log.Count == 1; }
+            // types into the block's slots after its Table slot (the table is set by name with Table = ...)
+            T With<T>(T block, params string[] texts) where T : BlockModel
+            {
+                var slots = block.Slots.OfType<ValueSlot>().Where(v => v.Label != "Table").ToList();
+                for (int i = 0; i < texts.Length; i++) slots[i].SetText(texts[i]);
+                return block;
+            }
+
+            Check("data blocks: set variable", await Do(With(new SetVariableAction { Variable = "deaths" }, "5")) && reloaded.TryGetVariable("deaths", out _, out var five) && five is 5);
+            Check("data blocks: a value that doesn't fit fails and stops", !await Do(With(new SetVariableAction { Variable = "deaths" }, "lots")));
+            Check("data blocks: change variable", await Do(new ChangeVariableAction { Variable = "deaths" }) && reloaded.TryGetVariable("deaths", out _, out var six) && six is 6);
+            var getDeaths = new GetVariableBlock { Variable = "deaths" };
+            Check("data blocks: get variable picks the variable's type", getDeaths.Kind == ValueKind.Int && await getDeaths.EvaluateObjectAsync(dctx) is 6);
+            Check("data blocks: an unknown variable fails", !await Do(new ChangeVariableAction { Variable = "nope" }));
+            Check("data blocks: {var.name} in typed text", dctx.Format("deaths: {var.deaths}, {var.nope}, {userLogin}") == "deaths: 6, {var.nope}, budder");
+
+            Check("data blocks: add table row puts its id in {rowId}", await Do(new AddTableRowAction { Table = "quotes" }) && dctx.Parameters["rowId"] == "4");
+            var setOne = new SetTableRowAction { Table = "quotes" };
+            var oneRow = setOne.Values.Items[^1];
+            oneRow.Key.SetText("quote");
+            oneRow.Value.SetText("{userLogin} was here");
+            Check("data blocks: set table row, one column", await Do(setOne) && reloaded.FindTable("quotes")!.FindRow(4)!.Get("quote") is "budder was here");
+            Check("data blocks: change table value", await Do(With(new ChangeTableValueAction { Table = "quotes" }, "4", "year", "3")) && reloaded.FindTable("quotes")!.FindRow(4)!.Get("year") is 3);
+            Check("data blocks: get table value as a type, empty reads as nothing", await With(new GetTableValueBlock { Table = "quotes", As = "Int" }, "4", "year").EvaluateObjectAsync(dctx) is 3
+                && await With(new GetTableValueBlock { Table = "quotes" }, "4", "quote").EvaluateObjectAsync(dctx) is "budder was here");
+            Check("data blocks: find table row (case ignored), 0 if none", await With(new FindTableRowBlock { Table = "quotes" }, "quote", "BUDDER WAS HERE").EvaluateObjectAsync(dctx) is 4
+                && await With(new FindTableRowBlock { Table = "quotes" }, "quote", "nobody").EvaluateObjectAsync(dctx) is 0);
+            var randomRows = new HashSet<object>();
+            for (int i = 0; i < 60; i++) randomRows.Add(await new RandomTableRowBlock { Table = "quotes" }.EvaluateObjectAsync(dctx));
+            Check("data blocks: random row and count", randomRows.SetEquals(new object[] { 1, 2, 4 }) && await new CountTableRowsBlock { Table = "quotes" }.EvaluateObjectAsync(dctx) is 3);
+            var setRow = new SetTableRowAction { Table = "quotes" };
+            foreach (var (column, value) in new[] { ("quote", "row {rowId} by {userLogin}"), ("year", "2026") })
+            {
+                var pair = setRow.Values.Items[^1]; // filling the empty row adds the next one
+                pair.Key.SetText(column);
+                pair.Value.SetText(value);
+            }
+            Check("data blocks: set table row sets each column", await Do(setRow) && reloaded.FindTable("quotes")!.FindRow(4)!.Get("quote") is "row 4 by budder" && reloaded.FindTable("quotes")!.FindRow(4)!.Get("year") is 2026);
+            setRow.Values.Items[1].Value.SetText("soon");
+            Check("data blocks: set table row stops at a value that doesn't fit", !await Do(setRow));
+            var setRowCopy = (SetTableRowAction)BlockResolver.DeepCopy(setRow)!;
+            Check("data blocks: set table row is saved and loaded", setRowCopy.Table == "quotes" && setRowCopy.Values.Items.Count == 3 && setRowCopy.Values.Items[1].Value.Text == "soon");
+            Check("data blocks: get table row puts every column in parameters", await Do(new GetTableRowAction { Table = "quotes" }) && dctx.Parameters["quote"] == "row 4 by budder" && dctx.Parameters["year"] == "2026" && dctx.Parameters["id"] == "4");
+            Check("data blocks: get table row with a prefix", await Do(With(new GetTableRowAction { Table = "quotes", Prefix = "q_" }, "1")) && dctx.Parameters["q_id"] == "1" && dctx.Parameters["q_quote"] == "hello there");
+            Check("data blocks: get table row fails on a missing row", !await Do(With(new GetTableRowAction { Table = "quotes" }, "99")));
+            Check("data blocks: delete table row", await Do(With(new DeleteTableRowAction { Table = "quotes" }, "{rowId}")) && await new CountTableRowsBlock { Table = "quotes" }.EvaluateObjectAsync(dctx) is 2);
+            Check("data blocks: a missing table fails", !await Do(new AddTableRowAction { Table = "nope" }));
+            Check("data blocks: under the Data heading, saved and loaded", new SetVariableAction().Group == BlockGroup.Data && new CountTableRowsBlock().Group == BlockGroup.Data
+                && BlockResolver.DeepCopy(new GetVariableBlock { Variable = "deaths" }) is GetVariableBlock { Variable: "deaths", Kind: ValueKind.Int });
+
+            // the Data tab's grid follows the model, and edits go through it
+            var grid = new StreamAssist.Components.Data.UI.TableGridViewModel(reloaded, reloaded.FindTable("quotes")!);
+            Check("data tab: the grid shows the table", grid.Rows.Count == 2 && grid.Columns.Select(c => c.Name).SequenceEqual(new[] { "quote", "year" }) && grid.Rows[0].Cells[0].Text == "hello there" && grid.IsCustom);
+            reloaded.TrySetValue("quotes", 1, "quote", "changed by a block");
+            reloaded.TryAddRow("quotes", out _);
+            Check("data tab: changes from anywhere show up live", grid.Rows[0].Cells[0].Text == "changed by a block" && grid.Rows.Count == 3);
+            grid.Rows[0].Cells[1].Text = "not a year"; grid.Rows[0].Cells[1].Commit(); // typed, then the box is left
+            Check("data tab: a refused edit goes back", grid.Rows[0].Cells[1].Text == "2024" && reloaded.FindTable("quotes")!.FindRow(1)!.Get("year") is 2024);
+            grid.Rows[0].Cells[1].Text = "1990"; grid.Rows[0].Cells[1].Commit(); // typed, then the box is left
+            grid.Rows[2].DeletePressedCommand.Execute(null);
+            Check("data tab: edits and deletes go to the model", reloaded.FindTable("quotes")!.FindRow(1)!.Get("year") is 1990 && grid.Rows.Count == 2 && reloaded.FindTable("quotes")!.Rows.Count == 2);
+            grid.Columns[1].KindName = "Text";
+            Check("data tab: changing a column's type rebuilds the grid", reloaded.FindTable("quotes")!.FindColumn("year")!.Kind == ValueKind.Text && grid.Columns[1].KindName == "Text");
+            var varGrid = new StreamAssist.Components.Data.UI.TableGridViewModel(reloaded, reloaded.FindTable("variables")!);
+            Check("data tab: built-in tables' columns can't be edited", !varGrid.IsCustom && varGrid.Columns.All(c => !c.IsEditable));
+            grid.Dispose();
+            varGrid.Dispose();
+
+            // searching and sorting rows
+            reloaded.TryCreateTable("scores");
+            reloaded.TryAddColumn("scores", "name", ValueKind.Text);
+            reloaded.TryAddColumn("scores", "points", ValueKind.Int);
+            foreach (var (who, points) in new[] { ("bea", "5"), ("al", "20"), ("cy", "") })
+            {
+                reloaded.TryAddRow("scores", out var scoreRow);
+                reloaded.TrySetValue("scores", scoreRow.Id, "name", who);
+                reloaded.TrySetValue("scores", scoreRow.Id, "points", points);
+            }
+            var scores = new StreamAssist.Components.Data.UI.TableGridViewModel(reloaded, reloaded.FindTable("scores")!);
+            string Order() => string.Join(",", scores.Rows.Select(r => r.Cells[0].Text));
+            Check("data tab: rows start in id order, nothing sorted", Order() == "bea,al,cy" && scores.IdSortText == "↕" && scores.Columns.All(c => c.SortText == "↕"));
+            scores.Columns[1].SortPressedCommand.Execute(null);
+            Check("data tab: sort least to greatest, empty cells last", Order() == "bea,al,cy" && scores.Columns[1].SortText == "▲");
+            scores.Columns[1].SortPressedCommand.Execute(null);
+            Check("data tab: then greatest to least, empty cells still last", Order() == "al,bea,cy" && scores.Columns[1].SortText == "▼");
+            scores.Columns[0].SortPressedCommand.Execute(null);
+            Check("data tab: another column starts least to greatest (text ignores case)", Order() == "al,bea,cy" && scores.Columns[0].SortText == "▲" && scores.Columns[1].SortText == "↕");
+            scores.Columns[0].SortPressedCommand.Execute(null);
+            scores.Columns[0].SortPressedCommand.Execute(null);
+            Check("data tab: a third press goes back to id order", Order() == "bea,al,cy" && scores.Columns[0].SortText == "↕");
+            scores.SortByIdPressedCommand.Execute(null);
+            Check("data tab: id can sort greatest first", Order() == "cy,al,bea" && scores.IdSortText == "▼");
+            scores.SortByIdPressedCommand.Execute(null);
+            scores.SearchText = "e";
+            Check("data tab: search shows rows where any cell has the text", Order() == "bea");
+            scores.SearchText = "20";
+            Check("data tab: search finds numbers too", Order() == "al");
+            scores.SearchText = "";
+            Check("data tab: clearing the search shows every row", Order() == "bea,al,cy");
+
+            // columns from the grid: typing a name in the empty box adds one, clearing an empty column's name removes it,
+            // Delete columns mode shows a − on each that deletes it with its values
+            scores.NewColumnName = "bonus"; scores.Commit(); // typed, then the box is left
+            Check("data tab: a name in the new column box adds a text column", reloaded.FindTable("scores")!.FindColumn("bonus") is { Kind: ValueKind.Text }
+                && scores.NewColumnName == "" && scores.Columns.Select(c => c.Name).SequenceEqual(new[] { "name", "points", "bonus" }));
+            scores.Columns[2].NameInput = ""; scores.Columns[2].Commit(); // typed, then the box is left
+            Check("data tab: clearing an empty column's name removes it", reloaded.FindTable("scores")!.FindColumn("bonus") == null && scores.Columns.Count == 2);
+            scores.Columns[1].NameInput = "  "; scores.Columns[1].Commit(); // typed, then the box is left
+            Check("data tab: clearing a column with values puts its name back", reloaded.FindTable("scores")!.FindColumn("points") != null && scores.Columns[1].NameInput == "points");
+            Check("data tab: delete mode starts off", !scores.IsDeleteColumnsMode && scores.Columns.All(c => !c.IsDeleteMode));
+            scores.DeleteColumnsPressedCommand.Execute(null);
+            Check("data tab: Delete columns shows a − on every column", scores.IsDeleteColumnsMode && scores.Columns.All(c => c.IsDeleteMode));
+            scores.Columns[1].DeletePressedCommand.Execute(null);
+            Check("data tab: the − deletes the column, values and all, and the mode stays on", reloaded.FindTable("scores")!.FindColumn("points") == null
+                && scores.Columns.Count == 1 && scores.Columns[0].IsDeleteMode);
+            scores.DeleteColumnsPressedCommand.Execute(null);
+            Check("data tab: pressing it again turns it off", !scores.IsDeleteColumnsMode && !scores.Columns[0].IsDeleteMode);
+
+            // rows from the grid: a value typed in the empty row makes a row, clearing a row's every cell deletes it
+            var rowsBefore = scores.Rows.Count;
+            Check("data tab: the empty row has a cell per column, the first says what it's for", scores.NewRowCells.Count == 1 && scores.NewRowCells[0].Placeholder == "New row…");
+            scores.NewRowCells[0].Text = "dee"; scores.NewRowCells[0].Commit(); // typed, then the box is left
+            var deeRow = reloaded.FindTable("scores")!.Rows.Last();
+            Check("data tab: typing in the empty row adds a row with the value", deeRow.Get("name") is "dee" && scores.Rows.Count == rowsBefore + 1
+                && scores.NewRowCells[0].Text == "");
+            scores.Rows.Single(r => r.Id == deeRow.Id).Cells[0].Text = ""; scores.Rows.Single(r => r.Id == deeRow.Id).Cells[0].Commit(); // typed, then the box is left
+            Check("data tab: clearing a row's last value deletes it", reloaded.FindTable("scores")!.FindRow(deeRow.Id) == null && scores.Rows.Count == rowsBefore);
+            reloaded.TryAddColumn("scores", "points", ValueKind.Int);
+            var countBefore = reloaded.FindTable("scores")!.Rows.Count;
+            scores.NewRowCells[1].Text = "lots"; scores.NewRowCells[1].Commit(); // typed, then the box is left
+            Check("data tab: a value its column refuses leaves no row behind", reloaded.FindTable("scores")!.Rows.Count == countBefore && scores.NewRowCells[1].Text == "");
+            scores.Rows[0].Cells[1].Text = "7"; scores.Rows[0].Cells[1].Commit(); // typed, then the box is left
+            scores.Rows[0].Cells[1].Text = ""; scores.Rows[0].Cells[1].Commit(); // typed, then the box is left
+            Check("data tab: clearing one cell of a row that has others keeps it", reloaded.FindTable("scores")!.FindRow(scores.Rows[0].Id) != null);
+            scores.Dispose();
+
+            // queries: terms that all have to match, by column or any cell
+            reloaded.TryCreateTable("people");
+            reloaded.TryAddColumn("people", "user", ValueKind.Text);
+            reloaded.TryAddColumn("people", "points", ValueKind.Int);
+            reloaded.TryAddColumn("people", "date", ValueKind.Text);
+            foreach (var (user, points, date) in new[] { ("budder", "120", "2026-10-30"), ("rosebud", "5", "2026-09-01"), ("al", "", "2026-11-02"), ("two words", "50", "2026-10-05") })
+            {
+                reloaded.TryAddRow("people", out var person);
+                reloaded.TrySetValue("people", person.Id, "user", user);
+                reloaded.TrySetValue("people", person.Id, "points", points);
+                reloaded.TrySetValue("people", person.Id, "date", date);
+            }
+            var people = reloaded.FindTable("people")!;
+            string Q(string query) => RowQuery.TryParse(query, people, out _) is { } q
+                ? string.Join(",", people.Rows.Where(r => q.Matches(people, r)).Select(r => r.Get("user"))) : "error";
+            Check("query: a word or phrase matches any cell", Q("BUD") == "budder,rosebud" && Q("\"two words\"") == "two words" && Q("") == "budder,rosebud,al,two words");
+            Check("query: contains, equals, not equals", Q("user:bud") == "budder,rosebud" && Q("user=BUDDER") == "budder" && Q("user!=budder") == "rosebud,al,two words"
+                && Q("user=\"two words\"") == "two words");
+            Check("query: numbers compare as numbers, empty cells never pass", Q("points>50") == "budder" && Q("points>=50") == "budder,two words" && Q("points<100") == "rosebud,two words"
+                && Q("points=") == "al");
+            Check("query: dates compare alphabetically, terms combine, id is a column", Q("date>2026-10-01") == "budder,al,two words" && Q("user:bud points>10") == "budder"
+                && Q("id<=2") == "budder,rosebud");
+            Check("query: an unknown column can't be run", RowQuery.TryParse("nope:x", people, out var queryError) == null && queryError == "people has no column 'nope'");
+            var peopleGrid = new StreamAssist.Components.Data.UI.TableGridViewModel(reloaded, people);
+            peopleGrid.QueryText = "points>10";
+            Check("data tab: a query only applies when run", peopleGrid.Rows.Count == 4);
+            peopleGrid.RunQueryPressedCommand.Execute(null);
+            Check("data tab: running it filters the rows", peopleGrid.Rows.Select(r => r.Id).SequenceEqual(new[] { 1, 4 }));
+            peopleGrid.SearchText = "words";
+            Check("data tab: the search and the query both apply", peopleGrid.Rows.Select(r => r.Id).SequenceEqual(new[] { 4 }));
+            peopleGrid.SearchText = "";
+            peopleGrid.QueryText = "nope>1";
+            peopleGrid.RunQueryPressedCommand.Execute(null);
+            Check("data tab: a query that can't run leaves the rows as they were", peopleGrid.Rows.Select(r => r.Id).SequenceEqual(new[] { 1, 4 }));
+            peopleGrid.QueryText = "";
+            peopleGrid.RunQueryPressedCommand.Execute(null);
+            Check("data tab: an empty query shows every row again", peopleGrid.Rows.Count == 4);
+            peopleGrid.Dispose();
+
+            StreamAssist.Shell.GlobalContext.DataModel = null;
+            TriggerContext.VariableText = null;
+            reloadedStore.Dispose();
+            try { Directory.Delete(dataDir, true); } catch (IOException) { }
+        }
+
+        // ---- asset paths: blocks only reach files inside Assets/ ----
+        {
+            var assets = System.IO.Path.GetFullPath(StreamAssist.Core.Persistence.AppPaths.AssetsDir);
+            bool In(string path, string expected) => StreamAssist.Core.Persistence.AppPaths.TryResolveAsset(path, out var full, out _)
+                && full == System.IO.Path.Combine(assets, expected);
+            bool Refused(string path) => !StreamAssist.Core.Persistence.AppPaths.TryResolveAsset(path, out _, out _);
+            Check("assets: paths are inside Assets/", In("Sounds/boom.mp3", @"Sounds\boom.mp3") && In(@" assets/Sounds\boom.mp3 ", @"Sounds\boom.mp3")
+                && In("Sounds/../Images/x.png", @"Images\x.png"));
+            Check("assets: full paths and climbing out are refused", Refused(@"C:\Windows\win.ini") && Refused("/etc/passwd") && Refused("../Config/auth.json")
+                && Refused("Sounds/../../Config/auth.json") && Refused("") && Refused("D:boom.mp3"));
+            Check("assets: a picked file becomes its path inside Assets/, one outside isn't taken",
+                StreamAssist.Core.Persistence.AppPaths.TryMakeAssetPath(System.IO.Path.Combine(assets, "Sounds", "boom.mp3"), out var picked) && picked == "Sounds/boom.mp3"
+                && !StreamAssist.Core.Persistence.AppPaths.TryMakeAssetPath(System.IO.Path.Combine(assets, "..", "Config", "auth.json"), out _));
+        }
+
+        // ---- get time ----
+        {
+            var tctx = new TriggerContext(TriggerPhase.Once, default);
+            var year = new GetTimeBlock { Setting = "Year" };
+            var date = (string)await new GetTimeBlock().EvaluateObjectAsync(tctx);
+            Check("get time: the date as text by default", new GetTimeBlock().Kind == ValueKind.Text && date == DateTime.Now.ToString("yyyy-MM-dd"));
+            Check("get time: a number setting picks a whole number", year.Kind == ValueKind.Int && await year.EvaluateObjectAsync(tctx) is int y && y == DateTime.Now.Year);
+            Check("get time: day of week and time as text", await new GetTimeBlock { Setting = "Day of Week" }.EvaluateObjectAsync(tctx) is string day && day == DateTime.Now.DayOfWeek.ToString()
+                && await new GetTimeBlock { Setting = "Time" }.EvaluateObjectAsync(tctx) is string time && time.Length == 8 && time[2] == ':');
+            Check("get time: saved and loaded keeps its setting and type", BlockResolver.DeepCopy(new GetTimeBlock { Setting = "Minute" }) is GetTimeBlock { Setting: "Minute", Kind: ValueKind.Int }
+                && new GetTimeBlock().Group == BlockGroup.Text);
+        }
 
         return failed;
     }

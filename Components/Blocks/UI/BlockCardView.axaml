@@ -11,7 +11,12 @@
             PointerPressed="OnPointerPressed">
 
         <StackPanel>
-            <TextBlock Classes="Label" Text="{Binding Name}" Margin="5,5,5,2"/>
+            <!-- name | what a value block gives (the slots it fits), muted -->
+            <DockPanel Margin="5,5,5,2">
+                <TextBlock DockPanel.Dock="Right" Classes="Description" Text="{Binding TypeText}" VerticalAlignment="Center"
+                           Margin="10,0,0,0" IsVisible="{Binding TypeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <TextBlock Classes="Label" Text="{Binding Name}"/>
+            </DockPanel>
             <TextBlock Classes="Description" Margin="5,0,5,5"
                        Text="{Binding Description}"
                        MaxLines="2"/>

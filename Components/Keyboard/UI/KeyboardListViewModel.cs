@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.Blocks.UI;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
@@ -24,7 +24,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     private readonly KeybindViewModel? _keyConfigurator;
 
     private ObservableCollection<DeviceMenuItem> _deviceMenuItems;
-    private ObservableCollection<ConfigMenuItem> _configMenuItems;
+    private readonly ConfigBarViewModel _configBar;
     private ObservableCollection<KeyboardSlotViewModel> _slots;
 
 
@@ -34,6 +34,9 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
     public ObservableCollection<KeyboardSlotViewModel> Slots => _slots;
+    public ConfigBarViewModel ConfigBar => _configBar; // one config for the whole tab
+    public NoConfigViewModel NoConfig { get; } = new(); // shown instead of the keyboards while there's no config
+    public bool HasConfig => _list.Configs.SelectedItem != null;
 
 
 
@@ -48,21 +51,18 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         _keyConfigurator = keyConfigurator;
 
         _deviceMenuItems = [];
-        _configMenuItems = [];
+        _configBar = new(_list.Configs);
         _slots = [];
 
         _deviceMenuItems.Add(new(KeyboardListModel.NoneDevice, null));
         foreach (var device in _list.Devices ?? [])
             _deviceMenuItems.Add(new(device.GetDisplayLabel(), device));
 
-        _configMenuItems.Add(new(KeyboardListModel.NoneConfig, null));
-        foreach (var config in _list.Configs)
-            _configMenuItems.Add(new(config.Name, config));
-
         foreach (var slot in _list.Slots)
             CreateSlot(slot);
 
         SubscribeToKeyboardListModel(_list);
+        _list.Configs.ListChanged += OnConfigsChanged;
     }
 
 
@@ -92,7 +92,6 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         var viewModel = _slots.FirstOrDefault(s => s.RepresentsModel(slot));
         if (viewModel is null) return;
 
-        UnsubscribeFromKeyboardSlotViewModel(viewModel);
         _slots.Remove(viewModel);
         _keyConfigurator?.DeselectKeys(viewModel.Keys);
         viewModel.Dispose();
@@ -100,34 +99,23 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnConfigCreated(KeybindConfigModel config) => _configMenuItems.Add(new(config.Name, config));
+    private void OnConfigsChanged() => OnPropertyChanged(nameof(HasConfig));
 
 
 
-    private void OnConfigDeleted(KeybindConfigModel config)
+    // a keyboard was plugged in or removed: the dropdowns get the new list (edited in place, so a slot's choice isn't
+    // lost while the list changes), then each slot shows its keyboard again
+    private void OnDevicesChanged()
     {
-        var menuItem = _configMenuItems.FirstOrDefault(c => c.Model == config);
-        if (menuItem == null) return;
+        var devices = _list.Devices ?? [];
+        foreach (var item in _deviceMenuItems.Where(i => i.Model != null && (!devices.Contains(i.Model) || i.Label != i.Model.GetDisplayLabel())).ToList())
+            _deviceMenuItems.Remove(item);
+        foreach (var device in devices.Where(d => _deviceMenuItems.All(i => i.Model != d)))
+            _deviceMenuItems.Add(new(device.GetDisplayLabel(), device));
 
-        _configMenuItems.Remove(menuItem);
-        // nothing to dispose since no view model for configs
+        foreach (var slot in _slots)
+            slot.ShowSelectedDevice();
     }
-
-
-
-    // view model events
-
-
-
-    private void OnCreateConfigRequested(string name, Dictionary<ushort, BindableModel>? bindings, Action<KeybindConfigModel>? callback)
-    {
-        if (!_list.TryCreateConfig(name, bindings, out var config)) return;
-        callback?.Invoke(config);
-    }
-
-
-
-    private void OnDeleteConfigRequested(KeybindConfigModel config) => _list.TryDeleteConfig(config);
 
 
 
@@ -139,8 +127,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         list.SlotCreated += OnSlotCreated;
         list.SlotDeleted += OnSlotDeleted;
-        list.ConfigCreated += OnConfigCreated;
-        list.ConfigDeleted += OnConfigDeleted;
+        list.DevicesChanged += OnDevicesChanged;
     }
 
 
@@ -149,33 +136,15 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         list.SlotCreated -= OnSlotCreated;
         list.SlotDeleted -= OnSlotDeleted;
-        list.ConfigCreated -= OnConfigCreated;
-        list.ConfigDeleted -= OnConfigDeleted;
-    }
-
-
-
-    private void SubscribeToKeyboardSlotViewModel(KeyboardSlotViewModel slot)
-    {
-        slot.CreateConfigRequested += OnCreateConfigRequested;
-        slot.DeleteConfigRequested += OnDeleteConfigRequested;
-    }
-
-
-
-    private void UnsubscribeFromKeyboardSlotViewModel(KeyboardSlotViewModel slot)
-    {
-        slot.CreateConfigRequested -= OnCreateConfigRequested;
-        slot.DeleteConfigRequested -= OnDeleteConfigRequested;
+        list.DevicesChanged -= OnDevicesChanged;
     }
 
 
 
     private void CreateSlot(KeyboardSlotModel slot)
     {
-        var viewModel = new KeyboardSlotViewModel(slot, _inputManager, _deviceMenuItems, _configMenuItems, _keyConfigurator);
+        var viewModel = new KeyboardSlotViewModel(slot, _inputManager, _deviceMenuItems, _keyConfigurator);
         _slots.Add(viewModel);
-        SubscribeToKeyboardSlotViewModel(viewModel);
     }
 
 
@@ -189,9 +158,9 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
         UnsubscribeFromKeyboardListModel(_list);
 
         foreach (var slot in _slots)
-        {
-            UnsubscribeFromKeyboardSlotViewModel(slot);
             slot.Dispose();
-        }
+
+        _configBar.Dispose();
+        _list.Configs.ListChanged -= OnConfigsChanged;
     }
 }

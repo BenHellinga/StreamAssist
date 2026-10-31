@@ -9,29 +9,44 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-// contains the data for a single keyboard slot
+// contains the data for a single keyboard slot: its keyboard and layout. Its keys belong to the tab's config in use
+// (KeyboardConfigModel, found by the slot's id), which the list hands it through ShowConfig
 public class KeyboardSlotModel : ModelBase
 {
+    // constants
+
+
+
+    // the pictures a slot can show its keys in: a keyboard, or every key code Windows has (F13-F24, media keys, ...).
+    // Binds belong to key codes, so a bind shows in every layout that has its key
+    public const string KeyboardLayout = "Keyboard";
+    public const string AllKeysLayout = "All keys";
+    public static readonly IReadOnlyList<string> Layouts = [KeyboardLayout, AllKeysLayout];
+
+
+
     // private
 
 
 
     private IReadOnlyList<InputDeviceModel>? _devices;
-    private IReadOnlyList<KeybindConfigModel>? _configs;
+    private int _id;
 
     private InputDeviceModel? _selectedDevice;
     private KeybindConfigModel? _selectedConfig;
     private string? _pendingDeviceString;
-    private string? _pendingConfigString;
+    private string _layout;
 
 
-    
+
     // public
 
 
 
+    [JsonIgnore] public int Id => _id; // which keys it has in each config
     [JsonIgnore] public InputDeviceModel? SelectedDevice => _selectedDevice;
     [JsonIgnore] public KeybindConfigModel? SelectedConfig => _selectedConfig;
+    [JsonIgnore] public string Layout => _layout;
 
 
 
@@ -46,11 +61,18 @@ public class KeyboardSlotModel : ModelBase
         set => _pendingDeviceString = value; // defer validation until device list is attached
     }
 
-    [JsonInclude] [JsonPropertyName("selectedConfig")]
-    private string? JsonSelectedConfig
+    [JsonInclude] [JsonPropertyName("id")]
+    private int JsonId
     {
-        get => _selectedConfig?.Name ?? _pendingConfigString;
-        set => _pendingConfigString = value; // defer validation until config list is attached
+        get => _id;
+        set => _id = value;
+    }
+
+    [JsonInclude] [JsonPropertyName("layout")]
+    private string JsonLayout
+    {
+        get => _layout;
+        set => _layout = Layouts.Contains(value) ? value : KeyboardLayout;
     }
 
 
@@ -60,7 +82,8 @@ public class KeyboardSlotModel : ModelBase
 
 
     public event Action<InputDeviceModel?, InputDeviceModel?>? SelectedDeviceChanged;
-    public event Action<KeybindConfigModel?, KeybindConfigModel?>? SelectedConfigChanged;
+    public event Action<KeybindConfigModel?, KeybindConfigModel?>? SelectedConfigChanged; // the tab switched configs
+    public event Action<string>? LayoutChanged;
 
 
 
@@ -71,25 +94,25 @@ public class KeyboardSlotModel : ModelBase
     public KeyboardSlotModel()
     {
         _devices = null;
-        _configs = null;
+        _id = 0; // given one by the list once loaded
 
         _selectedDevice = null;
         _selectedConfig = null;
         _pendingDeviceString = null;
-        _pendingConfigString = null;
+        _layout = KeyboardLayout;
     }
 
 
 
-    public KeyboardSlotModel(IReadOnlyList<InputDeviceModel>? devices, IReadOnlyList<KeybindConfigModel>? configs)
+    public KeyboardSlotModel(IReadOnlyList<InputDeviceModel>? devices, int id)
     {
         _devices = devices;
-        _configs = configs;
+        _id = id;
 
         _selectedDevice = null;
         _selectedConfig = null;
         _pendingDeviceString = null;
-        _pendingConfigString = null;
+        _layout = KeyboardLayout;
     }
 
 
@@ -98,40 +121,51 @@ public class KeyboardSlotModel : ModelBase
 
 
 
-    public void AttachConfigs(IReadOnlyList<KeybindConfigModel> configs)
+    // the keyboards were read (at startup) or changed (one was plugged in or removed): find this slot's keyboard again by
+    // its path. A missing one leaves the slot without a keyboard but keeps its path (saved, and picked up again when it's
+    // plugged back in), with one warning: at startup that it's not there, later that it was removed
+    public void AttachDevices(IReadOnlyList<InputDeviceModel> devices)
     {
-        _configs = configs;
-        if (_pendingConfigString == null) return;
-        
-        var config = _configs.FirstOrDefault(c => c.Name == _pendingConfigString);
-        if (config == null)
+        var firstTime = _devices == null;
+        _devices = devices;
+
+        var wanted = _selectedDevice?.DevicePath ?? _pendingDeviceString;
+        if (wanted == null) return;
+
+        var device = _devices.FirstOrDefault(d => string.Equals(d.DevicePath, wanted, StringComparison.OrdinalIgnoreCase));
+        if (device == null)
         {
-            AppLog.WriteWarning($"config '{_pendingConfigString}' not found");
-            SetSelectedConfig(null);
-            return; // pendingConfigString maintains its value until config is explicitly set
+            if (firstTime) AppLog.WriteWarning($"keyboard '{wanted}' not found");
+            else if (_selectedDevice != null) AppLog.WriteWarning($"keyboard removed ({_selectedDevice.ProductName})");
+
+            _pendingDeviceString = wanted; // kept until a keyboard is picked
+            SetSelectedDevice(null);
+            return;
         }
 
-        _pendingConfigString = null;
-        SetSelectedConfig(config);
+        _pendingDeviceString = null;
+        SetSelectedDevice(device);
     }
 
 
 
-    public void AttachDevices(IReadOnlyList<InputDeviceModel> devices)
-    {
-        _devices = devices;
-        if (_pendingDeviceString == null) return;
+    // layout
 
-        var device = _devices.FirstOrDefault(d => d.DevicePath == _pendingDeviceString);
-        if (device == null)
+
+
+    public bool TrySetLayout(string layout)
+    {
+        if (!Layouts.Contains(layout))
         {
-            AppLog.WriteWarning($"keyboard '{_pendingDeviceString}' not found");
-            TrySetSelectedDevice(null);
-            return; // pendingDeviceString maintains its value until device is explicitly set
+            AppLog.WriteError($"no keyboard layout '{layout}'");
+            return false;
         }
-        
-        _pendingDeviceString = null;
-        SetSelectedDevice(device);
+
+        if (layout == _layout) return true;
+
+        _layout = layout;
+        LayoutChanged?.Invoke(_layout);
+        return true;
     }
 
 
@@ -140,10 +174,12 @@ public class KeyboardSlotModel : ModelBase
 
 
 
+    // picking a keyboard (or none) replaces the one that was waiting to be plugged back in
     public bool TrySetSelectedDevice(InputDeviceModel? device)
     {
         if (device == null)
         {
+            _pendingDeviceString = null;
             SetSelectedDevice(device);
             return true;
         }
@@ -154,6 +190,7 @@ public class KeyboardSlotModel : ModelBase
             return false;
         }
 
+        _pendingDeviceString = null;
         SetSelectedDevice(device);
         return true;
     }
@@ -171,31 +208,16 @@ public class KeyboardSlotModel : ModelBase
 
 
 
-    // config management
+    // config
 
 
 
-    public bool TrySetSelectedConfig(KeybindConfigModel? config)
-    {
-        if (config == null)
-        {
-            SetSelectedConfig(config);
-            return true;
-        }
-        
-        if (!_configs?.Contains(config) ?? false)
-        {
-            AppLog.WriteError($"config '{config.Name}' not found");
-            return false;
-        }
-    
-        SetSelectedConfig(config);
-        return true;
-    }
+    // only the list sets these: the slot's id (once, for slots saved without one) and its keys in the config in use
+    internal void SetId(int id) => _id = id;
 
 
 
-    private void SetSelectedConfig(KeybindConfigModel? newConfig)
+    internal void ShowConfig(KeybindConfigModel? newConfig)
     {
         if (_selectedConfig == newConfig) return;
 
@@ -213,6 +235,5 @@ public class KeyboardSlotModel : ModelBase
     public override void Dispose()
     {
         _selectedDevice?.Dispose();
-        _selectedConfig?.Dispose();
     }
 }

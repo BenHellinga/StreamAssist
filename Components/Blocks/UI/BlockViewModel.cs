@@ -26,6 +26,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
         [typeof(BlockBranchList)] = slot => new BlockBranchListViewModel((BlockBranchList)slot),
         [typeof(ValueSlot)] = slot => new ValueSlotViewModel((ValueSlot)slot), // every ValueSlot<T> and AnyValueSlot
         [typeof(ValueSlotList)] = slot => new ValueSlotListViewModel((ValueSlotList)slot),
+        [typeof(ValueSlotPairList)] = slot => new ValueSlotPairListViewModel((ValueSlotPairList)slot),
     };
 
     private readonly BlockModel _block;

@@ -16,7 +16,7 @@ public class DeleteCommandAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Delete Command";
-    [JsonIgnore] public override string Description => "Deletes a command from the Editable commands (e.g. for !delcom). It has to be a whole command that runs a binding, not a prefix or a row that leads into more blocks. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
+    [JsonIgnore] public override string Description => "Deletes a command from the Custom commands (e.g. for !delcom). It has to be a whole command that runs a binding, not a prefix or a row that leads into more blocks. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
 
 
 

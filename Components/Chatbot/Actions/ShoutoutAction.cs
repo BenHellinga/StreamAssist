@@ -17,7 +17,7 @@ public class ShoutoutAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Shoutout";
-    [JsonIgnore] public override string Description => "Gives a channel a Twitch shoutout (viewers get a button to follow them), e.g. after a raid. Only while live, and twitch limits how often. User is their login name. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string Description => "Gives a channel a Twitch shoutout (viewers get a button to follow them), e.g. after a raid. Only while live, and Twitch limits how often. User is their login name. Done as the streamer. Twitch actions wait their turn, one per second.";
 
 
 

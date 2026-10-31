@@ -15,6 +15,17 @@
         <Style Selector="Border.DropZone > TextBlock">
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
+
+        <!-- an empty slot is a ghost field like the "new" boxes (TextBox.New): barely there, it still lights up when a
+             block can be dropped on it (Border.Droppable.Dragover in Border.axaml) -->
+        <Style Selector="Border.DropZone:not(.Dragover)">
+            <Setter Property="BorderBrush" Value="{DynamicResource GhostBorder}"/>
+        </Style>
+        <!-- half strength, like the theme draws a text box's placeholder, so the + and "New …" texts look the same -->
+        <Style Selector="Border.DropZone:not(.Dragover) > TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource GhostText}"/>
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
     </UserControl.Styles>
 
     <Panel>

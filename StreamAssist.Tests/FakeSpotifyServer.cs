@@ -220,6 +220,8 @@ public sealed class MemorySpotifyLoginStore : SpotifyLoginStore
 {
     public SpotifyLoginData Login = new();
 
+    public override bool IsReadable => true;
+
     public override SpotifyLoginData Load() => Login;
 
     public override void Save(SpotifyLoginData login) => Login = login;

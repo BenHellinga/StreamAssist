@@ -58,43 +58,12 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? __) => Save();
+    private void OnLayoutChanged(string _) => Save();
 
 
 
-    private void OnConfigAdded(KeybindConfigModel config)
-    {
-        SubscribeToKeybindConfigModel(config);
-        Save();
-    }
-
-
-
-    private void OnConfigRemoved(KeybindConfigModel config)
-    {
-        UnsubscribeFromKeybindConfigModel(config);
-        Save();
-    }
-
-
-
-    private void OnKeyBound(ushort _, BindableModel bindable)
-    {
-        SubscribeToBindableModel(bindable);
-        Save();
-    }
-
-
-
-    private void OnKeyUnbound(ushort _, BindableModel bindable)
-    {
-        UnsubscribeFromBindableModel(bindable);
-        Save();
-    }
-
-
-
-    private void OnBindableChanged() => Save();
+    // a config's keys or bindings changed, or another config was picked, added or deleted
+    private void OnConfigsChanged() => Save();
 
 
 
@@ -137,14 +106,10 @@ public class KeyboardSaveManager : IDisposable
     {
         list.SlotCreated += OnSlotAdded;
         list.SlotDeleted += OnSlotRemoved;
-        list.ConfigCreated += OnConfigAdded;
-        list.ConfigDeleted += OnConfigRemoved;
+        list.Changed += OnConfigsChanged;
 
         foreach (var slot in list.Slots)
             SubscribeToKeyboardSlotModel(slot);
-
-        foreach (var config in list.Configs)
-            SubscribeToKeybindConfigModel(config);
     }
 
 
@@ -153,14 +118,10 @@ public class KeyboardSaveManager : IDisposable
     {
         list.SlotCreated -= OnSlotAdded;
         list.SlotDeleted -= OnSlotRemoved;
-        list.ConfigCreated -= OnConfigAdded;
-        list.ConfigDeleted -= OnConfigRemoved;
+        list.Changed -= OnConfigsChanged;
 
         foreach (var slot in list.Slots)
             UnsubscribeFromKeyboardSlotModel(slot);
-
-        foreach (var config in list.Configs)
-            UnsubscribeFromKeybindConfigModel(config);
     }
 
 
@@ -168,7 +129,7 @@ public class KeyboardSaveManager : IDisposable
     private void SubscribeToKeyboardSlotModel(KeyboardSlotModel slot)
     {
         slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
-        slot.SelectedConfigChanged += OnSelectedConfigChanged;
+        slot.LayoutChanged += OnLayoutChanged;
     }
 
 
@@ -176,39 +137,8 @@ public class KeyboardSaveManager : IDisposable
     private void UnsubscribeFromKeyboardSlotModel(KeyboardSlotModel slot)
     {
         slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
-        slot.SelectedConfigChanged -= OnSelectedConfigChanged;
+        slot.LayoutChanged -= OnLayoutChanged;
     }
-
-
-
-    private void SubscribeToKeybindConfigModel(KeybindConfigModel config)
-    {
-        config.KeyBound += OnKeyBound;
-        config.KeyUnbound += OnKeyUnbound;
-
-        foreach (var bindingModel in config.Keybinds.Values)
-            SubscribeToBindableModel(bindingModel);
-    }
-
-
-
-    private void UnsubscribeFromKeybindConfigModel(KeybindConfigModel config)
-    {
-        config.KeyBound -= OnKeyBound;
-        config.KeyUnbound -= OnKeyUnbound;
-
-        foreach (var bindingModel in config.Keybinds.Values)
-            UnsubscribeFromBindableModel(bindingModel);
-    }
-
-
-
-    // a bindable raises Changed for anything inside it, so one subscription covers the whole block tree
-    private void SubscribeToBindableModel(BindableModel bindable) => bindable.Changed += OnBindableChanged;
-
-
-
-    private void UnsubscribeFromBindableModel(BindableModel bindable) => bindable.Changed -= OnBindableChanged;
 
 
 

@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Threading;
+using StreamAssist.Components.OutputConsole.Model;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Keyboard.UI;
 using StreamAssist.Core.Mvvm;
@@ -16,6 +19,10 @@ using StreamAssist.Components.Chatbot.UI;
 using StreamAssist.Components.OBS.Background;
 using StreamAssist.Components.OBS.Model;
 using StreamAssist.Components.Spotify.Background;
+using StreamAssist.Components.Data.Background;
+using StreamAssist.Components.Data.Model;
+using StreamAssist.Components.Data.UI;
+using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Spotify.Model;
 
 namespace StreamAssist.Shell;
@@ -31,6 +38,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private AudioComponentModel _audioComponentModel;
     private ObsComponentModel _obsComponentModel;
     private SpotifyComponentModel _spotifyComponentModel;
+    private DataModel _dataModel;
 
     // managers
     private WindowLayoutSaveManager _windowLayoutSaveManager;
@@ -46,6 +54,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private ObsManager _obsManager;
     private SpotifySaveManager _spotifySaveManager;
     private SpotifyManager _spotifyManager;
+    private DataStore _dataStore;
 
     // main view models
     private PanelViewModel _outputConsolePanelViewModel;
@@ -54,6 +63,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // tabs
     private ObservableCollection<ViewModelTabItem> _tabs;
+    private Dictionary<string, string> _tabFiles; // tab → the file it shows, the tab is replaced by a notice while it can't be read
     [ObservableProperty] private ViewModelTabItem _selectedTab;
     [ObservableProperty] private ViewModelBase _activeContent;
 
@@ -74,6 +84,20 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        // config files report problems to the console (before anything loads)
+
+        JsonFileStore.ReportError = AppLog.WriteError;
+        JsonFileStore.ReportWarning = AppLog.WriteWarning;
+        AppPaths.EnsureAssetFolders(); // Assets/Sounds, Images, Videos, for the user's files
+
+        // data (tables and variables) first, so blocks loading below can already look up variables
+
+        _dataModel = new();
+        _dataStore = new(_dataModel, System.IO.Path.Combine(JsonFileStore.RootDir, "data.db")); // loads it, then saves every change
+        GlobalContext.DataModel = _dataModel;
+        TriggerContext.VariableText = name =>
+            _dataModel.VariableKind(name) != null && _dataModel.TryGetVariable(name, out _, out var value) ? ValueTypes.ToText(value) : null;
+
         // models
 
         _windowLayoutModel = WindowLayoutSaveManager.Load();
@@ -123,11 +147,19 @@ public partial class MainWindowViewModel : ViewModelBase
         _bottomPanelViewModel = new(_windowLayoutModel, WindowLayoutModel.BottomPanel);
 
         // tab
+        _tabFiles = new()
+        {
+            ["Keyboard"] = "keyboard",
+            ["Chat"] = "chatbot",
+            ["Events"] = "chatbot",
+            ["Connections"] = CredentialStore.FileName,
+        };
         _tabs = [
-            new("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
-            new("Chatbot", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
-            new("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel)),
-            new("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _obsComponentModel, _obsManager, _spotifyComponentModel, _spotifyManager, _sidePanelViewModel, _bottomPanelViewModel)),
+            new("Keyboard", () => Guarded("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
+            new("Chat", () => Guarded("Chat", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
+            new("Events", () => Guarded("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
+            new("Data", () => DataComponentViewModel.ActivateTab(_dataModel, _sidePanelViewModel, _bottomPanelViewModel)),
+            new("Connections", () => Guarded("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _obsComponentModel, _obsManager, _spotifyComponentModel, _spotifyManager, _sidePanelViewModel, _bottomPanelViewModel))),
         ];
 
         // reopen the last selected tab (set through the field so the content is only created once)
@@ -135,6 +167,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _activeContent = _selectedTab.CreateTabViewModel();
 
         _windowLayoutModel.SelectedTabChanged += OnLayoutSelectedTabChanged;
+        JsonFileStore.BrokenChanged += OnFileBrokenChanged;
     }
 
 
@@ -163,6 +196,30 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
 
+    // a file became unreadable or was backed up: the open tab showing it switches between the notice and its content
+    private void OnFileBrokenChanged(string file) => Dispatcher.UIThread.Post(() =>
+    {
+        if (!_tabFiles.TryGetValue(SelectedTab.Label, out var shown) || shown != file) return;
+
+        var oldContent = ActiveContent;
+        ActiveContent = SelectedTab.CreateTabViewModel();
+        oldContent.Dispose();
+    });
+
+
+
+    // helpers
+
+
+
+    // the tab's content, or the broken file notice while its file can't be read
+    private ViewModelBase Guarded(string tab, System.Func<ViewModelBase> create) =>
+        _tabFiles.TryGetValue(tab, out var file) && JsonFileStore.IsBroken(file)
+            ? BrokenFileViewModel.ActivateTab(file, _sidePanelViewModel, _bottomPanelViewModel)
+            : create();
+
+
+
     // disposal
 
 
@@ -170,6 +227,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public override void Dispose()
     {
         _windowLayoutModel.SelectedTabChanged -= OnLayoutSelectedTabChanged;
+        JsonFileStore.BrokenChanged -= OnFileBrokenChanged;
 
         ActiveContent.Dispose();
 
@@ -185,6 +243,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _spotifyManager.Dispose();
         _spotifySaveManager.Dispose();
+
+        _dataStore.Dispose();
 
         _chatCommandManager.Dispose();
         _chatEventManager.Dispose();

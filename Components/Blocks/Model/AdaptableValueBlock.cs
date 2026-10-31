@@ -27,7 +27,7 @@ public abstract class AdaptableValueBlock : ValueBlock
 
 
     [JsonIgnore] public override ValueKind Kind => _kind;
-    [JsonIgnore] public override BlockCategory Category => BlockCategory.Any;
+    [JsonIgnore] protected override BlockGroup KindGroup => BlockGroup.Math;
     [JsonIgnore] public abstract IReadOnlyList<ValueKind> AllowedKinds { get; }
 
 

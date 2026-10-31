@@ -59,8 +59,10 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="ui:RedeemRowViewModel">
                                     <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <!-- the empty row at the end has a dim border until a title is typed -->
                                         <TextBox Width="200" VerticalAlignment="Top"
-                                                 Text="{Binding Title}" PlaceholderText="Reward title…"/>
+                                                 Classes.New="{Binding Title, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                                 Text="{Binding Title}" PlaceholderText="New redeem…"/>
 
                                         <!-- bind box (a ChatTargetView through the ViewLocator), once the row has a title -->
                                         <ContentControl Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>

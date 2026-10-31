@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Data.UI.DataComponentView"
+             x:DataType="ui:DataComponentViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Data.UI">
+
+    <!-- the open table's grid (a TableGridView through the ViewLocator), the table list is in the side panel -->
+
+    <Panel>
+        <ContentControl Content="{Binding Grid}" IsVisible="{Binding HasGrid}"/>
+        <TextBlock Classes="Description" Text="Pick a table on the right" IsVisible="{Binding !HasGrid}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    </Panel>
+
+</UserControl>

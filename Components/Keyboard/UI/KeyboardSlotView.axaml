@@ -3,7 +3,22 @@
              x:Class="StreamAssist.Components.Keyboard.UI.KeyboardSlotView"
              x:DataType="keyboard:KeyboardSlotViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- a bound key's edit buttons show only while the pointer is on it (hidden by opacity, so nothing moves). Here once
+         for every key of the slot, rather than in each KeyView -->
+
+    <UserControl.Styles>
+        <Style Selector="keyboard|KeyView blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="keyboard|KeyView Border.Bound:pointerover blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
 
     <!-- keyboard slot -->
 
@@ -12,45 +27,6 @@
         <!-- menu -->
 
         <StackPanel Orientation="Horizontal" Spacing="20">
-
-            <!-- config related -->
-
-            <StackPanel Orientation="Horizontal" Spacing="10">
-
-                <TextBlock Classes="Label" Text="Config"/>
-
-                <!-- configs dropdown -->
-
-                <ComboBox ItemsSource="{Binding ConfigMenuItems}"
-                          SelectedItem="{Binding MenuConfig}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="keyboard:ConfigMenuItem">
-                            <TextBlock Text="{Binding Label}"/>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-
-                <!-- add config button -->
-
-                <Button Classes="Square Medium"
-                        Content="＋"
-                        Command="{Binding CreateConfigPressedCommand}"
-                        ToolTip.Tip="Create a copy of the current config with the name below"/>
-
-                <!-- input config box -->
-
-                <TextBox Text="{Binding InputConfig}"
-                         PlaceholderText="Config name…"
-                         Width="150"/>
-
-                <!-- delete config button -->
-
-                <Button Classes="Square Medium"
-                        Content="－"
-                        Command="{Binding DeleteConfigPressedCommand}"
-                        ToolTip.Tip="Delete the selected config"/>
-
-            </StackPanel>
 
             <!-- device related -->
 
@@ -69,6 +45,14 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
+            </StackPanel>
+
+            <!-- layout: the keyboard picture, or every key code (F13-F24, media keys, ...) -->
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="Label" Text="Layout"/>
+                <ComboBox ItemsSource="{Binding Layouts}" SelectedItem="{Binding MenuLayout}"
+                          ToolTip.Tip="Binds belong to keys, so a bind shows in every layout that has its key"/>
             </StackPanel>
         </StackPanel>
 

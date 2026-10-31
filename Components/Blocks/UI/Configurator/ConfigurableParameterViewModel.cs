@@ -9,6 +9,8 @@ using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Core.Persistence;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Blocks.UI.Configurator;
 
@@ -142,15 +144,24 @@ public partial class ConfigurableParameterViewModel : ObservableObject
         var topLevel = GetTopLevel();
         if (topLevel == null) return;
 
+        // opens in Assets/, and only a file inside it is taken (blocks can't reach anything else)
+        AppPaths.EnsureAssetFolders();
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = $"Select {_label}",
-            AllowMultiple = false
+            Title = $"Select {_label} (inside assets)",
+            AllowMultiple = false,
+            SuggestedStartLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(AppPaths.AssetsDir),
         });
 
         if (files.Count == 0) return;
 
-        Value = files[0].Path.LocalPath;
+        if (!AppPaths.TryMakeAssetPath(files[0].Path.LocalPath, out var path))
+        {
+            AppLog.WriteError($"can't use '{files[0].Name}', it isn't in the assets folder");
+            return;
+        }
+
+        Value = path;
     }
 
 

@@ -47,7 +47,7 @@ public class ObsSaveManager : IDisposable
 
     public static ObsComponentModel Load()
     {
-        var model = JsonFileStore.Load<ObsComponentModel>(FileName);
+        var model = JsonFileStore.LoadOrReset<ObsComponentModel>(FileName);
         model.LoadPassword(CredentialStore.Load<ObsCredentialsData>(CredentialsSection).Password);
         return model;
     }

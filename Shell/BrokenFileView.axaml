@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Shell.BrokenFileView"
+             x:DataType="shell:BrokenFileViewModel"
+
+             xmlns:shell="using:StreamAssist.Shell">
+
+    <!-- what's wrong with the file, and the one way out besides fixing it by hand -->
+
+    <StackPanel Spacing="10" Margin="{StaticResource ContentInset}" MaxWidth="700" HorizontalAlignment="Left">
+        <TextBlock Classes="Title" Text="{Binding Title}"/>
+        <TextBlock Text="{Binding Reason}"/>
+        <TextBlock Classes="Description" Text="{Binding Explanation}"/>
+        <Button Content="Back up &amp; start fresh" Command="{Binding BackUpPressedCommand}" HorizontalAlignment="Left"/>
+    </StackPanel>
+
+</UserControl>

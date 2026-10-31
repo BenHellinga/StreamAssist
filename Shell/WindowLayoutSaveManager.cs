@@ -51,7 +51,7 @@ public class WindowLayoutSaveManager : IDisposable
 
 
 
-    public static WindowLayoutModel Load() => JsonFileStore.Load<WindowLayoutModel>(FileName);
+    public static WindowLayoutModel Load() => JsonFileStore.LoadOrReset<WindowLayoutModel>(FileName);
 
 
 

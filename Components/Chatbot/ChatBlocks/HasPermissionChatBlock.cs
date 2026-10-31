@@ -17,7 +17,7 @@ public class HasPermissionChatBlock : ChatBlock
 
 
     [JsonIgnore] public override string Name => "Has Permission";
-    [JsonIgnore] public override string Description => "Continues into its binding or the block next to it only if the chatter is at least this, otherwise the next row gets a turn. Each level includes the ones above it: Subscriber, then VIP, then Moderator, then Broadcaster (you). It doesn't match any text itself.";
+    [JsonIgnore] public override string Description => "Continues into its binding or the block next to it only if the chatter is at least this, otherwise the next row gets a turn. Each level includes the ones above it: Anyone, then Subscriber, VIP, Moderator, Broadcaster (you). It doesn't match any text itself.";
 
 
 
@@ -25,9 +25,10 @@ public class HasPermissionChatBlock : ChatBlock
 
 
 
-    // lowest to highest, with the chat parameter that says the chatter has it
-    private static readonly (string Level, string Parameter)[] Levels =
+    // lowest to highest, with the chat parameter that says the chatter has it (Anyone: everyone has it)
+    private static readonly (string Level, string? Parameter)[] Levels =
     [
+        ("Anyone", null),
         ("Subscriber", "isSubscriber"),
         ("VIP", "isVip"),
         ("Moderator", "isModerator"),
@@ -123,7 +124,7 @@ public class HasPermissionChatBlock : ChatBlock
         if (index < 0) return false;
 
         for (int i = index; i < Levels.Length; i++)
-            if (parameters.TryGetValue(Levels[i].Parameter, out var value) && value == "true")
+            if (Levels[i].Parameter is not { } parameter || parameters.TryGetValue(parameter, out var value) && value == "true")
                 return true;
 
         return false;

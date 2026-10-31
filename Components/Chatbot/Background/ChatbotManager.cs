@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Connections;
+using StreamAssist.Core.Persistence;
 
 namespace StreamAssist.Components.Chatbot.Background;
 
@@ -435,7 +436,9 @@ public class ChatbotManager : IDisposable
     // the New reward panel asked: create it on twitch, then give it a redeem row to bind (a failure is already logged)
     private async void OnCreateRewardRequested(NewReward reward)
     {
-        if (await TryCreateRewardAsync(reward)) _model.Redeems.AddRow(reward.Title);
+        if (!await TryCreateRewardAsync(reward)) return;
+        if (_model.Redeems is { } redeems) redeems.AddRow(reward.Title);
+        else AppLog.WriteWarning($"reward '{reward.Title}' made, no events config for its redeem"); // all deleted meanwhile
     }
 
 
@@ -481,6 +484,13 @@ public class ChatbotManager : IDisposable
     // the same as the streamer, and on its own: neither waits for the other
     private void ConnectBot()
     {
+        if (!CredentialStore.IsReadable)
+        {
+            SetBotStatus(ConnectionStatus.Failed, "Not connected");
+            AppLog.WriteError("can't connect the bot, auth.json can't be read");
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_model.ClientId) || string.IsNullOrWhiteSpace(_model.ClientSecret))
         {
             SetBotStatus(ConnectionStatus.Failed, "Not connected");
@@ -542,6 +552,12 @@ public class ChatbotManager : IDisposable
     // and left failed, the user retries from the Connections tab
     private async Task RunAsync(string clientId, string clientSecret, CancellationToken ct)
     {
+        if (!CredentialStore.IsReadable)
+        {
+            SetStatus(ConnectionStatus.Failed, "Not connected", "can't connect to twitch, auth.json can't be read");
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
         {
             SetStatus(ConnectionStatus.Failed, "Not connected", "twitch needs the client id and secret");

@@ -17,7 +17,7 @@ public class GetSpotifyPlaybackBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public override string Name => "Get Spotify Playback";
-    [JsonIgnore] public override string Description => "Reads what Spotify is playing: Title, Artist, Album, Link, Playing, Progress Seconds, Length Seconds, Volume, Shuffle or Repeat. Picking one picks its type. With nothing playing anywhere it reads as not playing, empty text and 0.";
+    [JsonIgnore] public override string Description => "Reads what Spotify is playing: Title, Artist, Album, Link, Playing, Progress Seconds, Length Seconds, Volume, Shuffle or Repeat. Picking a setting picks its type. With nothing playing anywhere it reads as not playing, empty text and 0.";
 
 
 

@@ -28,4 +28,18 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
+    <!-- a plain dropdown: just its text and its arrow (e.g. the Data tab's column types) -->
+    <Style Selector="ComboBox.Plain">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="ComboBox.Plain:pointerover /template/ Border#Background">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="ComboBox.Plain:focus /template/ Border#Background">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderToggle}"/>
+    </Style>
+
 </Styles>

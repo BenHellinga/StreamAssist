@@ -17,8 +17,11 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
     private readonly ValueSlot _slot;
 
-    [ObservableProperty] private string _text;
-    [ObservableProperty] private BlockViewModel? _block;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsNewEntry))] private string _text;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsNewEntry))] private BlockViewModel? _block;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasConnector))] private string _connector; // e.g. "==" above Equals' second value
+    private bool _isInList; // one of a growing list's slots
+    private readonly string? _placeholder; // instead of the type, e.g. a name box's "Name…"
 
 
 
@@ -28,8 +31,12 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
     public string Label => _slot.Label + ":";
     public bool HasLabel => !string.IsNullOrEmpty(_slot.Label);
-    public string Placeholder => ValueTypes.Placeholder(_slot.Kind);
+    public bool HasConnector => Connector != "";
+    public string Placeholder => _placeholder ?? ValueTypes.Placeholder(_slot.Kind);
     public bool IsText => _slot.Kind is ValueKind.Text or null; // text can be several lines
+
+    // the empty slot at the end of a growing list (typing in it adds the next): shown with a dim border
+    public bool IsNewEntry => _isInList && string.IsNullOrEmpty(Text) && Block == null;
 
 
 
@@ -37,11 +44,14 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
 
 
-    public ValueSlotViewModel(ValueSlot slot)
+    public ValueSlotViewModel(ValueSlot slot, bool isInList = false, string? placeholder = null)
     {
         _slot = slot;
+        _isInList = isInList;
+        _placeholder = placeholder;
         _text = _slot.Text;
         _block = null;
+        _connector = _slot.Connector;
 
         SetBlockViewModel(_slot.BlockSlot.Block);
         SubscribeToValueSlot(_slot);
@@ -105,6 +115,10 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
 
 
+    private void OnConnectorChanged() => Connector = _slot.Connector;
+
+
+
     private void OnBlockChanged(BlockModel? _, BlockModel? newBlock) => SetBlockViewModel(newBlock);
 
 
@@ -125,6 +139,7 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
     private void SubscribeToValueSlot(ValueSlot slot)
     {
         slot.TextChanged += OnSlotTextChanged;
+        slot.ConnectorChanged += OnConnectorChanged;
         slot.BlockSlot.BlockChanged += OnBlockChanged;
     }
 
@@ -133,6 +148,7 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
     private void UnsubscribeFromValueSlot(ValueSlot slot)
     {
         slot.TextChanged -= OnSlotTextChanged;
+        slot.ConnectorChanged -= OnConnectorChanged;
         slot.BlockSlot.BlockChanged -= OnBlockChanged;
     }
 

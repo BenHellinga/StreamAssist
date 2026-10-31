@@ -15,6 +15,7 @@ public class ConvertBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Convert";
     [JsonIgnore] public override string Description => "Turns a value into another type: text into a number or true/false (fails if it isn't one), a decimal into a whole number (drops the decimals), anything into text.";
+    [JsonIgnore] public override BlockGroup Group => BlockGroup.Parameters;
 
 
 

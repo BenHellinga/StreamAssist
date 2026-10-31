@@ -5,63 +5,74 @@
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
 
-    <!-- keyboard list -->
+    <!-- the tab's config (every keyboard's keys switch with it), a divider, then the keyboard list -->
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto"
-                  Classes="Gapped">
+    <DockPanel>
 
-        <!-- stack of keyboard list and add/remove buttons -->
+        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{StaticResource HeaderMargin}"/>
+        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
 
-        <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
-        <Border Padding="{StaticResource ScrollEndPadding}">
-            <StackPanel Spacing="10" Margin="0,5,0,0">
-                <ItemsControl ItemsSource="{Binding Slots}">
+        <!-- no config: an empty page that says to make one -->
+        <ContentControl Content="{Binding NoConfig}" IsVisible="{Binding !HasConfig}"/>
 
-                    <!-- stack of keyboard/divider pairs -->
+        <ScrollViewer IsVisible="{Binding HasConfig}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      Classes="Gapped">
 
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Spacing="10"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+            <!-- stack of keyboard list and add/remove buttons -->
 
-                    <!-- stack of one keyboard/divider pair -->
+            <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
+            <Border Padding="{StaticResource ScrollEndPadding}">
+                <StackPanel Spacing="10" Margin="0,5,0,0">
+                    <ItemsControl ItemsSource="{Binding Slots}">
 
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="keyboard:KeyboardSlotViewModel">
-                            <StackPanel Spacing="9">
+                        <!-- stack of keyboard/divider pairs -->
 
-                                <!-- keyboard slot -->
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="10"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
 
-                                <keyboard:KeyboardSlotView Margin="5,0"/>
+                        <!-- stack of one keyboard/divider pair -->
 
-                                <Border Classes="Divider"/>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="keyboard:KeyboardSlotViewModel">
+                                <StackPanel Spacing="9">
 
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
+                                    <!-- keyboard slot -->
 
-                </ItemsControl>
+                                    <keyboard:KeyboardSlotView Margin="5,0"/>
 
-                <!-- horizontal stack of add/remove buttons -->
+                                    <Border Classes="Divider"/>
 
-                <StackPanel Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            Spacing="10">
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
 
-                    <Button Classes="Square Large"
-                            Content="＋"
-                            Command="{Binding AddSlotRequestedCommand}"
-                            ToolTip.Tip="Add another keyboard"/>
+                    </ItemsControl>
 
-                    <Button Classes="Square Large"
-                            Content="－"
-                            Command="{Binding RemoveSlotRequestedCommand}"
-                            ToolTip.Tip="Remove the last keyboard"/>
+                    <!-- horizontal stack of add/remove buttons -->
 
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="10">
+
+                        <Button Classes="Square Large"
+                                Content="＋"
+                                Command="{Binding AddSlotRequestedCommand}"
+                                ToolTip.Tip="Add another keyboard"/>
+
+                        <Button Classes="Square Large"
+                                Content="－"
+                                Command="{Binding RemoveSlotRequestedCommand}"
+                                ToolTip.Tip="Remove the last keyboard"/>
+
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-        </Border>
-    </ScrollViewer>
+            </Border>
+        </ScrollViewer>
+
+    </DockPanel>
 </UserControl>

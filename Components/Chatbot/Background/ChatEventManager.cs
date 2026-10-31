@@ -56,7 +56,7 @@ public class ChatEventManager : IDisposable
                 redeem["rewardId"] = e.GetString("reward", "id") ?? "";
                 redeem["cost"] = e.GetString("reward", "cost") ?? "";
                 redeem["input"] = e.GetString("user_input") ?? "";
-                model.Redeems.TryRun(redeem["reward"], redeem);
+                model.Redeems?.TryRun(redeem["reward"], redeem);
                 break;
 
             case TwitchEvent.Follow:

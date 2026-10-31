@@ -29,10 +29,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     private readonly KeybindViewModel? _keyConfigurator;
 
     private readonly ObservableCollection<DeviceMenuItem> _deviceMenuItems;
-    private readonly ObservableCollection<ConfigMenuItem> _configMenuItems;
     [ObservableProperty] private DeviceMenuItem _menuDevice;
-    [ObservableProperty] private ConfigMenuItem _menuConfig;
-    [ObservableProperty] private string _inputConfig;
+    [ObservableProperty] private string _menuLayout;
 
     private double _baseWidth;
     private double _baseHeight;
@@ -52,17 +50,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
     public ObservableCollection<DeviceMenuItem> DeviceMenuItems => _deviceMenuItems;
-    public ObservableCollection<ConfigMenuItem> ConfigMenuItems => _configMenuItems;
     public ObservableCollection<KeyViewModel> Keys => _keys;
-
-
-
-    // events
-
-
-
-    public event Action<string, Dictionary<ushort, BindableModel>, Action<KeybindConfigModel>?>? CreateConfigRequested;
-    public event Action<KeybindConfigModel>? DeleteConfigRequested;
+    public IReadOnlyList<string> Layouts => KeyboardSlotModel.Layouts;
 
 
 
@@ -71,18 +60,16 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
     public KeyboardSlotViewModel(KeyboardSlotModel slot, KeyboardInputManager inputManager,
-                                 ObservableCollection<DeviceMenuItem> deviceMenuItems, ObservableCollection<ConfigMenuItem> configMenuItems,
+                                 ObservableCollection<DeviceMenuItem> deviceMenuItems,
                                  KeybindViewModel? keyConfigurator = null)
     {
         _slot = slot;
         _inputManager = inputManager;
         _keyConfigurator = keyConfigurator;
         _deviceMenuItems = deviceMenuItems;
-        _configMenuItems = configMenuItems;
 
         _menuDevice = new("null", null);
-        _menuConfig = new("null", null);
-        _inputConfig = "";
+        _menuLayout = _slot.Layout;
 
         _baseWidth = -1;
         _baseHeight = -1;
@@ -100,7 +87,6 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         InitKeys();
 
         SetMenuDevice(_slot.SelectedDevice);
-        SetMenuConfig(_slot.SelectedConfig);
         SetKeyConfigs(_slot.SelectedConfig);
 
         SubscribeToKeyboardSlotModel(_slot);
@@ -115,50 +101,18 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
+    partial void OnMenuLayoutChanged(string value)
+    {
+        if (_callbackBlocker.IsBlocked() || value == null) return;
+        if (!_slot.TrySetLayout(value)) MenuLayout = _slot.Layout;
+    }
+
+
+
     partial void OnMenuDeviceChanged(DeviceMenuItem value)
     {
-        if (_callbackBlocker.IsBlocked()) return;
+        if (_callbackBlocker.IsBlocked() || value == null) return; // null while the dropdown's list is being changed
         _slot.TrySetSelectedDevice(value.Model);
-    }
-
-
-
-    partial void OnMenuConfigChanged(ConfigMenuItem value)
-    {
-        if (_callbackBlocker.IsBlocked()) return;
-        _slot.TrySetSelectedConfig(value.Model);
-    }
-
-
-
-    [RelayCommand] private void OnCreateConfigPressed()
-    {
-        if (_callbackBlocker.IsBlocked()) return;
-
-        // copy current config's keybinds
-        var json = JsonSerializer.Serialize(_slot.SelectedConfig?.Keybinds);
-        var keybinds = JsonSerializer.Deserialize<Dictionary<ushort, BindableModel>>(json) ?? [];
-
-        CreateConfigRequested?.Invoke(
-            InputConfig,
-            keybinds,
-            (configModel) =>
-            {
-                InputConfig = "";
-                _slot.TrySetSelectedConfig(configModel);
-            }
-        );
-    }
-
-
-
-    [RelayCommand] private void OnDeleteConfigPressed()
-    {
-        if (_callbackBlocker.IsBlocked()) return;
-
-        if (_slot.SelectedConfig == null) return; // nothing to delete
-
-        DeleteConfigRequested?.Invoke(_slot.SelectedConfig);
     }
 
 
@@ -171,10 +125,29 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
+    // another picture: the keys are made again (a selected key is let go, binds show on whichever keys have them)
+    private void OnLayoutChanged(string layout)
+    {
+        _callbackBlocker.Block();
+        MenuLayout = layout;
+        _callbackBlocker.Unblock();
+
+        _keyConfigurator?.DeselectKeys(_keys);
+        foreach (var key in _keys) key.Dispose();
+        _keys.Clear();
+        _keyMap.Clear();
+
+        InitKeys();
+        SetKeyConfigs(_slot.SelectedConfig);
+        RecomputeDisplaySize();
+    }
+
+
+
+    // the tab switched configs: this keyboard's keys in that config
     private void OnSelectedConfigChanged(KeybindConfigModel? _, KeybindConfigModel? newConfig)
     {
         _keyConfigurator?.DeselectKeys(_keys);
-        SetMenuConfig(newConfig);
         SetKeyConfigs(newConfig);
     }
 
@@ -230,6 +203,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     {
         slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
         slot.SelectedConfigChanged += OnSelectedConfigChanged;
+        slot.LayoutChanged += OnLayoutChanged;
     }
 
 
@@ -238,6 +212,7 @@ public partial class KeyboardSlotViewModel : ViewModelBase
     {
         slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         slot.SelectedConfigChanged -= OnSelectedConfigChanged;
+        slot.LayoutChanged -= OnLayoutChanged;
     }
 
 
@@ -258,19 +233,15 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
+    // after the keyboard list changed: show the slot's keyboard (or none) again
+    public void ShowSelectedDevice() => SetMenuDevice(_slot.SelectedDevice);
+
+
+
     private void SetMenuDevice(InputDeviceModel? device)
     {
         _callbackBlocker.Block();
         MenuDevice = _deviceMenuItems.FirstOrDefault(d => d.Model == device)!;
-        _callbackBlocker.Unblock();
-    }
-
-
-
-    private void SetMenuConfig(KeybindConfigModel? config)
-    {
-        _callbackBlocker.Block();
-        MenuConfig = _configMenuItems.FirstOrDefault(c => c.Model == config)!;
         _callbackBlocker.Unblock();
     }
 
@@ -295,7 +266,9 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     private void InitKeys()
     {
-        (var keyData, _baseWidth, _baseHeight) = DeviceDisplayHelper.InitKeyboardDisplayData(25, 3);
+        (var keyData, _baseWidth, _baseHeight) = _slot.Layout == KeyboardSlotModel.AllKeysLayout
+            ? DeviceDisplayHelper.InitGenericDisplayKeys(25, 3)
+            : DeviceDisplayHelper.InitKeyboardDisplayData(25, 3);
 
         CurrentWidth = _baseWidth;
         CurrentHeight = _baseHeight;

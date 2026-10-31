@@ -1,19 +1,28 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- palette: every raw color lives here, the brushes below give them a meaning -->
+    <!-- palette: every raw color lives here, the brushes below give them a meaning.
+         Trying a calmer, lower contrast palette on black, with outlines only (no fills, see panel below).
+
+         Kept for going back:
+           the previous palette   White #ffffff, Gray200 #cccccc, Gray500 #888888, Gray700 #555555, Gray800 #333333,
+                                  Gray900 #262626, Gray950 #1e1e1e, Purple #7c3aed, Green #22c55e, Red #ef4444
+           the previous fills     PanelFill = Gray950, PanelFillHover = Gray900, PanelFillToggle = Gray900 -->
 
     <Color x:Key="ColorBlack">#000000</Color>
-    <Color x:Key="ColorWhite">#ffffff</Color>
-    <Color x:Key="ColorGray200">#cccccc</Color>
-    <Color x:Key="ColorGray500">#888888</Color>
-    <Color x:Key="ColorGray700">#555555</Color>
-    <Color x:Key="ColorGray800">#333333</Color>
+    <Color x:Key="ColorWhite">#d6d6d6</Color>
+    <Color x:Key="ColorGray200">#a6a6a6</Color>
+    <Color x:Key="ColorGray500">#707070</Color>
+    <Color x:Key="ColorGray700">#4a4a4a</Color>
+    <Color x:Key="ColorGray800">#2e2e2e</Color>
+    <Color x:Key="ColorGray850">#222222</Color>
+    <Color x:Key="ColorGhost">#191919</Color>
+    <Color x:Key="ColorGhostText">#707070</Color>
     <Color x:Key="ColorGray900">#262626</Color>
     <Color x:Key="ColorGray950">#1e1e1e</Color>
-    <Color x:Key="ColorPurple">#7c3aed</Color>
-    <Color x:Key="ColorGreen">#22c55e</Color>
-    <Color x:Key="ColorRed">#ef4444</Color>
+    <Color x:Key="ColorPurple">#6b4fbb</Color>
+    <Color x:Key="ColorGreen">#3d9963</Color>
+    <Color x:Key="ColorRed">#b3504f</Color>
 
     <!-- backgrounds -->
 
@@ -32,9 +41,12 @@
 
     <!-- panel -->
 
-    <SolidColorBrush x:Key="PanelFill" Color="{StaticResource ColorGray950}"/>
-    <SolidColorBrush x:Key="PanelFillHover" Color="{StaticResource ColorGray900}"/>
-    <SolidColorBrush x:Key="PanelFillToggle" Color="{StaticResource ColorGray900}"/>
+    <!-- outlines only: no fills on boxes, blocks, keys, buttons, dropdowns (the previous fills are in the palette's note).
+         Black at the lowest opacity rather than Transparent: it looks exactly the same on the black background, but a fully
+         transparent fill isn't something the pointer can land on, so clicks and drops would only work on a box's text -->
+    <SolidColorBrush x:Key="PanelFill" Color="#01000000"/>
+    <SolidColorBrush x:Key="PanelFillHover" Color="#01000000"/>
+    <SolidColorBrush x:Key="PanelFillToggle" Color="#01000000"/>
 
     <SolidColorBrush x:Key="PanelBorder" Color="{StaticResource ColorGray800}"/>
     <SolidColorBrush x:Key="PanelBorderHover" Color="{StaticResource ColorPurple}"/>
@@ -43,6 +55,9 @@
     <!-- borders -->
 
     <SolidColorBrush x:Key="Border" Color="{StaticResource ColorGray800}"/>
+    <!-- ghost fields: empty block slots and "new" boxes, barely there until pointed at or dragged onto -->
+    <SolidColorBrush x:Key="GhostBorder" Color="{StaticResource ColorGhost}"/>
+    <SolidColorBrush x:Key="GhostText" Color="{StaticResource ColorGhostText}"/> <!-- drawn at half strength (placeholders, the + in empty slots), so it shows as #383838 -->
     <SolidColorBrush x:Key="Splitter" Color="{StaticResource ColorGray800}"/>
 
     <!-- actions -->

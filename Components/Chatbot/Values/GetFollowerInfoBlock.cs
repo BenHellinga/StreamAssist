@@ -17,7 +17,7 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public override string Name => "Get Follower Info";
-    [JsonIgnore] public override string Description => "Whether a user follows you, how many days, or since when (e.g. for !followage). User is their login name, {userLogin} is whoever triggered this. Picking one picks its type. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string Description => "Whether a user follows you, how many days, or since when (e.g. for !followage). User is their login name, {userLogin} is whoever triggered this. Picking a setting picks its type. Twitch actions wait their turn, one per second.";
 
 
 

@@ -32,6 +32,8 @@ public class SpotifyLoginStore
 {
     private const string Section = "spotifyLogin";
 
+    public virtual bool IsReadable => CredentialStore.IsReadable;
+
     public virtual SpotifyLoginData Load() => CredentialStore.Load<SpotifyLoginData>(Section);
 
     public virtual void Save(SpotifyLoginData login) => CredentialStore.Save(Section, login);
@@ -300,6 +302,13 @@ public class SpotifyManager : IDisposable
         {
             SetStatus(ConnectionStatus.Failed, "Not connected");
             AppLog.WriteError("can't connect to spotify, no client id");
+            return;
+        }
+
+        if (!_store.IsReadable)
+        {
+            SetStatus(ConnectionStatus.Failed, "Not connected");
+            AppLog.WriteError("can't connect to spotify, auth.json can't be read");
             return;
         }
 

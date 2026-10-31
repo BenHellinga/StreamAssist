@@ -15,7 +15,7 @@ public class AddToSpotifyPlaylistAction : ActionBlock
 
 
 
-    [JsonIgnore] public override string Name => "Add To Spotify Playlist";
+    [JsonIgnore] public override string Name => "Add to Spotify Playlist";
     [JsonIgnore] public override string Description => "Adds a song to the end of a playlist: one of yours by name, or its link. Song is a link or words to search for (the first song found), empty adds the song playing now. A song already in the playlist isn't added again.";
 
 

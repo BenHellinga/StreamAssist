@@ -5,8 +5,13 @@
 
              xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
 
-    <!-- the page (ChatCommandsView or ChatEventsView through the ViewLocator) -->
+    <!-- the config bar (the whole page switches with it), a divider, then the page (ChatCommandsView or ChatEventsView
+         through the ViewLocator) -->
 
-    <ContentControl Content="{Binding Page}"/>
+    <DockPanel>
+        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{StaticResource HeaderMargin}"/>
+        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
+        <ContentControl Content="{Binding Page}"/>
+    </DockPanel>
 
 </UserControl>

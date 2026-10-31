@@ -13,7 +13,6 @@ public abstract class ConditionBlock : ValueBlock<bool>
 
 
 
-    [JsonIgnore] public override BlockCategory Category => BlockCategory.Condition;
 
 
 

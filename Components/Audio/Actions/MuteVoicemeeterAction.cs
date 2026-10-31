@@ -15,7 +15,7 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
 
-    [JsonIgnore] public override string Name => "Mute/Unmute Voicemeeter";
+    [JsonIgnore] public override string Name => "Set Voicemeeter Mute";
     [JsonIgnore] public override string Description => "Mutes, unmutes or toggles a Voicemeeter channel (an input like Stereo Input 1, or an output bus like B1), with an optional sound when it changes.";
 
 

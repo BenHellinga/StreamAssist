@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 namespace StreamAssist.Components.Keyboard.UI;
@@ -119,7 +120,7 @@ public static class DeviceDisplayHelper
             (0x66, numpadSectionOffset + keyFull * 2, keyFull * 3, keySize, keySize),
 
             // ZXCV row
-            (0x10, 0, keyFull * 4, keySize * 2.1 + keyMargin, keySize),
+            (0xa0, 0, keyFull * 4, keySize * 2.1 + keyMargin, keySize),
             (0x5a, keySize * 0.1 + keyFull * 2, keyFull * 4, keySize, keySize),
             (0x58, keySize * 0.1 + keyFull * 3, keyFull * 4, keySize, keySize),
             (0x43, keySize * 0.1 + keyFull * 4, keyFull * 4, keySize, keySize),
@@ -130,21 +131,21 @@ public static class DeviceDisplayHelper
             (0xbc, keySize * 0.1 + keyFull * 9, keyFull * 4, keySize, keySize),
             (0xbe, keySize * 0.1 + keyFull * 10, keyFull * 4, keySize, keySize),
             (0xbf, keySize * 0.1 + keyFull * 11, keyFull * 4, keySize, keySize),
-            (0x10, keySize * 0.1 + keyFull * 12, keyFull * 4, keySize * 2.9 + keyMargin * 2, keySize),
+            (0xa1, keySize * 0.1 + keyFull * 12, keyFull * 4, keySize * 2.9 + keyMargin * 2, keySize),
             (0x26, arrowSectionOffset + keyFull, keyFull * 4, keySize, keySize),
             (0x61, numpadSectionOffset, keyFull * 4, keySize, keySize),
             (0x62, numpadSectionOffset + keyFull, keyFull * 4, keySize, keySize),
             (0x63, numpadSectionOffset + keyFull * 2, keyFull * 4, keySize, keySize),
-            (0x0d, numpadSectionOffset + keyFull * 3, keyFull * 4, keySize, keySize * 2 + keyMargin),
+            (0x0e, numpadSectionOffset + keyFull * 3, keyFull * 4, keySize, keySize * 2 + keyMargin),
 
             // bottom row
-            (0x11, 0, keyFull * 5, keySize * 1.1, keySize),
+            (0xa2, 0, keyFull * 5, keySize * 1.1, keySize),
             (0x5B, keySize * 0.1 + keyFull * 2, keyFull * 5, keySize, keySize),
-            (0x12, keySize * 0.1 + keyFull * 3, keyFull * 5, keySize, keySize),
+            (0xa4, keySize * 0.1 + keyFull * 3, keyFull * 5, keySize, keySize),
             (0x20, keySize * 0.1 + keyFull * 4, keyFull * 5, keySize * 6 + keyMargin * 5, keySize),
-            (0x12, keySize * 0.1 + keyFull * 10, keyFull * 5, keySize, keySize),
+            (0xa5, keySize * 0.1 + keyFull * 10, keyFull * 5, keySize, keySize),
             (0x5d, keySize * 0.1 + keyFull * 12, keyFull * 5, keySize, keySize),
-            (0x11, keySize * 0.1 + keyFull * 13, keyFull * 5, keySize * 1.9 + keyMargin, keySize),
+            (0xa3, keySize * 0.1 + keyFull * 13, keyFull * 5, keySize * 1.9 + keyMargin, keySize),
             (0x25, arrowSectionOffset, keyFull * 5, keySize, keySize),
             (0x28, arrowSectionOffset + keyFull, keyFull * 5, keySize, keySize),
             (0x27, arrowSectionOffset + keyFull * 2, keyFull * 5, keySize, keySize),
@@ -161,24 +162,37 @@ public static class DeviceDisplayHelper
 
 
 
+    // every key code a keyboard can send in a 32 by 8 grid of squares (about as wide for its height as the keyboard
+    // picture), placed by its code: row = code / 32, column = code % 32 (0x7C, F13, is row 3 column 28). It fills the
+    // slot's width like the picture does. Keys on a normal keyboard are labelled like on it, the rest by their windows
+    // name a word per line (shrunk to fit). Leaves out the mouse buttons and the either-side Shift / Ctrl / Alt codes
+    // (key presses are always one side)
     public static (IReadOnlyList<KeyData>, double, double) InitGenericDisplayKeys(double keySize, double keyMargin)
     {
         double keyFull = keySize + keyMargin;
 
-        double totalWidth = keySize * 32 + keyMargin * 21;
-        double totalHeight = keySize * 8 + keyMargin * 7;
-
         var keys = new List<KeyData>();
-
         for (ushort i = 0; i <= 0xff; ++i)
         {
-            var label = VKToGenericLabel(i);
+            if (i is <= 0x06 or (>= 0x10 and <= 0x12)) continue;
+            var label = GridLabel(i);
             if (label == null) continue;
 
-            keys.Add(new(label, i, keyFull * (i % 32), keyFull * (i / 32), keySize, keySize));
+            keys.Add(new(label, i, (i % 32) * keyFull, (i / 32) * keyFull, keySize, keySize));
         }
 
-        return (keys, totalWidth, totalHeight);
+        return (keys, 32 * keyFull - keyMargin, 8 * keyFull - keyMargin);
+    }
+
+
+
+    // the keyboard label where it's clear (both Shifts are just "Shift" there, so sides use their windows name), else the
+    // windows name with a word per line (MEDIA_PLAY_PAUSE → MEDIA / PLAY / PAUSE)
+    private static string? GridLabel(ushort vk)
+    {
+        var sided = vk is >= 0xA0 and <= 0xA5 or 0x0E;
+        if (!sided && VKToKeyboardLabel(vk) is { } keyboardLabel) return keyboardLabel;
+        return VKToGenericLabel(vk)?.Replace("_", "\n");
     }
 
 
@@ -262,6 +276,7 @@ public static class DeviceDisplayHelper
             case 0x08: return "BACK";
             case 0x09: return "TAB";
             case 0x0c: return "CLEAR";
+            case 0x0e: return "NUMPADENTER"; // not a windows code, the app's own for numpad Enter
             case 0x0d: return "RETURN";
             case 0x10: return "SHIFT";
             case 0x11: return "CONTROL";
@@ -463,6 +478,7 @@ public static class DeviceDisplayHelper
             case 0x08: return "Backspace";
             case 0x09: return "Tab";
             case 0x0d: return "Enter";
+            case 0x0e: return "Enter";
             case 0x10: return "Shift";
             case 0x11: return "Ctrl";
             case 0x12: return "Alt";
@@ -518,6 +534,12 @@ public static class DeviceDisplayHelper
             case 0x59: return "Y";
             case 0x5a: return "Z";
             case 0x5b: return "Win";
+            case 0xa0: return "Shift";
+            case 0xa1: return "Shift";
+            case 0xa2: return "Ctrl";
+            case 0xa3: return "Ctrl";
+            case 0xa4: return "Alt";
+            case 0xa5: return "Alt";
             case 0x5d: return "Menu";
             case 0x60: return "0\nInsert";
             case 0x61: return "1\nEnd";

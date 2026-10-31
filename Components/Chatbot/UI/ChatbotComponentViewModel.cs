@@ -21,15 +21,21 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
     private readonly ChatbotComponentModel _model;
     private readonly BindableEditorViewModel _editor; // lives in the bottom panel, which disposes it
-    private readonly ViewModelBase _page; // ChatCommandsViewModel or ChatEventsViewModel
+    private readonly Func<ChatbotComponentModel, ViewModelBase> _createPage;
+    private readonly IConfigSet _configs; // the Chat tab's or the Events tab's
+    private readonly ConfigBarViewModel _configBar;
     private ChatTarget? _selected;
+    private object? _shownConfig; // the config the page was made from (null: none, the page says to make one)
+
+    [ObservableProperty] private ViewModelBase _page; // ChatCommandsViewModel or ChatEventsViewModel, made again when the config switches
+
 
 
     // public
 
 
 
-    public ViewModelBase Page => _page;
+    public ConfigBarViewModel ConfigBar => _configBar;
 
 
 
@@ -39,25 +45,25 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
     // the chat command tree (with its own chat block list)
     public static ChatbotComponentViewModel ActivateChatTab(ChatbotComponentModel model, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel) =>
-        Activate(model, layout, sidePanel, bottomPanel, "No command selected", m => new ChatCommandsViewModel(m, layout));
+        Activate(model, layout, sidePanel, bottomPanel, "No command selected", model.ChatConfigs, m => new ChatCommandsViewModel(m, layout));
 
 
 
     // alerts (sub, raid, ...) and channel point redeems
     public static ChatbotComponentViewModel ActivateEventsTab(ChatbotComponentModel model, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel) =>
-        Activate(model, layout, sidePanel, bottomPanel, "No event selected", m => new ChatEventsViewModel(m));
+        Activate(model, layout, sidePanel, bottomPanel, "No event selected", model.EventsConfigs, m => new ChatEventsViewModel(m));
 
 
 
     // the bottom panel edits the selected bind box's binding
     private static ChatbotComponentViewModel Activate(ChatbotComponentModel model, WindowLayoutModel layout, PanelViewModel sidePanel, PanelViewModel bottomPanel,
-        string emptyText, Func<ChatbotComponentModel, ViewModelBase> createPage)
+        string emptyText, IConfigSet configs, Func<ChatbotComponentModel, ViewModelBase> createPage)
     {
         var editor = new BindableEditorViewModel(layout, emptyText);
         sidePanel.TransferContent(null);
         bottomPanel.TransferContent(editor);
 
-        return new(model, editor, createPage);
+        return new(model, editor, configs, createPage);
     }
 
 
@@ -66,11 +72,16 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
-    public ChatbotComponentViewModel(ChatbotComponentModel model, BindableEditorViewModel editor, Func<ChatbotComponentModel, ViewModelBase> createPage)
+    public ChatbotComponentViewModel(ChatbotComponentModel model, BindableEditorViewModel editor, IConfigSet configs,
+        Func<ChatbotComponentModel, ViewModelBase> createPage)
     {
         _model = model;
         _editor = editor;
+        _configs = configs;
+        _createPage = createPage;
+        _configBar = new(configs);
         _selected = null;
+        _shownConfig = configs.SelectedItem;
 
         // a fresh tab starts with nothing open (before the tree is built, so no bind box starts selected)
         ChatTargetSelection.Set(null);
@@ -80,9 +91,10 @@ public partial class ChatbotComponentViewModel : ViewModelBase
         BlockViewModel.RegisterSlotViewModel<MatchTextRowList>(rows => new MatchTextRowListViewModel(rows, _model));
         BlockViewModel.RegisterSlotViewModel<ChatTarget>(target => new ChatTargetViewModel(target, _model));
 
-        _page = createPage(_model);
+        _page = CreatePage();
 
         _model.Changed += OnModelChanged;
+        _configs.ListChanged += OnConfigsChanged;
         ChatTargetSelection.Changed += OnSelectionChanged;
     }
 
@@ -129,6 +141,21 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
 
+    // another config was picked (or one added or deleted): if the page no longer shows the selected config's trees, it's
+    // made again from them, with nothing open in the editor
+    private void OnConfigsChanged()
+    {
+        if (_configs.SelectedItem == _shownConfig) return;
+
+        ChatTargetSelection.Set(null);
+        var old = Page;
+        _shownConfig = _configs.SelectedItem;
+        Page = CreatePage();
+        old.Dispose();
+    }
+
+
+
     // the selected target was bound or unbound from somewhere else (e.g. a binding dropped on it, or its blocks all removed)
     private void OnSelectedBindableChanged()
     {
@@ -141,6 +168,12 @@ public partial class ChatbotComponentViewModel : ViewModelBase
 
 
     // helpers
+
+
+
+    // the config's page, or a note that there's nothing to bind until a config is made
+    private ViewModelBase CreatePage() =>
+        _configs.SelectedItem == null ? new NoConfigViewModel() : _createPage(_model);
 
 
 
@@ -178,6 +211,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
     public override void Dispose()
     {
         _model.Changed -= OnModelChanged;
+        _configs.ListChanged -= OnConfigsChanged;
         ChatTargetSelection.Changed -= OnSelectionChanged;
 
         _selected?.BindableChanged -= OnSelectedBindableChanged;
@@ -185,6 +219,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
         _editor.ClearBindable();
         ChatTargetSelection.Set(null);
 
-        _page.Dispose();
+        Page.Dispose();
+        _configBar.Dispose();
     }
 }

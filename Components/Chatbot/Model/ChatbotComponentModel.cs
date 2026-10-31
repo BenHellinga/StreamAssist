@@ -12,8 +12,10 @@ namespace StreamAssist.Components.Chatbot.Model;
 
 
 
-// everything the chatbot is configured with: the twitch app credentials, the two accounts' connection settings, the two chat block trees,
-// the channel point redeems, and one binding per stream event (sub, raid, ...)
+// everything the chatbot is configured with: the twitch app credentials, the two accounts' connection settings, the Chat tab's
+// configs (each: the two chat block trees) and the Events tab's (each: the channel point redeems and one binding per stream
+// event). Only the selected config of each runs, and Root / EditableRoot / Redeems / Events are always the selected one's
+// (null / empty while a tab has no config: then no message, redeem or alert runs and nothing can be bound)
 // the credentials are saved to Config/auth.json by ChatbotSaveManager, the rest to chatbot.json
 public class ChatbotComponentModel : ModelBase
 {
@@ -28,10 +30,8 @@ public class ChatbotComponentModel : ModelBase
     private bool _chatOnlyAsBot;
     private bool _isEnabled;
     private bool _isBotEnabled;
-    private readonly BlockSlot _root;
-    private readonly BlockSlot _editableRoot;
-    private readonly RedeemList _redeems;
-    private readonly List<ChatEventSlot> _events;
+    private readonly ConfigSet<ChatConfigModel> _chatConfigs;
+    private readonly ConfigSet<EventsConfigModel> _eventsConfigs;
 
 
 
@@ -54,10 +54,12 @@ public class ChatbotComponentModel : ModelBase
     // this session only (start as the connect on startup setting): whether each account should be connected right now
     [JsonIgnore] public bool IsEnabled => _isEnabled;
     [JsonIgnore] public bool IsBotEnabled => _isBotEnabled;
-    [JsonIgnore] public BlockSlot Root => _root; // the protected commands, every message is tried here first
-    [JsonIgnore] public BlockSlot EditableRoot => _editableRoot; // the commands chat can change (a Match Text, see TryAddCommand)
-    [JsonIgnore] public RedeemList Redeems => _redeems;
-    [JsonIgnore] public IReadOnlyList<ChatEventSlot> Events => _events; // in ChatEvents.All order
+    [JsonIgnore] public ConfigSet<ChatConfigModel> ChatConfigs => _chatConfigs;
+    [JsonIgnore] public ConfigSet<EventsConfigModel> EventsConfigs => _eventsConfigs;
+    [JsonIgnore] public BlockSlot? Root => _chatConfigs.Selected?.Root; // the built-in commands, every message is tried here first
+    [JsonIgnore] public BlockSlot? EditableRoot => _chatConfigs.Selected?.EditableRoot; // the commands chat can change (a Match Text, see TryAddCommand)
+    [JsonIgnore] public RedeemList? Redeems => _eventsConfigs.Selected?.Redeems;
+    [JsonIgnore] public IReadOnlyList<ChatEventSlot> Events => _eventsConfigs.Selected?.Events ?? []; // in ChatEvents.All order
 
 
 
@@ -86,33 +88,32 @@ public class ChatbotComponentModel : ModelBase
         set => _chatOnlyAsBot = value;
     }
 
-    [JsonInclude] [JsonPropertyName("rootBlock")]
-    private PendingBlockData? JsonRoot
+    [JsonInclude] [JsonPropertyName("chatConfigs")]
+    private List<ChatConfigModel> JsonChatConfigs
     {
-        get => _root.GetData();
-        set => _root.LoadData(value);
+        get => _chatConfigs.Items.ToList();
+        set => _chatConfigs.LoadItems(value);
     }
 
-    [JsonInclude] [JsonPropertyName("editableRootBlock")]
-    private PendingBlockData? JsonEditableRoot
+    [JsonInclude] [JsonPropertyName("chatConfig")]
+    private string? JsonChatConfig
     {
-        get => _editableRoot.GetData();
-        set => _editableRoot.LoadData(value);
+        get => _chatConfigs.SelectedName;
+        set => _chatConfigs.LoadSelected(value);
     }
 
-    [JsonInclude] [JsonPropertyName("redeems")]
-    private List<RedeemRowData> JsonRedeems
+    [JsonInclude] [JsonPropertyName("eventsConfigs")]
+    private List<EventsConfigModel> JsonEventsConfigs
     {
-        get => _redeems.GetData();
-        set => _redeems.LoadData(value);
+        get => _eventsConfigs.Items.ToList();
+        set => _eventsConfigs.LoadItems(value);
     }
 
-    // only bound events are saved, e.g. { "raid": { ... } }
-    [JsonInclude] [JsonPropertyName("events")]
-    private Dictionary<string, BindableModel> JsonEvents
+    [JsonInclude] [JsonPropertyName("eventsConfig")]
+    private string? JsonEventsConfig
     {
-        get => _events.Where(e => e.Target.Bindable != null).ToDictionary(e => e.Key, e => e.Target.Bindable!);
-        set => LoadEvents(value);
+        get => _eventsConfigs.SelectedName;
+        set => _eventsConfigs.LoadSelected(value);
     }
 
 
@@ -142,18 +143,11 @@ public class ChatbotComponentModel : ModelBase
         _chatOnlyAsBot = false;
         _isEnabled = false;
         _isBotEnabled = false;
-        _root = new("", typeof(ChatBlock));
-        _root.TrySetBlock(new MatchTextChatBlock()); // a fresh chatbot starts with an empty Match Text
-        _editableRoot = new("", typeof(ChatBlock)) { Filter = block => block is MatchTextChatBlock }; // commands are its rows
-        _editableRoot.TrySetBlock(new MatchTextChatBlock()); // and an empty one for the commands chat can change
-        _redeems = new();
-        _events = ChatEvents.All.Select(e => new ChatEventSlot(e.Key, e.Name)).ToList();
+        _chatConfigs = new("chat config", () => new ChatConfigModel());
+        _eventsConfigs = new("events config", () => new EventsConfigModel());
 
-        _root.Changed += OnContentsChanged;
-        _editableRoot.Changed += OnContentsChanged;
-        _redeems.Changed += OnContentsChanged;
-        foreach (var slot in _events)
-            slot.Target.Changed += OnContentsChanged;
+        _chatConfigs.Changed += OnContentsChanged;
+        _eventsConfigs.Changed += OnContentsChanged;
     }
 
 
@@ -250,10 +244,10 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // runs a chat message through the protected commands, then the editable ones (so chat can't override a protected
+    // runs a chat message through the built-in commands, then the custom ones (so chat can't override a built-in
     // command), true once a binding has run
     public bool TryMatchMessage(ChatMatchState state) =>
-        ChatBlock.TryMatchSlot(_root, state) || ChatBlock.TryMatchSlot(_editableRoot, state);
+        Root != null && (ChatBlock.TryMatchSlot(Root, state) || ChatBlock.TryMatchSlot(EditableRoot!, state));
 
 
 
@@ -266,6 +260,12 @@ public class ChatbotComponentModel : ModelBase
     // (Set Reward Setting): twitch only lets the app that created a reward edit it
     public bool TryRequestCreateReward(string title, string cost, string prompt, bool userInputRequired)
     {
+        if (Redeems == null)
+        {
+            AppLog.WriteError("can't create reward, no events config");
+            return false;
+        }
+
         var name = title.Trim();
         if (name == "")
         {
@@ -291,10 +291,13 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // runs the binding for a stream event (a ChatEvents key), false if it isn't bound or is disabled
+    // runs the binding for a stream event (a ChatEvents key), false if it isn't bound or is disabled (or there's no
+    // events config, nothing is bound then)
     public bool TryRunEvent(string key, IReadOnlyDictionary<string, string> parameters)
     {
-        var slot = _events.FirstOrDefault(e => e.Key == key);
+        if (_eventsConfigs.Selected == null) return false;
+
+        var slot = Events.FirstOrDefault(e => e.Key == key);
         if (slot == null)
         {
             AppLog.WriteError($"unknown event '{key}'");
@@ -306,8 +309,8 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // editable commands (what chat's !addcom / !editcom / !delcom change)
-    // only the editable tree is touched, found by walking literal rows (see FindCommand), and only whole commands: a row
+    // custom commands (what chat's !addcom / !editcom / !delcom change)
+    // only the custom tree is touched, found by walking literal rows (see FindCommand), and only whole commands: a row
     // whose text completes the command and that runs a binding (never one that leads into more blocks). logErrors is
     // false when chat asked, so chatters can't fill the console, and failure says why (so chat can be told instead)
 
@@ -384,10 +387,10 @@ public class ChatbotComponentModel : ModelBase
         var steps = FindCommandSteps(target);
         if (steps != null) return ("Chat command", FormatCommand(steps));
 
-        var redeem = _redeems.Rows.FirstOrDefault(r => r.Target == target);
+        var redeem = Redeems?.Rows.FirstOrDefault(r => r.Target == target);
         if (redeem != null) return ("Redeem", redeem.Title);
 
-        var slot = _events.FirstOrDefault(e => e.Target == target);
+        var slot = Events.FirstOrDefault(e => e.Target == target);
         if (slot != null) return ("Alert", slot.Name);
 
         return null;
@@ -413,9 +416,9 @@ public class ChatbotComponentModel : ModelBase
             return [.. captured, .. builtIn]; // a capture with a built-in name replaces it, like it does when matching
         }
 
-        if (_redeems.Rows.Any(r => r.Target == target)) return ChatEvents.Redeem;
+        if (Redeems?.Rows.Any(r => r.Target == target) == true) return ChatEvents.Redeem;
 
-        var slot = _events.FirstOrDefault(e => e.Target == target);
+        var slot = Events.FirstOrDefault(e => e.Target == target);
         return slot == null ? null : ChatEvents.Parameters(slot.Key);
     }
 
@@ -443,15 +446,17 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // the editable root's Match Text, and the command trimmed (one word, the whole command, e.g. "!hello")
+    // the custom root's Match Text, and the command trimmed (one word, the whole command, e.g. "!hello")
     private bool TryFindCommand(string command, string verb, bool logErrors, out CommandFailure failure,
         out MatchTextChatBlock block, out string name)
     {
         name = command.Trim();
         block = null!;
 
-        if (_editableRoot.Block is not MatchTextChatBlock found)
-            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no editable Match Text");
+        if (EditableRoot == null)
+            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no chat config");
+        if (EditableRoot.Block is not MatchTextChatBlock found)
+            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no custom Match Text");
 
         block = found;
         if (name == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} command, no name");
@@ -512,25 +517,6 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // only runs when loading: an unknown event name is skipped with a warning
-    private void LoadEvents(Dictionary<string, BindableModel> data)
-    {
-        foreach (var (key, bindable) in data)
-        {
-            var slot = _events.FirstOrDefault(e => e.Key == key);
-            if (slot == null)
-            {
-                AppLog.WriteWarning($"unknown event '{key}' skipped");
-                bindable.Dispose();
-                continue;
-            }
-
-            slot.Target.LoadData(new() { Bindable = bindable });
-        }
-    }
-
-
-
     // one step on the way down to a bind box: its text in the command, and the parameters it captures
     private sealed record PathStep(string Text, IReadOnlyList<ParameterInfo> Captured);
 
@@ -544,7 +530,7 @@ public class ChatbotComponentModel : ModelBase
     private List<PathStep>? FindPath(Func<ChatTarget, bool> isEnd)
     {
         var path = new List<PathStep>();
-        return FindPath(_root.Block, isEnd, path) || FindPath(_editableRoot.Block, isEnd, path) ? path : null;
+        return FindPath(Root?.Block, isEnd, path) || FindPath(EditableRoot?.Block, isEnd, path) ? path : null;
     }
 
 
@@ -612,16 +598,10 @@ public class ChatbotComponentModel : ModelBase
 
     public override void Dispose()
     {
-        _root.Changed -= OnContentsChanged;
-        _editableRoot.Changed -= OnContentsChanged;
-        _redeems.Changed -= OnContentsChanged;
-        foreach (var slot in _events)
-            slot.Target.Changed -= OnContentsChanged;
+        _chatConfigs.Changed -= OnContentsChanged;
+        _eventsConfigs.Changed -= OnContentsChanged;
 
-        _root.Dispose();
-        _editableRoot.Dispose();
-        _redeems.Dispose();
-        foreach (var slot in _events)
-            slot.Dispose();
+        _chatConfigs.Dispose();
+        _eventsConfigs.Dispose();
     }
 }

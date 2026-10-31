@@ -17,7 +17,7 @@ public class SetRewardSettingAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Set Reward Setting";
-    [JsonIgnore] public override string Description => "Changes a channel point reward's setting on twitch (e.g. its Cost), as the streamer. The reward is its title (or id), {reward} is the one that was just redeemed. Twitch only lets the app that created a reward change it, so create it with New reward in the Events tab. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string Description => "Changes a channel point reward's setting on Twitch (e.g. its Cost). The reward is its title (or id), {reward} is the one that was just redeemed. Twitch only lets the app that created a reward change it, so create it with New reward in the Events tab. Done as the streamer. Twitch actions wait their turn, one per second.";
 
 
 

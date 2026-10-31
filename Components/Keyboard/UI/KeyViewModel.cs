@@ -38,7 +38,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
     [ObservableProperty] private double _h;
 
     [ObservableProperty] private bool _isPressed;
-    [ObservableProperty] private bool _isBound;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(EditButtonsContext))] private bool _isBound;
     [ObservableProperty] private bool _isDisabled;
     [ObservableProperty] private bool _isSelected;
 
@@ -50,6 +50,9 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
     public string Label => _label;
     public ushort VK => _vk;
+
+    // what the edit buttons are made for: this key while it has a binding, nothing otherwise (so unbound keys make none)
+    public KeyViewModel? EditButtonsContext => IsBound ? this : null;
 
 
 
@@ -89,7 +92,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
     {
         if (_config == null)
         {
-            AppLog.WriteError("can't select key, no config selected");
+            AppLog.WriteError("can't select key, create a config first");
             return;
         }
 

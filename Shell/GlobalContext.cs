@@ -2,6 +2,7 @@ using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
+using StreamAssist.Components.Data.Model;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.OBS.Background;
@@ -30,6 +31,8 @@ public static class GlobalContext
     public static ChatbotManager? ChatbotManager { get; set; } // e.g. for sending chat messages
 
     public static ObsComponentModel? ObsComponentModel { get; set; }
+
+    public static DataModel? DataModel { get; set; } // tables and variables
 
     public static ObsManager? ObsManager { get; set; } // e.g. for switching scenes
 

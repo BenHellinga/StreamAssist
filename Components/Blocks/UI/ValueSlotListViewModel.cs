@@ -37,7 +37,7 @@ public class ValueSlotListViewModel : ViewModelBase
         _items = [];
 
         foreach (var item in _list.Items)
-            _items.Add(new(item));
+            _items.Add(new(item, isInList: true));
 
         SubscribeToValueSlotList(_list);
     }
@@ -48,7 +48,7 @@ public class ValueSlotListViewModel : ViewModelBase
 
 
 
-    private void OnItemInserted(ValueSlot item, int index) => _items.Insert(index, new(item));
+    private void OnItemInserted(ValueSlot item, int index) => _items.Insert(index, new(item, isInList: true));
 
 
 

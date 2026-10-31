@@ -15,7 +15,8 @@ public class PlaySoundAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Play Sound";
-    [JsonIgnore] public override string Description => "Plays the configured .mp3/.wav file.";
+    [JsonIgnore] public override string Description => "Plays an .mp3 or .wav file.";
+    [JsonIgnore] public override BlockGroup Group => BlockGroup.App;
 
 
 

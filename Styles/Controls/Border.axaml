@@ -46,9 +46,13 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
-    <!-- a list item that also takes drops (they go in before it): a line above it lights up -->
+    <!-- a list item that also takes drops (they go in before it): a line above it lights up. The item reaches 3px up into
+         the 5px gap above it and pads its content 3px back down, so the blocks don't move and the 2px line sits in the
+         middle of the gap rather than on top of the block -->
 
     <Style Selector="Border.InsertBefore">
+        <Setter Property="Margin" Value="0,-3,0,0"/>
+        <Setter Property="Padding" Value="0,3,0,0"/>
         <Setter Property="BorderThickness" Value="0,2,0,0"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Background" Value="Transparent"/>

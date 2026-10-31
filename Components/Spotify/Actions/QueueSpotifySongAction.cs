@@ -16,7 +16,7 @@ public class QueueSpotifySongAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Queue Spotify Song";
-    [JsonIgnore] public override string Description => "Adds a song to Spotify's queue, to play after the current one. A link (Share > Copy link) or words to search for. (the first song found), e.g. {rest} for a song request command. Needs Spotify Premium.";
+    [JsonIgnore] public override string Description => "Adds a song to Spotify's queue, to play after the current one. Song is a link (Share > Copy link) or words to search for (the first song found), e.g. {rest} for a song request command. Needs Spotify Premium.";
 
 
 

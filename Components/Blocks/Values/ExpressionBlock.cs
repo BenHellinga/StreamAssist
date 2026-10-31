@@ -9,8 +9,8 @@ namespace StreamAssist.Components.Blocks.Values;
 
 
 
-// a typed formula, e.g. {cost}*({cost}+1)/2: parameters are filled in first, then it's worked out (see Formula)
-// what it gives (whole number or decimal) follows the slot it's dropped in, like Operation
+// a typed formula, e.g. {cost}*({cost}+1)/2 or {n} == 0: parameters are filled in first, then it's worked out (see
+// Formula). What it gives (whole number, decimal, or true/false) follows the slot it's dropped in, like Operation
 public class ExpressionBlock : AdaptableValueBlock
 {
     // info
@@ -18,7 +18,7 @@ public class ExpressionBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public override string Name => "Expression";
-    [JsonIgnore] public override string Description => "Works out a formula: numbers, + - * / %, parentheses, and parameters like {cost}, e.g. {cost}*({cost}+1)/2. Like C#, whole numbers stay whole (7/2 = 3), a decimal makes it a decimal (7/2.0 = 3.5).";
+    [JsonIgnore] public override string Description => "Works out a formula with parameters like {cost}: maths (+ - * / %, parentheses, e.g. {cost}*({cost}+1)/2) or a true/false check (== != < <= > >=, && || !, true, false, e.g. {n} == 0 || {n} > 10). Like C#, whole numbers stay whole (7/2 = 3), a decimal makes it a decimal (7/2.0 = 3.5). In an If (or any true/false slot) it gives true/false. Numbers and true/false only, for text use Equals.";
 
 
 
@@ -36,7 +36,7 @@ public class ExpressionBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public ValueSlot<string> Formula => _formula;
-    [JsonIgnore] public override IReadOnlyList<ValueKind> AllowedKinds => [ValueKind.Int, ValueKind.Double];
+    [JsonIgnore] public override IReadOnlyList<ValueKind> AllowedKinds => [ValueKind.Int, ValueKind.Double, ValueKind.Bool];
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
 
@@ -85,6 +85,8 @@ public class ExpressionBlock : AdaptableValueBlock
         var text = await _formula.EvaluateAsync(context);
         if (!Core.Utilities.Formula.TryEvaluate(text, out var result, out var error)) throw Fail($"'{text}' {error}");
 
+        if (Kind == ValueKind.Bool) return result.IsBool ? result.AsBool : throw Fail($"'{text}' gives a number, not true/false");
+        if (result.IsBool) throw Fail($"'{text}' gives true/false, not a number");
         if (Kind == ValueKind.Double) return result.Value;
 
         // in a whole number slot a decimal answer drops its decimals (like Convert)

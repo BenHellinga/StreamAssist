@@ -5,7 +5,7 @@ namespace StreamAssist.Components.Chatbot.Background;
 
 
 
-// runs every chat message through the chat command trees (protected, then editable), the first path that reaches a binding runs it
+// runs every chat message through the chat command trees (built-in, then custom), the first path that reaches a binding runs it
 public class ChatCommandManager : IDisposable
 {
     // private

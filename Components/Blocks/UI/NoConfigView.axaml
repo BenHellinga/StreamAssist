@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.NoConfigView"
+             x:DataType="ui:NoConfigViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- a tab with no config: an empty page that only says to make one (in the bar above) -->
+
+    <TextBlock Classes="Label" Text="{Binding Message}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+</UserControl>

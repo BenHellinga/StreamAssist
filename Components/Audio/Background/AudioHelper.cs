@@ -4,6 +4,7 @@ using System.Linq;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Core.Persistence;
 
 namespace StreamAssist.Components.Audio.Background;
 
@@ -31,18 +32,25 @@ public static class AudioHelper
 
 
 
-    public static bool TryPlaySound(string filepath, float volume = 1.0f, string? deviceName = null)
+    // path is inside Assets/ (e.g. "Sounds/boom.mp3", see AppPaths), never anywhere else on the PC
+    public static bool TryPlaySound(string path, float volume = 1.0f, string? deviceName = null)
     {
+        if (!AppPaths.TryResolveAsset(path, out var fullPath, out var error))
+        {
+            AppLog.WriteError($"can't play '{path}' ({error})");
+            return false;
+        }
+
         if (!TryGetDeviceByString(deviceName, out var device)) return false;
 
         AudioFileReader audioFile;
         try
         {
-            audioFile = new AudioFileReader(filepath) { Volume = volume };
+            audioFile = new AudioFileReader(fullPath) { Volume = volume };
         }
         catch (Exception)
         {
-            AppLog.WriteError($"can't load sound '{filepath}'");
+            AppLog.WriteError($"can't load sound '{path}'");
             return false;
         }
 

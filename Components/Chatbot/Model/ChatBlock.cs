@@ -26,7 +26,7 @@ public sealed record ChatMatchState(string Text, int Position, IReadOnlyDictiona
 // they reuse the block system for slots, saving and the editor, but only go in chat block slots
 public abstract class ChatBlock : BlockModel
 {
-    [JsonIgnore] public override BlockCategory Category => BlockCategory.Chat;
+    [JsonIgnore] protected override BlockGroup KindGroup => BlockGroup.Chat;
 
 
 

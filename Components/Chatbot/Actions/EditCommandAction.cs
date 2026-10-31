@@ -16,7 +16,7 @@ public class EditCommandAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Edit Command";
-    [JsonIgnore] public override string Description => "Changes what a command in the Editable commands replies (e.g. for !editcom). Only works on commands that just send a message. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
+    [JsonIgnore] public override string Description => "Changes what a command in the Custom commands replies (e.g. for !editcom). Only works on commands that just send a message. If it fails from chat it replies (e.g. 'command not found'), anywhere else it logs why, and either way nothing after it runs.";
 
 
 

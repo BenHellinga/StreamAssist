@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -63,7 +64,18 @@ public class TriggerContext
 
 
 
-    // fills in {name} with the parameter's value, e.g. "{user} is lurking", unknown names are left as they are
+    // how {var.name} reads a variable (set by the app at startup, the Data component owns variables), null if there's none
+    public static Func<string, string?>? VariableText { get; set; }
+
+
+
+    // fills in {name} with the parameter's value, e.g. "{user} is lurking", and {var.name} with a variable's, e.g.
+    // "{var.deaths} deaths". Unknown names are left as they are
     public string Format(string template) =>
-        Regex.Replace(template, @"\{(\w+)\}", m => Parameters.TryGetValue(m.Groups[1].Value, out var value) ? value : m.Value);
+        Regex.Replace(template, @"\{(var\.)?(\w+)\}", m =>
+        {
+            var name = m.Groups[2].Value;
+            if (m.Groups[1].Success) return VariableText?.Invoke(name) ?? m.Value;
+            return Parameters.TryGetValue(name, out var value) ? value : m.Value;
+        });
 }

@@ -32,7 +32,7 @@
     <DataTemplate x:Key="FilepathConfigurator" x:DataType="configurator:ConfigurableParameterViewModel">
         <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="8">
             <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}"/>
-            <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="No File Selected…"/>
+            <TextBox Grid.Column="1" Text="{Binding Value}" PlaceholderText="Inside assets, e.g. Sounds/boom.mp3"/>
             <Button Grid.Column="2" Content="Browse…" Command="{Binding BrowsePressedCommand}"/>
         </Grid>
     </DataTemplate>

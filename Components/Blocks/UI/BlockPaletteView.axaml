@@ -25,10 +25,11 @@
                    Text="No matching blocks"
                    IsVisible="{Binding !HasResults}"/>
 
-        <!-- a heading per category, its cards below (each card is a BlockCardView through the ViewLocator) -->
+        <!-- a heading per group (click to collapse / expand), its cards below (each card is a BlockCardView through the
+             ViewLocator) -->
 
         <ScrollViewer Classes="Gapped">
-            <ItemsControl ItemsSource="{Binding Categories}" Margin="5,5,5,5">
+            <ItemsControl ItemsSource="{Binding Groups}" Margin="5,5,5,5">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="10"/>
@@ -36,12 +37,17 @@
                 </ItemsControl.ItemsPanel>
 
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="ui:BlockCategoryGroup">
+                    <DataTemplate x:DataType="ui:BlockGroupViewModel">
                         <StackPanel Spacing="5">
 
-                            <TextBlock Classes="Label" Text="{Binding Title}"/>
+                            <!-- the title, then the arrow: only the arrow (a small button) collapses / expands -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                                <TextBlock Classes="Label" Text="{Binding HeadingText}" VerticalAlignment="Center"/>
+                                <Button Classes="Square Small" Content="{Binding Arrow}" Command="{Binding HeadingPressedCommand}"
+                                        VerticalAlignment="Center" ToolTip.Tip="Collapse / expand"/>
+                            </StackPanel>
 
-                            <ItemsControl ItemsSource="{Binding Cards}">
+                            <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding ShowCards}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <StackPanel Spacing="5"/>

@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.ConfigBarView"
+             x:DataType="ui:ConfigBarViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+
+    <!-- Config [configs] [name box] ＋ －: a header row, so it's HeaderHeight tall like the other headers -->
+
+    <StackPanel Orientation="Horizontal" Spacing="10" Height="{StaticResource HeaderHeight}">
+
+        <TextBlock Classes="Label" Text="Config" VerticalAlignment="Center"/>
+
+        <ComboBox ItemsSource="{Binding Names}" SelectedItem="{Binding SelectedName}" MinWidth="150"
+                  Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalAlignment="Center"
+                  ToolTip.Tip="Switches everything on this tab to that config"/>
+
+        <TextBox Classes.New="{Binding NewName, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                 Text="{Binding NewName}" PlaceholderText="New config…" Width="150"
+                 ToolTip.Tip="Name a config and press ＋ (nothing can be bound until there's one)"
+                 Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+
+        <Button Classes="Square Medium" Content="＋" Command="{Binding CreatePressedCommand}" VerticalAlignment="Center"
+                ToolTip.Tip="A copy of the current config, with the name typed beside it"/>
+
+        <Button Classes="Medium" Content="{Binding DeleteText}" Command="{Binding DeletePressedCommand}" VerticalAlignment="Center"
+                IsVisible="{Binding HasConfig}"
+                MinWidth="{StaticResource HeaderHeight}" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Deletes the current config (press twice)"/>
+
+    </StackPanel>
+
+</UserControl>

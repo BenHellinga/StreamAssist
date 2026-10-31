@@ -18,7 +18,9 @@
             <DataTemplate x:DataType="ui:MatchTextRowViewModel">
                 <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
 
+                    <!-- an empty row (the one at the end that adds the next) has a dim border, in the background -->
                     <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top"
+                             Classes.New="{Binding Pattern, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                              Text="{Binding Pattern}" PlaceholderText="Text or /regex/…"/>
 
                     <!-- bind box + slot (a ChatTargetView through the ViewLocator), only once the row has text -->

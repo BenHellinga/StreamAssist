@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ public class EqualsCondition : ConditionBlock
 
 
     [JsonIgnore] public override string Name => "Equals";
-    [JsonIgnore] public override string Description => "True if both are the same value of the same type (whole numbers and decimals compare as numbers, text is case sensitive). Typed text is read as the type of the block on the other side.";
+    [JsonIgnore] public override string Description => "True if both are the same value of the same type (whole numbers and decimals compare as numbers). Case decides whether text has to match upper/lower case too (Ignore Case for e.g. usernames). Typed text is read as the type of the block on the other side.";
 
 
 
@@ -22,6 +23,7 @@ public class EqualsCondition : ConditionBlock
 
 
 
+    private string _case;
     private readonly AnyValueSlot _first;
     private readonly AnyValueSlot _second;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -31,6 +33,15 @@ public class EqualsCondition : ConditionBlock
     // public
 
 
+
+    [ConfigurableParameter("Case", ConfiguratorType.Menu)] [JsonPropertyName("case")]
+    public string Case
+    {
+        get => _case;
+        set => SetParameter(ref _case, value);
+    }
+
+    public static List<string> GetCaseMenuItems() => ["Match Case", "Ignore Case"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
@@ -62,8 +73,10 @@ public class EqualsCondition : ConditionBlock
 
     public EqualsCondition()
     {
-        _first = new("A");
-        _second = new("B");
+        _case = "Match Case";
+        _first = new("");
+        _second = new("");
+        _second.SetConnector("==");
         _slots = [_first, _second];
 
         TrackSlots();
@@ -79,16 +92,18 @@ public class EqualsCondition : ConditionBlock
     {
         var (firstKind, first) = await _first.EvaluateRawAsync(context);
         var (secondKind, second) = await _second.EvaluateRawAsync(context);
-        return AreEqual(firstKind, first, secondKind, second);
+        return AreEqual(firstKind, first, secondKind, second, ignoreCase: _case == "Ignore Case");
     }
 
 
 
     // a null kind is typed text: it's read as the other side's kind (typed text that isn't one is just not equal),
-    // both typed are compared as text. Different kinds are never equal, except int and double (5 == 5.0)
-    public static bool AreEqual(ValueKind? firstKind, object first, ValueKind? secondKind, object second)
+    // both typed are compared as text. Different kinds are never equal, except int and double (5 == 5.0).
+    // ignoreCase only changes how text compares
+    public static bool AreEqual(ValueKind? firstKind, object first, ValueKind? secondKind, object second, bool ignoreCase = false)
     {
-        if (firstKind == null && secondKind == null) return (string)first == (string)second;
+        var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (firstKind == null && secondKind == null) return string.Equals((string)first, (string)second, comparison);
 
         if (firstKind == null)
         {
@@ -104,6 +119,8 @@ public class EqualsCondition : ConditionBlock
 
         if (IsNumber(firstKind.Value) && IsNumber(secondKind.Value))
             return ToDouble(first) == ToDouble(second);
+
+        if (firstKind == ValueKind.Text && secondKind == ValueKind.Text) return string.Equals((string)first, (string)second, comparison);
 
         return firstKind == secondKind && first.Equals(second);
     }

@@ -20,6 +20,7 @@ public abstract class ValueSlot : BlockSlotBase
     private readonly ValueKind? _kind;
     private readonly BlockSlot _block;
     private string _text;
+    private string _connector;
 
 
 
@@ -30,6 +31,7 @@ public abstract class ValueSlot : BlockSlotBase
     public ValueKind? Kind => _kind; // null = any kind (e.g. Equals)
     public BlockSlot BlockSlot => _block;
     public string Text => _text;
+    public string Connector => _connector; // shown on its own line above the slot, e.g. Equals' "==" (display only, not saved)
 
     public override IReadOnlyList<BlockModel> Blocks => [];
     public override IReadOnlyList<BlockSlotBase> InnerSlots => [_block];
@@ -41,6 +43,7 @@ public abstract class ValueSlot : BlockSlotBase
 
 
     public event Action? TextChanged;
+    public event Action? ConnectorChanged;
 
 
 
@@ -52,6 +55,7 @@ public abstract class ValueSlot : BlockSlotBase
     {
         _kind = kind;
         _text = "";
+        _connector = "";
 
         Filter = FitsKind;
         WantedKind = kind;
@@ -72,6 +76,16 @@ public abstract class ValueSlot : BlockSlotBase
         _text = text;
         TextChanged?.Invoke();
         RaiseChanged();
+    }
+
+
+
+    public void SetConnector(string connector)
+    {
+        if (connector == _connector) return;
+
+        _connector = connector;
+        ConnectorChanged?.Invoke();
     }
 
 

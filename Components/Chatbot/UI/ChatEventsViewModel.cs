@@ -20,6 +20,7 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
     private readonly ChatbotComponentModel _model;
+    private readonly RedeemList _redeemList; // the shown config's (only made while there's one), kept to unsubscribe from it
     private readonly ObservableCollection<RedeemRowViewModel> _redeems;
     private readonly IReadOnlyList<ChatEventSlotViewModel> _events;
 
@@ -53,6 +54,7 @@ public partial class ChatEventsViewModel : ViewModelBase
     public ChatEventsViewModel(ChatbotComponentModel model)
     {
         _model = model;
+        _redeemList = model.Redeems!;
 
         _isTestOpen = false;
         _testUser = "TestUser";
@@ -67,13 +69,13 @@ public partial class ChatEventsViewModel : ViewModelBase
         _newRewardNeedsInput = false;
 
         _redeems = [];
-        foreach (var row in _model.Redeems.Rows)
+        foreach (var row in _redeemList.Rows)
             _redeems.Add(CreateRedeemRow(row));
 
         _events = _model.Events.Select(slot => new ChatEventSlotViewModel(slot, _model, TestEvent, _isTestOpen)).ToList();
 
-        _model.Redeems.RowInserted += OnRedeemRowInserted;
-        _model.Redeems.RowRemoved += OnRedeemRowRemoved;
+        _redeemList.RowInserted += OnRedeemRowInserted;
+        _redeemList.RowRemoved += OnRedeemRowRemoved;
     }
 
 
@@ -158,8 +160,8 @@ public partial class ChatEventsViewModel : ViewModelBase
 
     public override void Dispose()
     {
-        _model.Redeems.RowInserted -= OnRedeemRowInserted;
-        _model.Redeems.RowRemoved -= OnRedeemRowRemoved;
+        _redeemList.RowInserted -= OnRedeemRowInserted;
+        _redeemList.RowRemoved -= OnRedeemRowRemoved;
 
         foreach (var row in _redeems) row.Dispose();
         foreach (var slot in _events) slot.Dispose();

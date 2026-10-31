@@ -30,10 +30,20 @@ public class KeyboardComponentManager : IDisposable
         _saveManager = new(_model);
         _inputManager = new();
         _model.ListModel.AttachDevices(KeyboardInputManager.Devices);
+        _inputManager.DevicesChanged += OnDevicesChanged;
         _keybindManager = new(_model.ListModel, _inputManager);
 
         _saveManager.Save();
     }
+
+
+
+    // input events
+
+
+
+    // a keyboard was plugged in or removed: slots find theirs again (or lose it until it's back)
+    private void OnDevicesChanged() => _model.ListModel.AttachDevices(KeyboardInputManager.Devices);
 
 
 
@@ -59,6 +69,7 @@ public class KeyboardComponentManager : IDisposable
 
     public void Dispose()
     {
+        _inputManager.DevicesChanged -= OnDevicesChanged;
         _keybindManager.Dispose();
         _inputManager.Dispose();
         _saveManager.Dispose();
