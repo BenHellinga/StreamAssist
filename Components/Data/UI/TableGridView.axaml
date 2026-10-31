@@ -15,7 +15,7 @@
         <Style Selector="TextBox.Cell">
             <Setter Property="Width" Value="160"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Height" Value="28"/>
+            <Setter Property="Height" Value="{StaticResource ControlHeight}"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <!-- a column name: room on the right for the sort (and, in delete mode, delete) buttons over it -->
@@ -39,9 +39,9 @@
             <Setter Property="Background" Value="{DynamicResource Border}"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
-        <!-- every row is this tall, so the id column and the cells beside it always line up -->
+        <!-- every row is this tall (a cell and DenseGap), so the id column and the cells beside it always line up -->
         <Style Selector="Grid.Row">
-            <Setter Property="Height" Value="33"/>
+            <Setter Property="Height" Value="30"/>
         </Style>
     </UserControl.Styles>
 
@@ -50,42 +50,42 @@
         <!-- the table -->
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10"
-                    Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}">
+                    Margin="{StaticResource HeaderMargin}" Height="{StaticResource ControlHeight}">
             <TextBlock Classes="Label" Text="{Binding TableName}" VerticalAlignment="Center" IsVisible="{Binding !IsCustom}"/>
-            <TextBox Text="{Binding TableNameInput}" Width="200" Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"
+            <TextBox Text="{Binding TableNameInput}" Width="200" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                      IsVisible="{Binding IsCustom}"/>
-            <Button Content="Rename" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding RenamePressedCommand}" IsVisible="{Binding IsCustom}"/>
-            <Button Content="{Binding DeleteTableText}" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteTablePressedCommand}" IsVisible="{Binding IsCustom}"/>
-            <Button Content="Delete columns" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteColumnsPressedCommand}" IsVisible="{Binding IsCustom}"
+            <Button Content="Rename" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RenamePressedCommand}" IsVisible="{Binding IsCustom}"/>
+            <Button Content="{Binding DeleteTableText}" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteTablePressedCommand}" IsVisible="{Binding IsCustom}"/>
+            <Button Content="Delete columns" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteColumnsPressedCommand}" IsVisible="{Binding IsCustom}"
                     Classes.Active="{Binding IsDeleteColumnsMode}"
                     ToolTip.Tip="While it's on (green), a − on every column deletes it and everything in it"/>
-            <Button Content="Renumber ids" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding RenumberPressedCommand}"
+            <Button Content="Renumber ids" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RenumberPressedCommand}"
                     ToolTip.Tip="Closes the gaps deleted rows left: the rows keep their order and become 1, 2, 3, …"/>
         </StackPanel>
 
         <!-- search rows (as you type) | a query (Run query or Enter applies it, see RowQuery) -->
 
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="5,0,5,5">
-            <TextBox Text="{Binding SearchText}" Width="200" Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Search rows…"/>
-            <TextBox Classes="Query" Text="{Binding QueryText}" Width="400" Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Query, e.g. user:bud points>100"
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="5,0,5,10">
+            <TextBox Text="{Binding SearchText}" Width="200" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Search rows…"/>
+            <TextBox Classes="Query" Text="{Binding QueryText}" Width="400" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Query, e.g. user:bud points>100"
                      ToolTip.Tip="Terms (all must match): word or &quot;a phrase&quot; (any cell), col:text (contains), col=text, col!=text, col&gt;5, col&lt;=5 (numbers, or alphabetical). id works as a column. Empty + Run shows every row">
                 <TextBox.KeyBindings>
                     <KeyBinding Gesture="Enter" Command="{Binding RunQueryPressedCommand}"/>
                 </TextBox.KeyBindings>
             </TextBox>
-            <Button Content="Run query" Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center" Command="{Binding RunQueryPressedCommand}"/>
+            <Button Content="Run query" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RunQueryPressedCommand}"/>
         </StackPanel>
 
         <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
 
         <!-- the grid: id | line | columns, a line under the headers -->
 
-        <ScrollViewer Classes="Gapped" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="0,5,0,0">
+        <ScrollViewer Classes="Gapped" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
             <Border Padding="{StaticResource ScrollEndPadding}">
                 <Grid ColumnDefinitions="50,11,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="5,0,10,0" HorizontalAlignment="Left">
 
                     <!-- the id header: its sort button -->
-                    <Grid Grid.Row="0" Grid.Column="0" VerticalAlignment="Top" Height="28">
+                    <Grid Grid.Row="0" Grid.Column="0" VerticalAlignment="Top" Height="{StaticResource ControlHeight}">
                         <TextBlock Classes="Label" Text="id" VerticalAlignment="Center"/>
                         <Button Classes="Square Small" Content="{Binding IdSortText}" Command="{Binding SortByIdPressedCommand}"
                                 HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="Sort by id"/>
@@ -105,7 +105,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="ui:ColumnHeaderViewModel">
                                     <StackPanel Width="160" Spacing="3">
-                                        <Grid Height="28">
+                                        <Grid Height="{StaticResource ControlHeight}">
                                             <TextBox Classes="Cell Name Commit" Classes.Plain="{Binding !IsEditable}" Text="{Binding NameInput}" IsReadOnly="{Binding !IsEditable}"
                                                      ToolTip.Tip="Clearing the name removes the column, if it's empty"/>
                                             <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0">
@@ -125,7 +125,7 @@
                     </StackPanel>
 
                     <!-- the line under the headers -->
-                    <Border Grid.Row="1" Grid.ColumnSpan="3" Classes="Divider" Margin="0,5,0,0"/>
+                    <Border Grid.Row="1" Grid.ColumnSpan="3" Classes="Divider" Margin="0,10,0,8"/>
 
                     <!-- the ids -->
                     <ItemsControl Grid.Row="2" Grid.Column="0" ItemsSource="{Binding Rows}">
@@ -165,7 +165,7 @@
 
                     <!-- the empty row: a value typed in any of its cells makes a new row (no id until then) -->
                     <Grid Grid.Row="3" Grid.Column="0" Classes="Row"/>
-                    <ItemsControl Grid.Row="3" Grid.Column="2" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Center" Height="33">
+                    <ItemsControl Grid.Row="3" Grid.Column="2" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Center" Height="30">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"/>

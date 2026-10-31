@@ -25,7 +25,7 @@
                           HorizontalScrollBarVisibility="Auto">
                 <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                 <Border Padding="{StaticResource ScrollEndPadding}">
-                    <StackPanel Spacing="5" Margin="5,5,10,0">
+                    <StackPanel Spacing="5" Margin="5,0,10,0">
                         <TextBlock Classes="Title" Text="Built-in"/>
                         <ContentControl Content="{Binding Root}"/>
                         <TextBlock Classes="Title" Text="Custom" Margin="0,10,0,0"/>
@@ -37,7 +37,7 @@
             <!-- a small tab bar like the Events tab's: clicking Test opens a panel under it that sends a made-up chat
                  message through the trees, clicking it again closes it -->
 
-            <StackPanel Grid.Row="1" Spacing="5" Margin="0,0,0,5">
+            <StackPanel Grid.Row="1" Spacing="10" Margin="0,5,0,5">
                 <Border Classes="Divider"/>
 
                 <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">

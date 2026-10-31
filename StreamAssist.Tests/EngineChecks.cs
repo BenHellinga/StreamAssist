@@ -6,6 +6,7 @@ using StreamAssist.Components.Spotify.Values;
 using StreamAssist.Components.Data.Model;
 using StreamAssist.Components.Data.Background;
 using StreamAssist.Components.Data.Actions;
+using StreamAssist.Components.Data.Containers;
 using StreamAssist.Components.Data.Values;
 using System.Net;
 using StreamAssist.Components.OBS.Background;
@@ -605,7 +606,28 @@ internal static class EngineChecks
                 && RunObs(Block(new SetObsSourceSettingAction(), "Title", "vertical", "true")) && fake.Inputs["Title"].Settings["vertical"]!.GetValueKind() == System.Text.Json.JsonValueKind.True);
             Check("obs blocks: a new text setting stays text", RunObs(Block(new SetObsSourceSettingAction(), "Title", "font_face", "Arial")) && fake.Inputs["Title"].Settings["font_face"]!.GetValue<string>() == "Arial");
             Check("obs blocks: get a setting as text or a number", Eval(Block(new GetObsSourceSettingBlock(), "Title", "text")) is "bob raided" && Eval(Block(new GetObsSourceSettingBlock { As = "Int" }, "Title", "opacity")) is 50);
-            Check("obs blocks: switch scene", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && fake.CurrentScene == "Just Chatting");
+            // every switch remembers the scene it leaves (in variables), Return to Previous Scene goes back like undo
+            var obsData = new DataModel();
+            obsData.EnsureBuiltInTables();
+            StreamAssist.Shell.GlobalContext.DataModel = obsData;
+            fake.Scenes["BRB"] = new();
+            string History() => string.Join(",", ObsSceneMemory.Load(obsData));
+            Check("obs blocks: switch scene, remembering the one left", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && fake.CurrentScene == "Just Chatting"
+                && History() == "Gaming" && obsData.VariableKind("previousScene1") == ValueKind.Text && obsData.FindTable("misc") == null);
+            Check("obs scenes: switching to the scene already live remembers nothing", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && History() == "Gaming");
+            Check("obs scenes: Gaming -> Just Chatting -> BRB, most recent first", RunObs(Block(new SetObsSceneAction(), "BRB")) && History() == "Just Chatting,Gaming");
+            Check("obs scenes: Return goes back one at a time, like undo", RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "Just Chatting" && History() == "Gaming"
+                && RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "Gaming" && History() == "");
+            var eNone = Errors();
+            Check("obs scenes: nothing left to go back to fails with one error", !RunObs(new ReturnToPreviousSceneAction()) && Errors() == eNone + 1 && LastError().Contains("none remembered"));
+            foreach (var scene in new[] { "BRB", "Gaming", "BRB", "Just Chatting", "Gaming", "BRB", "Gaming" }) RunObs(Block(new SetObsSceneAction(), scene));
+            Check("obs scenes: only the last 5 are kept", History() == "BRB,Gaming,Just Chatting,BRB,Gaming");
+            fake.CurrentScene = "BRB"; // changed in OBS itself
+            Check("obs scenes: a scene picked in OBS counts as the one left, and Return skips one that's already live",
+                RunObs(Block(new SetObsSceneAction(), "Gaming")) && History() == "BRB,BRB,Gaming,Just Chatting,BRB"
+                && RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "BRB" && History() == "BRB,Gaming,Just Chatting,BRB"
+                && RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "Gaming" && History() == "Just Chatting,BRB");
+
 
             // failures: one error with OBS's reason, and the run stops
             var e2 = Errors();
@@ -619,6 +641,7 @@ internal static class EngineChecks
             Check("obs: not connected fails with one error", !RunObs(Block(new SetObsSceneAction(), "Gaming")) && Errors() == e3 + 1 && LastError().Contains("error - can't switch to scene 'Gaming', obs not connected"));
 
             StreamAssist.Shell.GlobalContext.ObsManager = null;
+            StreamAssist.Shell.GlobalContext.DataModel = null;
             obs.Dispose();
         }
 
@@ -1688,7 +1711,7 @@ internal static class EngineChecks
             // Expression's functions (Round is gone)
             double? Fn(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var n, out _) ? n.Value : null;
             Check("expression functions", Fn("round(2.5)") == 3 && Fn("round(-2.5)") == -3 && Fn("floor(2.7)") == 2 && Fn("ceil(2.1)") == 3 && Fn("truncate(-2.7)") == -2
-                && Fn("abs(-4)") == 4 && Fn("max(1, 7, 3)") == 7 && Fn("min(2.5, 1)") == 1 && Fn("ROUND(10 / 4.0) * 2") == 6);
+                && Fn("abs(-4)") == 4 && Fn("log10(1000)") == 3 && Fn("pow(2, 10)") == 1024 && Fn("log10(0)") == null && Fn("max(1, 7, 3)") == 7 && Fn("min(2.5, 1)") == 1 && Fn("ROUND(10 / 4.0) * 2") == 6);
             Check("expression functions: rounding gives a whole number, mistakes fail", StreamAssist.Core.Utilities.Formula.TryEvaluate("round(7 / 2.0)", out var rounded, out _) && rounded.IsWhole && rounded.Value == 4
                 && !StreamAssist.Core.Utilities.Formula.TryEvaluate("sqrt(4)", out _, out var noFunction) && noFunction.Contains("no function 'sqrt'")
                 && Fn("round(1, 2)") == null && Fn("max()") == null && Fn("abs(true)") == null && Fn("round(2") == null);
@@ -2209,6 +2232,18 @@ internal static class EngineChecks
             Check("data blocks: get variable picks the variable's type", getDeaths.Kind == ValueKind.Int && await getDeaths.EvaluateObjectAsync(dctx) is 6);
             Check("data blocks: an unknown variable fails", !await Do(new ChangeVariableAction { Variable = "nope" }));
             Check("data blocks: {var.name} in typed text", dctx.Format("deaths: {var.deaths}, {var.nope}, {userLogin}") == "deaths: 6, {var.nope}, budder");
+            var scoped = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["deaths"] = "run" });
+            var scopeBuilder = new StringBuilderBlock();
+            scopeBuilder.Text.SetText("{deaths}");
+            var scopeRow = scopeBuilder.Values.Items[^1];
+            scopeRow.Key.SetText("deaths");
+            scopeRow.Value.SetText("block");
+            Check("scopes: {name} is a variable when nothing nearer has it", dctx.Format("{deaths} deaths, {nope}") == "6 deaths, {nope}");
+            Check("scopes: a run parameter wins over a variable, {var.name} still reads the variable", scoped.Format("{deaths} / {var.deaths}") == "run / 6");
+            Check("scopes: a String Builder row wins over both", await scopeBuilder.EvaluateAsync(scoped) == "block" && await scopeBuilder.EvaluateAsync(dctx) == "block");
+            scopeBuilder.Text.SetText("{deaths} {loc.deaths} {run.deaths} {var.deaths} {run.nope}");
+            Check("scopes: loc. run. var. read only that scope", await scopeBuilder.EvaluateAsync(scoped) == "block block run 6 {run.nope}"
+                && scoped.Parameters.ContainsKey("deaths") && scoped.Locals.Count == 0);
 
             Check("data blocks: add table row puts its id in {rowId}", await Do(new AddTableRowAction { Table = "quotes" }) && dctx.Parameters["rowId"] == "4");
             var setOne = new SetTableRowAction { Table = "quotes" };
@@ -2240,6 +2275,22 @@ internal static class EngineChecks
             Check("data blocks: get table row with a prefix", await Do(With(new GetTableRowAction { Table = "quotes", Prefix = "q_" }, "1")) && dctx.Parameters["q_id"] == "1" && dctx.Parameters["q_quote"] == "hello there");
             Check("data blocks: get table row fails on a missing row", !await Do(With(new GetTableRowAction { Table = "quotes" }, "99")));
             Check("data blocks: delete table row", await Do(With(new DeleteTableRowAction { Table = "quotes" }, "{rowId}")) && await new CountTableRowsBlock { Table = "quotes" }.EvaluateObjectAsync(dctx) is 2);
+
+            // cooldowns: a built-in table of when each label last went through
+            var t0 = new DateTime(2026, 10, 31, 12, 0, 0);
+            Check("cooldown: first use goes through, then waits (label case ignored), then goes again", reloaded.UseCooldown("hydrate", 30, t0, out _)
+                && !reloaded.UseCooldown("HYDRATE", 30, t0.AddSeconds(10), out var cooldownLeft) && Math.Abs(cooldownLeft - 20) < 0.01
+                && reloaded.UseCooldown("hydrate", 30, t0.AddSeconds(30), out _) && reloaded.UseCooldown("other", 30, t0.AddSeconds(31), out _)
+                && reloaded.FindTable("cooldowns") is { IsBuiltIn: true } cooldowns && cooldowns.Rows.Count == 2);
+            var cooldown = new CooldownBlock();
+            ((ValueSlot)cooldown.Slots[0]).SetText("test-{userLogin}");
+            ((ValueSlot)cooldown.Slots[1]).SetText("60");
+            ((BlockSlot)cooldown.Slots[2]).TrySetBlock(new RecordBlock { Tag = "go" });
+            async Task<string> RunCooldown() { RecordBlock.Log.Clear(); await cooldown.RunAsync(dctx); return string.Join("", RecordBlock.Log); }
+            Check("cooldown block: runs, then does nothing while cooling down", await RunCooldown() == "go" && await RunCooldown() == ""
+                && reloaded.FindTable("cooldowns")!.Rows.Any(r => r.Get("label") is "test-budder") && cooldown.Slots.Count == 3);
+            Check("cooldown block: saved and loaded, under Control", BlockResolver.DeepCopy(cooldown) is CooldownBlock copiedCooldown && ((ValueSlot)copiedCooldown.Slots[0]).Text == "test-{userLogin}"
+                && ((BlockSlot)copiedCooldown.Slots[2]).Block is RecordBlock && new CooldownBlock().Group == BlockGroup.Control);
             Check("data blocks: a missing table fails", !await Do(new AddTableRowAction { Table = "nope" }));
             Check("data blocks: under the Data heading, saved and loaded", new SetVariableAction().Group == BlockGroup.Data && new CountTableRowsBlock().Group == BlockGroup.Data
                 && BlockResolver.DeepCopy(new GetVariableBlock { Variable = "deaths" }) is GetVariableBlock { Variable: "deaths", Kind: ValueKind.Int });

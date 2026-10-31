@@ -3,8 +3,20 @@
 
     <!-- layout spacing shared across views, use with Margin="{StaticResource Name}"
 
-         the rule: lines (dividers, splitters) run edge to edge across their panel, with a 5px gap to the next line,
-         and content sits another 5px inside (so 10px from a splitter or the window edge to content) -->
+         the rule, in four values:
+           LineGap      5   a line (divider, splitter, scrollbar) to the next line it meets, or to the window edge
+           ContentGap  10   a line to content, and content to content (so content sits 5px further in than lines)
+           DenseGap     5   content to content where 10 would spread things too far: block trees and block lists
+           ControlHeight    the height of every single-line control: buttons, text boxes, dropdowns, bind boxes, tabs -->
+
+    <x:Double x:Key="LineGap">5</x:Double>
+    <x:Double x:Key="ContentGap">10</x:Double>
+    <x:Double x:Key="DenseGap">5</x:Double>
+    <x:Double x:Key="ControlHeight">25</x:Double>
+
+    <!-- the Fluent theme's checkbox height (its minimum, and the grid its box sits in, set inside its template where a
+         style can't reach), brought to ControlHeight: app resources are found before the theme's -->
+    <x:Double x:Key="CheckBoxMinHeight">25</x:Double>
 
     <!-- a splitter's own 5px gap on each side (the splitter column/row is 15: gap, 5px line, gap), so a hidden
          panel's splitter takes its gaps with it -->
@@ -17,10 +29,9 @@
          and no margin of its own, its content gets the inset -->
     <Thickness x:Key="ContentInset">5,0,5,0</Thickness>
 
-    <!-- header row (tab strip, title + buttons) that sits above a divider, every header is the same height
-         so dividers under side-by-side headers line up (the height of a tab strip tab) -->
+    <!-- header row (tab strip, title + buttons) that sits above a divider: ControlHeight tall, so dividers under
+         side-by-side headers line up -->
     <Thickness x:Key="HeaderMargin">5,5,5,10</Thickness>
-    <x:Double x:Key="HeaderHeight">29</x:Double>
 
     <!-- extra room below a tab's scrolled content, so the last row can be scrolled up to a comfortable spot
          (Padding on a Border wrapping the content of each tab's main scroll area and the bottom editor;

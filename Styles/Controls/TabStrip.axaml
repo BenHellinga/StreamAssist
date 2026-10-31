@@ -8,7 +8,7 @@
 
     <Style Selector="ListBox.TopTabStrip">
         <Setter Property="Background" Value="{DynamicResource MainBackground}"/>
-        <Setter Property="Height" Value="{DynamicResource HeaderHeight}"/>
+        <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
 
         <Setter Property="ItemsPanel">
             <ItemsPanelTemplate>

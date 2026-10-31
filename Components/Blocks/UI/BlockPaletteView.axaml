@@ -14,7 +14,7 @@
 
         <TextBox DockPanel.Dock="Top"
                  Margin="{StaticResource HeaderMargin}"
-                 Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                  Text="{Binding SearchText}"
                  PlaceholderText="Search blocks…"/>
 
@@ -29,7 +29,7 @@
              ViewLocator) -->
 
         <ScrollViewer Classes="Gapped">
-            <ItemsControl ItemsSource="{Binding Groups}" Margin="5,5,5,5">
+            <ItemsControl ItemsSource="{Binding Groups}" Margin="5,0,5,0">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="10"/>

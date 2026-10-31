@@ -11,7 +11,7 @@
     <ScrollViewer Classes="Gapped" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
         <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
         <Border Padding="{StaticResource ScrollEndPadding}">
-            <StackPanel Spacing="10" Margin="0,5,0,0">
+            <StackPanel Spacing="10">
 
                 <!-- twitch: the app both accounts log in through (hidden, the eye button shows them, safe to have on stream) -->
 
@@ -33,14 +33,14 @@
                                     ToolTip.Tip="Optional, only sends chat (log in through the console link while logged in to twitch as the bot). Without it, chat is sent as the streamer, unless Chat only as bot is ticked: then chat and moderation only ever go out as the bot, and fail while it isn't connected"/>
                 </StackPanel>
 
-                <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                <Border Classes="Divider"/>
 
                 <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
                     <TextBlock Classes="Title" Text="Voicemeeter"/>
                     <ContentControl Content="{Binding Voicemeeter}"/>
                 </StackPanel>
 
-                <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                <Border Classes="Divider"/>
 
                 <!-- obs: its websocket server (OBS: Tools > WebSocket Server Settings), password hidden like twitch's -->
 
@@ -59,7 +59,7 @@
                                     ToolTip.Tip="Lets blocks switch scenes, show/hide and move sources, set volumes and text (turn on OBS's WebSocket server in Tools > WebSocket Server Settings)"/>
                 </StackPanel>
 
-                <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                <Border Classes="Divider"/>
 
                 <!-- spotify: your app on developer.spotify.com (hidden like twitch's), whose Redirect URI has to be the one shown -->
 

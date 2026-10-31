@@ -11,7 +11,7 @@
 
         <!-- header -->
 
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="{StaticResource HeaderMargin}" Height="{StaticResource ControlHeight}">
 
             <TextBlock Grid.Column="0"
                        Classes="Label"
@@ -22,7 +22,7 @@
             <Button Grid.Column="1"
                     Content="Clear"
                     Command="{Binding ClearCommand}"
-                    Height="{StaticResource HeaderHeight}"
+                    Height="{StaticResource ControlHeight}"
                     VerticalContentAlignment="Center"/>
 
         </Grid>
@@ -37,8 +37,8 @@
         <ScrollViewer x:Name="LogScrollViewer" Classes="Gapped">
             <!-- fills the whole console (transparent background) so clicking empty space still focuses it for Ctrl+A
                  (inset with Padding, not Margin, so filling the console doesn't make it scrollable) -->
-            <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent" Padding="5"
-                                 MinHeight="{Binding #LogScrollViewer.Bounds.Height}"/>
+            <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent" Padding="5,0"
+                                 MinHeight="{Binding #LogScrollViewer.Viewport.Height}"/>
         </ScrollViewer>
 
     </DockPanel>

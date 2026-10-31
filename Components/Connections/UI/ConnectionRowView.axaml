@@ -8,19 +8,28 @@
     <!-- name | status | connect/disconnect/retry | connect on startup | the row's extra checkbox, if any
          which account it's connected to is only in the status box's tooltip, so it isn't on screen when the tab is shown -->
 
+    <UserControl.Styles>
+        <Style Selector="TextBlock.Status">
+            <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+        </Style>
+        <Style Selector="TextBlock.Status.Connected">
+            <Setter Property="Foreground" Value="{DynamicResource Bound}"/>
+        </Style>
+        <Style Selector="TextBlock.Status.Down">
+            <Setter Property="Foreground" Value="{DynamicResource Disabled}"/>
+        </Style>
+    </UserControl.Styles>
+
     <StackPanel Orientation="Horizontal" Spacing="10">
 
         <TextBlock Classes="Label" Text="{Binding Label}" Width="100"/>
 
-        <!-- green = connected, grey = connecting, red otherwise (details in the tooltip and the console) -->
+        <!-- the status as coloured text, no border (only clickable things have one): green = connected, grey =
+             connecting, red otherwise (details in the tooltip and the console) -->
 
-        <Border Classes="Panel"
-                Classes.Bound="{Binding IsConnected}"
-                Classes.Disabled="{Binding IsDown}"
-                Width="130" Height="25"
-                ToolTip.Tip="{Binding Detail}">
-            <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center"/>
-        </Border>
+        <TextBlock Classes="Status" Classes.Connected="{Binding IsConnected}" Classes.Down="{Binding IsDown}"
+                   Text="{Binding StatusText}" Width="130" VerticalAlignment="Center" Background="Transparent"
+                   ToolTip.Tip="{Binding Detail}"/>
 
         <Button Content="{Binding ButtonText}" Command="{Binding ButtonPressedCommand}" Width="100"
                 HorizontalContentAlignment="Center"/>

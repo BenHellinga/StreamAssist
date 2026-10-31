@@ -6,9 +6,11 @@
         <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
-        <Setter Property="Padding" Value="5"/>
+        <Setter Property="Padding" Value="8,0"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
         <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
     <!-- hover -->
@@ -44,9 +46,9 @@
         <Setter Property="FontSize" Value="10"/>
     </Style>
 
-    <!-- inline buttons next to inputs (config create/delete) -->
+    <!-- inline buttons next to inputs (config create/delete), as tall as the inputs -->
     <Style Selector="Button.Medium">
-        <Setter Property="Height" Value="28"/>
+        <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
     </Style>
 
@@ -62,7 +64,7 @@
         <Setter Property="Width" Value="15"/>
     </Style>
     <Style Selector="Button.Square.Medium">
-        <Setter Property="Width" Value="28"/>
+        <Setter Property="Width" Value="{DynamicResource ControlHeight}"/>
     </Style>
     <Style Selector="Button.Square.Large">
         <Setter Property="Width" Value="40"/>

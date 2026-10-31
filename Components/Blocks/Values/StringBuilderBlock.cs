@@ -80,10 +80,10 @@ public class StringBuilderBlock : ValueBlock<string>
 
 
 
-    // the rows go into a copy of the run's parameters, so nothing after this block sees them
+    // the rows are this block's own names ({loc.name}), so nothing after this block sees them
     protected override async Task<string> ComputeAsync(TriggerContext context)
     {
-        var scope = new TriggerContext(context.Phase, context.CancellationToken, context.Parameters);
+        var scope = context.WithLocals();
 
         foreach (var row in _values.Items)
         {
@@ -94,7 +94,7 @@ public class StringBuilderBlock : ValueBlock<string>
             if (!TriggerContext.IsValidName(name)) throw Fail($"'{name}' isn't a valid name, use letters, digits, _");
 
             var (_, value) = await row.Value.EvaluateRawAsync(scope);
-            scope.SetParameter(name, ValueTypes.ToText(value));
+            scope.SetLocal(name, ValueTypes.ToText(value));
         }
 
         return await _text.EvaluateAsync(scope);

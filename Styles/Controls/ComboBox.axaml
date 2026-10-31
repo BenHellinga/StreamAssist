@@ -6,6 +6,10 @@
         <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
+        <Setter Property="Padding" Value="8,0,0,0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
     <!-- hover -->

@@ -12,7 +12,8 @@ namespace StreamAssist.Core.Utilities;
 // Like C#, whole numbers stay whole (7/2 = 3) and a decimal makes that part of the formula a decimal (7/2.0 = 3.5,
 // 7/2*2.0 = 6), and maths and true/false don't mix (true + 1, 5 && 1 and 5 == true are errors). Precedence is C#'s:
 // ! and signs, then * / %, + -, < <= > >=, == !=, &&, ||. Functions: round (halves away from zero, 2.5 -> 3), floor,
-// ceil, truncate (all give whole numbers), abs, and min / max of any number of numbers
+// ceil, truncate (all give whole numbers), abs, min / max of any number of numbers, log10 and pow(x, y) (decimals, e.g.
+// decibels: 20 * log10(a / b))
 public static class Formula
 {
     // the answer: a number (and whether it's whole, only whole numbers went into it), or true/false (Value 1 or 0)
@@ -248,7 +249,7 @@ public static class Formula
         private Number ParseFunction()
         {
             var start = _position;
-            while (_position < text.Length && char.IsLetter(text[_position])) _position++;
+            while (_position < text.Length && char.IsLetterOrDigit(text[_position])) _position++; // a letter first (ParseAtom checked), e.g. log10
             var name = text[start.._position].ToLowerInvariant();
 
             if (Peek() != '(') throw new FormatException($"didn't expect '{text[start.._position]}' at character {start + 1}");
@@ -282,6 +283,10 @@ public static class Formula
                 "ceil" => One(Math.Ceiling, true),
                 "truncate" => One(Math.Truncate, true),
                 "abs" => One(Math.Abs),
+                "log10" when args.Count == 1 && args[0].Value <= 0 => throw new FormatException("log10 needs a number above 0"),
+                "log10" => One(Math.Log10, false),
+                "pow" when args.Count != 2 => throw new FormatException("pow takes two numbers"),
+                "pow" => new(Math.Pow(args[0].Value, args[1].Value), args[0].IsWhole && args[1].IsWhole && args[1].Value >= 0),
                 "min" or "max" when args.Count == 0 => throw new FormatException($"{name} needs at least one number"),
                 "min" => new(args.Min(a => a.Value), args.All(a => a.IsWhole)),
                 "max" => new(args.Max(a => a.Value), args.All(a => a.IsWhole)),

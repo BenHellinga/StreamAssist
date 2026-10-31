@@ -7,9 +7,12 @@
          and tab strips. Use the default thin, auto-hiding bars (no AllowAutoHide="False"): they stay on screen as a
          thin line and widen when hovered -->
 
+    <!-- the content is also kept 5px from the top and bottom edges, so content scrolled under the line above or below
+         (a divider, a splitter) stops 10px from it, like at rest: a Gapped scroll area's content adds no top margin -->
     <Style Selector="ScrollViewer.Gapped /template/ ScrollContentPresenter#PART_ContentPresenter">
         <Setter Property="Grid.ColumnSpan" Value="1"/>
         <Setter Property="Grid.RowSpan" Value="1"/>
+        <Setter Property="Margin" Value="0,5,0,5"/>
     </Style>
 
     <!-- the bar takes 16px, but thin it's a 2px line drawn 2px from its outer edge: take back the 12px of empty bar

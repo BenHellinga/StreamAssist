@@ -13,7 +13,7 @@
         <ScrollViewer Grid.Row="0" Classes="Gapped" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
             <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <StackPanel Spacing="10" Margin="0,5,0,0">
+                <StackPanel Spacing="10">
 
                     <!-- stream events: one bind box each -->
 
@@ -42,7 +42,7 @@
                         </ItemsControl>
                     </StackPanel>
 
-                    <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                    <Border Classes="Divider"/>
 
                     <!-- channel point redeems: one row per reward title, like Match Text rows -->
 
@@ -90,7 +90,7 @@
         <!-- a small tab bar: closed it's one line, clicking a tab opens its panel under it (the list above gets shorter),
              clicking the open tab closes it -->
 
-        <StackPanel Grid.Row="1" Spacing="5" Margin="0,0,0,5">
+        <StackPanel Grid.Row="1" Spacing="10" Margin="0,5,0,5">
             <Border Classes="Divider"/>
 
             <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">

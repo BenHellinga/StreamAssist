@@ -17,7 +17,7 @@ public class SetObsSceneAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Set OBS Scene";
-    [JsonIgnore] public override string Description => "Switches OBS to this scene (its name as OBS shows it).";
+    [JsonIgnore] public override string Description => "Switches OBS to this scene (its name as OBS shows it), remembering the scene it leaves for Return to Previous Scene (the last 5).";
 
 
 
@@ -73,9 +73,9 @@ public class SetObsSceneAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
+        var data = GlobalContext.DataModel ?? throw Fail("data not set up"); // the scene left is remembered in the variables table
         var scene = await _scene.EvaluateAsync(context);
 
-        // a failure is already logged by the manager
-        if (!(await obs.TrySetCurrentSceneAsync(scene)).Ok) throw new BlockFailedException("scene not switched");
+        if (!await ObsSceneMemory.TrySwitchAsync(obs, data, scene)) throw new BlockFailedException("scene not switched");
     }
 }

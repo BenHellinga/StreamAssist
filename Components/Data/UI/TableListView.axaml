@@ -38,14 +38,14 @@
 
         <TextBox DockPanel.Dock="Top"
                  Margin="{StaticResource HeaderMargin}"
-                 Height="{StaticResource HeaderHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                  Text="{Binding SearchText}"
                  PlaceholderText="Search tables…"/>
 
         <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
 
         <ScrollViewer Classes="Gapped">
-            <StackPanel Spacing="10" Margin="5,5,5,5">
+            <StackPanel Spacing="10" Margin="5,0,5,0">
                 <ContentControl Content="{Binding BuiltIn}"/>
                 <ContentControl Content="{Binding Custom}"/>
 

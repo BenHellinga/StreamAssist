@@ -24,7 +24,7 @@
 
             <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <StackPanel Spacing="10" Margin="0,5,0,0">
+                <StackPanel Spacing="10">
                     <ItemsControl ItemsSource="{Binding Slots}">
 
                         <!-- stack of keyboard/divider pairs -->

@@ -1,0 +1,11 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- checkboxes are ControlHeight tall like every other control: the theme's CheckBoxMinHeight (its minimum and the
+         grid its box sits in) is set to ControlHeight in Spacing.axaml, the 20px box stays centred -->
+
+    <Style Selector="CheckBox">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+</Styles>

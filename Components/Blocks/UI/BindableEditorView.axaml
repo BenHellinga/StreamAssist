@@ -38,21 +38,22 @@
                 <!-- header: what's being edited | the Parameters toggle (only when the trigger has parameters) -->
 
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15"
-                            Margin="{StaticResource HeaderMargin}" Height="{StaticResource HeaderHeight}">
+                            Margin="{StaticResource HeaderMargin}" Height="{StaticResource ControlHeight}">
                     <!-- what it is, then its label box after the same gap the text itself uses ("Key: 7     Config: ...") -->
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
                         <TextBlock Classes="Label" Text="     Label: " VerticalAlignment="Center"/>
                         <!-- greyed out until there's a saved binding with blocks (a draft or an empty one can't be labelled) -->
-                        <TextBox Width="250" MinHeight="0" VerticalAlignment="Center" Text="{Binding BindLabel}" PlaceholderText="Optional"
+                        <TextBox Width="250" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                 Text="{Binding BindLabel}" PlaceholderText="Optional"
                                  IsEnabled="{Binding CanEditBindLabel}"
                                  Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"
                                  ToolTip.Tip="Shown on its key / bind box as one more line (green, red while disabled)"/>
                     </StackPanel>
 
                     <Button Command="{Binding ParametersTogglePressedCommand}" IsVisible="{Binding HasParameters}"
-                            Height="{StaticResource HeaderHeight}" VerticalContentAlignment="Center"
-                            ToolTip.Tip="The parameters this has, for Get Parameter or {name} in typed text">
+                            Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center"
+                            ToolTip.Tip="The parameters this has, for {name} in typed text">
                         <Panel>
                             <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
                             <TextBlock Text="Parameters ▾" IsVisible="{Binding IsParametersOpen}"/>
@@ -93,7 +94,7 @@
                               Classes="Gapped">
                     <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                     <Border Padding="{StaticResource ScrollEndPadding}">
-                        <ContentControl Content="{Binding RootSlot}" Margin="5,5,10,0"/>
+                        <ContentControl Content="{Binding RootSlot}" Margin="5,0,10,0"/>
                     </Border>
                 </ScrollViewer>
 

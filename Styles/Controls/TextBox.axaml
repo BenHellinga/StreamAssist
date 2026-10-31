@@ -8,6 +8,10 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
+        <!-- one line is ControlHeight tall (like a bind box); boxes that wrap or take Enter grow from there -->
+        <Setter Property="MinHeight" Value="{DynamicResource ControlHeight}"/>
+        <Setter Property="Padding" Value="8,3,6,3"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
     <!-- hover -->

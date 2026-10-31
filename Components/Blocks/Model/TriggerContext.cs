@@ -20,6 +20,7 @@ public class TriggerContext
 
 
     private readonly Dictionary<string, string> _parameters;
+    private readonly Dictionary<string, string> _locals; // a String Builder's rows, only while its text is worked out
 
 
 
@@ -34,6 +35,9 @@ public class TriggerContext
     // plus any a Set Parameter block added earlier in this run
     public IReadOnlyDictionary<string, string> Parameters => _parameters;
 
+    // the block-scoped names (a String Builder's rows), empty for a run's own context
+    public IReadOnlyDictionary<string, string> Locals => _locals;
+
 
 
     // constructor
@@ -46,6 +50,19 @@ public class TriggerContext
         Phase = phase;
         CancellationToken = cancellationToken;
         _parameters = parameters == null ? [] : new Dictionary<string, string>(parameters);
+        _locals = [];
+    }
+
+
+
+    // the same run with a block's own names on top (String Builder): the run's parameters are shared, the locals are
+    // a copy of any outer block's plus what this block adds with SetLocal, and nothing after the block sees them
+    private TriggerContext(TriggerContext outer)
+    {
+        Phase = outer.Phase;
+        CancellationToken = outer.CancellationToken;
+        _parameters = outer._parameters;
+        _locals = new Dictionary<string, string>(outer._locals);
     }
 
 
@@ -59,6 +76,15 @@ public class TriggerContext
 
 
 
+    public TriggerContext WithLocals() => new(this);
+
+
+
+    // adds or replaces a block-scoped name (only on a context from WithLocals)
+    public void SetLocal(string name, string value) => _locals[name] = value;
+
+
+
     // a name {name} can use: letters, digits and _
     public static bool IsValidName(string name) => Regex.IsMatch(name, @"^\w+$");
 
@@ -69,13 +95,17 @@ public class TriggerContext
 
 
 
-    // fills in {name} with the parameter's value, e.g. "{user} is lurking", and {var.name} with a variable's, e.g.
-    // "{var.deaths} deaths". Unknown names are left as they are
+    // fills in each {name}, looking in the closest scope first: a String Builder's own rows (loc), then the run's
+    // parameters (run), then the variables (var), e.g. "{user} is lurking", "{deaths} deaths". A prefix reads only that
+    // scope: {loc.name}, {run.name}, {var.name}. Unknown names are left as they are
     public string Format(string template) =>
-        Regex.Replace(template, @"\{(var\.)?(\w+)\}", m =>
+        Regex.Replace(template, @"\{(?:(loc|run|var)\.)?(\w+)\}", m =>
         {
+            var scope = m.Groups[1].Value;
             var name = m.Groups[2].Value;
-            if (m.Groups[1].Success) return VariableText?.Invoke(name) ?? m.Value;
-            return Parameters.TryGetValue(name, out var value) ? value : m.Value;
+            if (scope is "" or "loc" && _locals.TryGetValue(name, out var local)) return local;
+            if (scope is "" or "run" && _parameters.TryGetValue(name, out var value)) return value;
+            if (scope is "" or "var") return VariableText?.Invoke(name) ?? m.Value;
+            return m.Value;
         });
 }

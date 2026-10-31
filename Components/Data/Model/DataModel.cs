@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -22,6 +23,16 @@ public class DataModel : ModelBase
 
 
     public const string VariablesTable = "variables";
+    public const string CooldownsTable = "cooldowns"; // label, lastRun: when each Cooldown block's label last let a run through
+
+    // the app's own tables (in this order at the top of the list) and their columns, all text; their columns and the tables
+    // themselves can't change, their rows can
+    private static readonly (string Name, string[] Columns)[] BuiltInTables =
+    [
+        (VariablesTable, ["name", "type", "value"]),
+        (CooldownsTable, ["label", "lastRun"]),
+    ];
+    private const string TimeFormat = "yyyy-MM-dd HH:mm:ss.fff"; // a cooldown's lastRun (local time, readable in the Data tab)
     public static readonly IReadOnlyList<ValueKind> ColumnKinds = [ValueKind.Text, ValueKind.Int, ValueKind.Double, ValueKind.Bool];
 
     // a table or column name: a letter or _ first, then letters, digits, _ (it's used in SQL, so nothing else)
@@ -89,22 +100,31 @@ public class DataModel : ModelBase
     // makes the built-in tables if they're missing (raising TableAdded / ColumnAdded so they're saved)
     public void EnsureBuiltInTables()
     {
-        if (FindTable(VariablesTable) != null) return;
-
-        var variables = new TableModel(VariablesTable, isBuiltIn: true);
-        _tables.Insert(0, variables);
-        TableAdded?.Invoke(variables);
-
-        foreach (var column in new[] { new TableColumn("name", ValueKind.Text), new TableColumn("type", ValueKind.Text), new TableColumn("value", ValueKind.Text) })
+        for (int i = 0; i < BuiltInTables.Length; i++)
         {
-            variables.ColumnList.Add(column);
-            ColumnAdded?.Invoke(variables, column);
+            var (name, columns) = BuiltInTables[i];
+            if (FindTable(name) != null) continue;
+
+            var table = new TableModel(name, isBuiltIn: true);
+            _tables.Insert(Math.Min(i, _tables.Count), table);
+            TableAdded?.Invoke(table);
+
+            foreach (var column in columns.Select(c => new TableColumn(c, ValueKind.Text)))
+            {
+                table.ColumnList.Add(column);
+                ColumnAdded?.Invoke(table, column);
+            }
         }
     }
 
 
 
-    public static bool IsBuiltInName(string name) => string.Equals(name, VariablesTable, StringComparison.OrdinalIgnoreCase);
+    public static bool IsBuiltInName(string name) => BuiltInTables.Any(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+
+
+
+    // the variables table has its own rules (names, types), the other built-in tables are plain text
+    private static bool IsVariables(string name) => string.Equals(name, VariablesTable, StringComparison.OrdinalIgnoreCase);
 
 
 
@@ -248,7 +268,7 @@ public class DataModel : ModelBase
         if (!TryFindTable("add row", table, out var found)) return false;
 
         row = new TableRow(found.NextId++);
-        if (IsBuiltInName(found.Name))
+        if (IsVariables(found.Name))
         {
             var n = found.RowList.Count + 1;
             while (FindVariableRow($"variable{n}") != null) n++;
@@ -325,7 +345,7 @@ public class DataModel : ModelBase
         if (!TryToColumnKind(value, valueKind, col.Kind, out var converted))
             return Refuse($"can't set {found.Name}.{col.Name} to '{ValueTypes.ToText(value ?? "")}', not {ValueTypes.Describe(col.Kind)}");
 
-        if (IsBuiltInName(found.Name)) return SetVariableCell(found, row, col, (string)(converted ?? ""));
+        if (IsVariables(found.Name)) return SetVariableCell(found, row, col, (string)(converted ?? ""));
 
         if (Equals(row.Get(col.Name), converted)) return true;
         row.Set(col.Name, converted);
@@ -449,6 +469,61 @@ public class DataModel : ModelBase
 
     // a variables cell: a valid unique name, one of the four types (its value has to fit, an empty one takes the type's
     // default), or a value that fits the type
+    // cooldowns (the Cooldown block): true if label last went through at least seconds ago (or never), and then now is
+    // its new time, so two runs at once can't both get through; false with how long is left. A label's row is made the
+    // first time it's used (case ignored, e.g. "hydrate-{userLogin}" gives every viewer their own)
+    public bool UseCooldown(string label, double seconds, DateTime now, out double secondsLeft)
+    {
+        secondsLeft = 0;
+        var name = label.Trim();
+        var row = FindRowByText(CooldownsTable, "label", name);
+
+        if (row?.Get("lastRun") is string last && DateTime.TryParseExact(last, TimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var lastRun))
+        {
+            var waited = (now - lastRun).TotalSeconds;
+            if (waited >= 0 && waited < seconds)
+            {
+                secondsLeft = seconds - waited;
+                return false;
+            }
+        }
+
+        if (row == null)
+        {
+            if (!TryAddRow(CooldownsTable, out row)) return true; // couldn't remember it (already logged), let the run through
+            TrySetValue(CooldownsTable, row.Id, "label", name);
+        }
+
+        TrySetValue(CooldownsTable, row.Id, "lastRun", now.ToString(TimeFormat, CultureInfo.InvariantCulture));
+        return true;
+    }
+
+
+
+    // a variable as text, "" if there's no such variable (e.g. the scenes Return to Previous Scene goes back to)
+    public string GetVariableText(string name) => FindVariableRow(name)?.Get("value") as string ?? "";
+
+
+
+    // sets a variable from text, making it as a Text variable first if there's none (for things the app keeps itself,
+    // like previousScene1); false (logged) if the value doesn't fit an existing variable's type
+    public bool SetVariableText(string name, string value)
+    {
+        if (FindVariableRow(name) == null)
+        {
+            if (!TryAddRow(VariablesTable, out var row) || !TrySetValue(VariablesTable, row.Id, "name", name)) return false;
+        }
+
+        return TrySetVariable(name, value);
+    }
+
+
+
+    private TableRow? FindRowByText(string table, string column, string text) =>
+        FindTable(table)?.RowList.Find(r => string.Equals(r.Get(column) as string, text.Trim(), StringComparison.OrdinalIgnoreCase));
+
+
+
     private bool SetVariableCell(TableModel table, TableRow row, TableColumn column, string text)
     {
         var changes = new List<(TableColumn Column, string Value)>();
