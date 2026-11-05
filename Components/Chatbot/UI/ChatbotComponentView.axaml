@@ -10,7 +10,6 @@
 
     <DockPanel>
         <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{StaticResource HeaderMargin}"/>
-        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
         <ContentControl Content="{Binding Page}"/>
     </DockPanel>
 

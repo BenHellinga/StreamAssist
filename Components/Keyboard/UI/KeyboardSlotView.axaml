@@ -51,8 +51,7 @@
 
             <StackPanel Orientation="Horizontal" Spacing="10">
                 <TextBlock Classes="Label" Text="Layout"/>
-                <ComboBox ItemsSource="{Binding Layouts}" SelectedItem="{Binding MenuLayout}"
-                          ToolTip.Tip="Binds belong to keys, so a bind shows in every layout that has its key"/>
+                <ComboBox ItemsSource="{Binding Layouts}" SelectedItem="{Binding MenuLayout}"/>
             </StackPanel>
         </StackPanel>
 

@@ -98,14 +98,20 @@ public class TriggerContext
     // fills in each {name}, looking in the closest scope first: a String Builder's own rows (loc), then the run's
     // parameters (run), then the variables (var), e.g. "{user} is lurking", "{deaths} deaths". A prefix reads only that
     // scope: {loc.name}, {run.name}, {var.name}. Unknown names are left as they are
-    public string Format(string template) =>
+    public string Format(string template) => Format(template, (_, value, _) => value);
+
+
+
+    // the same, but each value found goes through fill (the {...} as typed, its value, where it starts) and the
+    // result is put in, e.g. Expression passes values in by name instead of pasting their text into the formula
+    public string Format(string template, Func<string, string, int, string> fill) =>
         Regex.Replace(template, @"\{(?:(loc|run|var)\.)?(\w+)\}", m =>
         {
             var scope = m.Groups[1].Value;
             var name = m.Groups[2].Value;
-            if (scope is "" or "loc" && _locals.TryGetValue(name, out var local)) return local;
-            if (scope is "" or "run" && _parameters.TryGetValue(name, out var value)) return value;
-            if (scope is "" or "var") return VariableText?.Invoke(name) ?? m.Value;
+            if (scope is "" or "loc" && _locals.TryGetValue(name, out var local)) return fill(m.Value, local, m.Index);
+            if (scope is "" or "run" && _parameters.TryGetValue(name, out var value)) return fill(m.Value, value, m.Index);
+            if (scope is "" or "var" && VariableText?.Invoke(name) is { } variable) return fill(m.Value, variable, m.Index);
             return m.Value;
         });
 }

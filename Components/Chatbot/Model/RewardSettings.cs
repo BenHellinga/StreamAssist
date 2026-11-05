@@ -79,5 +79,5 @@ public static class RewardSettings
 
 
 
-// what the New reward panel asks twitch to create (ChatbotComponentModel.TryRequestCreateReward)
+// what the New redeem panel asks twitch to create (ChatbotComponentModel.TryRequestCreateReward)
 public sealed record NewReward(string Title, int Cost, string Prompt, bool UserInputRequired);

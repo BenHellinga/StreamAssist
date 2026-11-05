@@ -33,6 +33,7 @@
 
     <Style Selector="Button.Square">
         <Setter Property="Width" Value="{Binding RelativeSource={RelativeSource Self}, Path=Bounds.Height}"/>
+        <Setter Property="Padding" Value="0"/> <!-- the icon needs the whole square, a text button's side padding cut it off -->
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>

@@ -131,7 +131,8 @@ public static class TwitchApi
 
 
     // sends a chat message as the logged in account, throws if twitch accepted it but didn't post it (e.g. automod)
-    public static async Task SendChatMessageAsync(TwitchSession session, string broadcasterId, string message, CancellationToken ct)
+    // replyTo: a chat message's id to answer as a threaded reply, null for a plain message
+    public static async Task SendChatMessageAsync(TwitchSession session, string broadcasterId, string message, CancellationToken ct, string? replyTo = null)
     {
         var body = new JsonObject
         {
@@ -139,6 +140,7 @@ public static class TwitchApi
             ["sender_id"] = session.UserId,
             ["message"] = message,
         };
+        if (!string.IsNullOrEmpty(replyTo)) body["reply_parent_message_id"] = replyTo;
 
         var result = await HelixAsync(session, HttpMethod.Post, "chat/messages", body, ct);
 

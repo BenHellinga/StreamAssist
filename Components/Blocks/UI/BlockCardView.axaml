@@ -19,7 +19,7 @@
             </DockPanel>
             <TextBlock Classes="Description" Margin="5,0,5,5"
                        Text="{Binding Description}"
-                       MaxLines="2"/>
+                       MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
     </Border>
 

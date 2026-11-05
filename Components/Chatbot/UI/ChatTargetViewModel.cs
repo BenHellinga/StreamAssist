@@ -34,6 +34,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     [ObservableProperty] private bool _showBindBox;
     [ObservableProperty] private bool _showSlot;
     [ObservableProperty] private string _command; // e.g. "!pay {user} {amount}", a redeem's title or "Raid"
+    [ObservableProperty] private string? _commandTip; // null: no tooltip
 
 
 
@@ -200,7 +201,13 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
 
     // the command that reaches it, or the redeem's title / the event's name
-    private void UpdateCommand() => Command = _model.Describe(_target)?.Text ?? "";
+    // the box's tooltip is the full command (for long ones cut off with …), only on chat commands, not alerts / redeems
+    private void UpdateCommand()
+    {
+        var description = _model.Describe(_target);
+        Command = description?.Text ?? "";
+        CommandTip = description?.Kind == "Chat command" ? Command : null;
+    }
 
 
 

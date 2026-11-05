@@ -262,6 +262,65 @@ public class DataModel : ModelBase
 
 
     // a new row at the end with empty cells (a variable gets a free name, type Text and an empty value)
+    // a row by what a block's Row says: its id ("4"), or a column's value ("user=budder", as text, case ignored).
+    // addIfMissing makes a row with that value when there's none; otherwise a missing value row is just null (true),
+    // while a missing id, an unknown column or text that's neither is refused (logged)
+    public bool TryFindRow(string table, string rowRef, bool addIfMissing, out TableRow? row)
+    {
+        row = null;
+        if (!TryFindTable("find row", table, out var found)) return false;
+
+        var text = rowRef.Trim();
+        if (int.TryParse(text, out var id))
+        {
+            row = found.FindRow(id);
+            return row != null || Refuse($"{found.Name} has no row {id}");
+        }
+
+        var equals = text.IndexOf('=');
+        if (equals <= 0) return Refuse($"can't find row '{text}' in {found.Name}, use an id or column=value");
+        var column = text[..equals].Trim();
+        var value = text[(equals + 1)..].Trim();
+
+        if (addIfMissing)
+        {
+            if (!TryFindOrAddRow(found.Name, column, value, out var made)) return false;
+            row = made;
+            return true;
+        }
+
+        if (!TryFindColumn(found, column, out var col)) return false;
+        row = found.RowList.Find(r => string.Equals(ValueTypes.ToText(r.Get(col.Name) ?? "").Trim(), value, StringComparison.OrdinalIgnoreCase));
+        return true;
+    }
+
+
+
+    // the first row whose column has this value (compared as text, case and surrounding spaces ignored), or a new row
+    // with the column set to it: e.g. a viewer's row by their login, made the first time they show up
+    public bool TryFindOrAddRow(string table, string column, string value, out TableRow row)
+    {
+        row = null!;
+        if (!TryFindTable("find or add row", table, out var found)) return false;
+        if (!TryFindColumn(found, column, out var col)) return false;
+
+        var wanted = value.Trim();
+        var existing = found.RowList.Find(r => string.Equals(ValueTypes.ToText(r.Get(col.Name) ?? "").Trim(), wanted, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            row = existing;
+            return true;
+        }
+
+        if (!TryAddRow(found.Name, out row)) return false;
+        if (TrySetValue(found.Name, row.Id, col.Name, wanted)) return true;
+
+        TryDeleteRow(found.Name, row.Id); // the value doesn't fit the column (already logged), so no half-made row is left
+        return false;
+    }
+
+
+
     public bool TryAddRow(string table, out TableRow row)
     {
         row = null!;

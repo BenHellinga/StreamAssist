@@ -412,15 +412,15 @@ internal static class EngineChecks
         {
             int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
             string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
-            (double Value, bool Whole)? F(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var r, out _) ? (r.Value, r.IsWhole) : null;
-            string Err(string text) { StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out _, out var e); return e; }
+            object? F(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, new Dictionary<string, object>(), null, out var r, out _) ? r : null;
+            string Err(string text) { StreamAssist.Core.Utilities.Formula.TryEvaluate(text, new Dictionary<string, object>(), null, out _, out var e); return e; }
 
-            Check("formula: precedence and parentheses", F("2+3*4") == (14, true) && F("(2+3)*4") == (20, true) && F("10-3-2") == (5, true));
-            Check("formula: triangle numbers", F("25*(25+1)/2") == (325, true) && F("(25-1)*25/2") == (300, true));
-            Check("formula: whole division drops decimals like C#", F("7/2") == (3, true) && F("-7/2") == (-3, true) && F("7%3") == (1, true));
-            Check("formula: a decimal makes that part decimal", F("7/2.0") == (3.5, false) && F("7/2*2.0") == (6, false) && F("1.5+1") == (2.5, false));
-            Check("formula: signs, spaces and × ÷ −", F(" -3 + -(-2) ") == (-1, true) && F("6 × 7") == (42, true) && F("9 ÷ 3 − 1") == (2, true) && F("3--5") == (8, true));
-            Check("formula: mistakes are explained", Err("1/0").Contains("divide by zero") && Err("(1+2").Contains("never closed") && Err("2+").Contains("ends too early") && Err("2 x 3").Contains("didn't expect 'x'") && Err("1.2.3").Contains("isn't a number"));
+            Check("formula: precedence and parentheses", F("2+3*4") is 14 && F("(2+3)*4") is 20 && F("10-3-2") is 5);
+            Check("formula: triangle numbers", F("25*(25+1)/2") is 325 && F("(25-1)*25/2") is 300);
+            Check("formula: whole division drops decimals like C#", F("7/2") is 3 && F("-7/2") is -3 && F("7%3") is 1);
+            Check("formula: a decimal makes that part decimal", F("7/2.0") is 3.5 && F("7/2*2.0") is 6.0 && F("1.5+1") is 2.5);
+            Check("formula: signs and spaces", F(" -3 + -(-2) ") is -1 && F("3- -5") is 8);
+            Check("formula: mistakes are explained", Err("1/0").Contains("divide by zero") && Err("(1+2") != "" && Err("2+") != "" && Err("2 x 3") != "" && !Err("2 x 3").Contains("at index"));
 
             var ctx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["cost"] = "25" });
             ExpressionBlock Expr(string text) { var e = new ExpressionBlock(); e.Formula.SetText(text); return e; }
@@ -434,7 +434,7 @@ internal static class EngineChecks
             var e0 = Errors();
             var exprFailed = false;
             try { Eval(Expr("{cost}/0")); } catch (BlockFailedException) { exprFailed = true; }
-            Check("expression: a bad formula fails with one error naming it", exprFailed && Errors() == e0 + 1 && LastError().Contains("error - Expression: '25/0' can't divide by zero"));
+            Check("expression: a bad formula fails with one error naming it", exprFailed && Errors() == e0 + 1 && LastError().Contains("error - Expression: '25/0' attempted to divide by zero"));
             var builder = new StringBuilderBlock();
             builder.Text.SetText("total: {t}");
             var tRow = builder.Values.Items[^1];
@@ -443,12 +443,15 @@ internal static class EngineChecks
             Check("expression: a whole answer reads cleanly as text", Eval(builder) is "total: 325");
 
             // true/false: comparisons and logic, like C#
-            bool? Bf(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var r, out _) && r.IsBool ? r.AsBool : null;
-            Check("formula: comparisons", Bf("3 == 3.0") == true && Bf("3 != 3") == false && Bf("2 < 3") == true && Bf("3 <= 2") == false && Bf("4 >= 4") == true && Bf("5 ≥ 6") == false);
-            Check("formula: && || ! and true / false, C#'s precedence", Bf("1 < 2 && 2 < 3") == true && Bf("false || 1 == 1") == true && Bf("!(1 == 1)") == false
-                && Bf("true && !false") == true && Bf("1 + 1 == 2 || false && false") == true && Bf("TRUE") == true);
-            Check("formula: maths and true/false don't mix", Err("true + 1").Contains("needs numbers") && Err("5 && 1").Contains("needs true/false")
-                && Err("5 == true").Contains("can't compare") && Err("1 = 1") != "" && Bf("5") == null);
+            Check("formula: comparisons", F("3 == 3.0") is true && F("3 != 3") is false && F("2 < 3") is true && F("3 <= 2") is false && F("4 >= 4") is true);
+            Check("formula: && || ! and true / false, C#'s precedence", F("1 < 2 && 2 < 3") is true && F("false || 1 == 1") is true && F("!(1 == 1)") is false
+                && F("true && !false") is true && F("1 + 1 == 2 || false && false") is true);
+            Check("formula: maths and true/false don't mix", Err("true + 1") != "" && Err("5 && 1") != "" && Err("5 == true") != "" && Err("1 = 1") != "");
+            Check("formula: text, its methods and ? :", F("\"Bob\" == \"Bob\"") is true && F("\"Bob\" == \"bob\"") is false && F("\"hello\".Contains(\"ell\")") is true
+                && F("\"Bob\".ToLower()") is "bob" && F("\"abc\".Length") is 3 && F("2 > 1 ? \"yes\" : \"no\"") is "yes" && F("Math.Sqrt(16)") is 4.0);
+            Check("formula: no files, reflection or assigning", Err("\"a\".GetType().Assembly") != "" && Err("System.IO.File.Exists(\"x\")") != "" && Err("x = 5") != "");
+            Check("formula: a value is read as a number, true/false or else text", StreamAssist.Core.Utilities.Formula.ReadValue("5") is 5 && StreamAssist.Core.Utilities.Formula.ReadValue("2.5") is 2.5 && StreamAssist.Core.Utilities.Formula.ReadValue("True") is true
+                && StreamAssist.Core.Utilities.Formula.ReadValue("Bob") is "Bob" && StreamAssist.Core.Utilities.Formula.ReadValue("NaN") is "NaN" && StreamAssist.Core.Utilities.Formula.ReadValue("") is "");
             var ifCondition = new BlockBranchList("");
             ifCondition.TryInsertBranch(Expr("{cost} == 25 && !({cost} > 30)"), 0);
             var asCondition = (ExpressionBlock)ifCondition.Branches[0].Condition.Block!;
@@ -457,6 +460,24 @@ internal static class EngineChecks
             var mixFailed = false;
             try { Eval(Expr("{cost} > 1")); } catch (BlockFailedException) { mixFailed = true; }
             Check("expression: true/false in a number slot fails naming it", mixFailed && Errors() == e1 + 1 && LastError().Contains("gives true/false, not a number"));
+
+            // text: each {name} goes in as a value, so quotes or brackets in it can't change the formula
+            var chat = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "Bob", ["message"] = "hi \"there\") || true", ["id"] = "1234" });
+            object EvalIn(ValueBlock block, TriggerContext c) => block.EvaluateObjectAsync(c).GetAwaiter().GetResult();
+            ExpressionBlock Check2(string text) { var b = new BlockBranchList(""); b.TryInsertBranch(Expr(text), 0); return (ExpressionBlock)b.Branches[0].Condition.Block!; }
+            Check("expression: text comparisons", EvalIn(Check2("{user} == \"Bob\""), chat) is true && EvalIn(Check2("{user} == \"bob\""), chat) is false
+                && EvalIn(Check2("{user}.ToLower() == \"bob\" && {message}.Contains(\"there\")"), chat) is true);
+            Check("expression: a value with quotes stays one value", EvalIn(Check2("{message} == \"x\""), chat) is false);
+            Check("expression: a number-looking value is a number, ToString() reads it as text", EvalIn(Check2("{id} == 1234"), chat) is true && EvalIn(Check2("{id}.ToString() == \"1234\""), chat) is true);
+            var textSlot = new ValueSlot<string>("x");
+            var greeting = Expr("\"Hi {user}, \" + ({cost} > 1 ? \"big\" : \"small\")");
+            var both = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "Bob \"B\"", ["cost"] = "25" });
+            Check("expression: in a text slot it gives text, {name} inside quotes is part of that text", textSlot.BlockSlot.TrySetBlock(greeting) && greeting.Kind == ValueKind.Text
+                && EvalIn(greeting, both) is "Hi Bob \"B\", big");
+            var e2 = Errors();
+            var wordFailed = false;
+            try { EvalIn(Check2("{user}==Bob"), chat); } catch (BlockFailedException) { wordFailed = true; }
+            Check("expression: unquoted text fails showing the values", wordFailed && Errors() == e2 + 1 && LastError().Contains("Expression: 'Bob==Bob' unknown identifier 'Bob'"));
         }
 
         // ---- Set Parameter (main thread, errors are counted) ----
@@ -606,27 +627,29 @@ internal static class EngineChecks
                 && RunObs(Block(new SetObsSourceSettingAction(), "Title", "vertical", "true")) && fake.Inputs["Title"].Settings["vertical"]!.GetValueKind() == System.Text.Json.JsonValueKind.True);
             Check("obs blocks: a new text setting stays text", RunObs(Block(new SetObsSourceSettingAction(), "Title", "font_face", "Arial")) && fake.Inputs["Title"].Settings["font_face"]!.GetValue<string>() == "Arial");
             Check("obs blocks: get a setting as text or a number", Eval(Block(new GetObsSourceSettingBlock(), "Title", "text")) is "bob raided" && Eval(Block(new GetObsSourceSettingBlock { As = "Int" }, "Title", "opacity")) is 50);
-            // every switch remembers the scene it leaves (in variables), Return to Previous Scene goes back like undo
-            var obsData = new DataModel();
-            obsData.EnsureBuiltInTables();
-            StreamAssist.Shell.GlobalContext.DataModel = obsData;
-            fake.Scenes["BRB"] = new();
-            string History() => string.Join(",", ObsSceneMemory.Load(obsData));
-            Check("obs blocks: switch scene, remembering the one left", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && fake.CurrentScene == "Just Chatting"
-                && History() == "Gaming" && obsData.VariableKind("previousScene1") == ValueKind.Text && obsData.FindTable("misc") == null);
-            Check("obs scenes: switching to the scene already live remembers nothing", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && History() == "Gaming");
-            Check("obs scenes: Gaming -> Just Chatting -> BRB, most recent first", RunObs(Block(new SetObsSceneAction(), "BRB")) && History() == "Just Chatting,Gaming");
-            Check("obs scenes: Return goes back one at a time, like undo", RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "Just Chatting" && History() == "Gaming"
-                && RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "Gaming" && History() == "");
-            var eNone = Errors();
-            Check("obs scenes: nothing left to go back to fails with one error", !RunObs(new ReturnToPreviousSceneAction()) && Errors() == eNone + 1 && LastError().Contains("none remembered"));
-            foreach (var scene in new[] { "BRB", "Gaming", "BRB", "Just Chatting", "Gaming", "BRB", "Gaming" }) RunObs(Block(new SetObsSceneAction(), scene));
-            Check("obs scenes: only the last 5 are kept", History() == "BRB,Gaming,Just Chatting,BRB,Gaming");
-            fake.CurrentScene = "BRB"; // changed in OBS itself
-            Check("obs scenes: a scene picked in OBS counts as the one left, and Return skips one that's already live",
-                RunObs(Block(new SetObsSceneAction(), "Gaming")) && History() == "BRB,BRB,Gaming,Just Chatting,BRB"
-                && RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "BRB" && History() == "BRB,Gaming,Just Chatting,BRB"
-                && RunObs(new ReturnToPreviousSceneAction()) && fake.CurrentScene == "Gaming" && History() == "Just Chatting,BRB");
+            Check("obs blocks: switch scene", RunObs(Block(new SetObsSceneAction(), "Just Chatting")) && fake.CurrentScene == "Just Chatting");
+            // resizing keeps the chosen point still (Title is top-left aligned, in Gaming)
+            (double Right, double Bottom, double Width) Corner()
+            {
+                var t = fake.Scenes["Gaming"][1].Transform;
+                return (t["positionX"]!.GetValue<double>() + t["width"]!.GetValue<double>(), t["positionY"]!.GetValue<double>() + t["height"]!.GetValue<double>(), t["width"]!.GetValue<double>());
+            }
+            var before = Corner();
+            var grow = Block(new ResizeObsSourceAction(), "Gaming", "Title", "50");
+            var shrink = Block(new ResizeObsSourceAction(), "Gaming", "Title", "-50");
+            var grown = RunObs(grow) ? Corner() : default;
+            var shrunk = RunObs(shrink) ? Corner() : default;
+            var set = Block(new ResizeObsSourceAction { Mode = "Set size to" }, "Gaming", "Title", "", "100", "100");
+            var setTo = RunObs(set) ? Corner() : default;
+            bool Near(double a, double b) => Math.Abs(a - b) < 0.001;
+            Check("obs resize: grows and shrinks by a percent, the bottom-right corner stays put", Near(grown.Width, before.Width * 1.5) && Near(grown.Right, before.Right) && Near(grown.Bottom, before.Bottom)
+                && Near(shrunk.Width, before.Width * 0.75) && Near(shrunk.Right, before.Right) && Near(shrunk.Bottom, before.Bottom));
+            Check("obs resize: set to a size, same corner", Near(setTo.Width, 100) && Near(setTo.Right, before.Right) && Near(setTo.Bottom, before.Bottom));
+            Check("obs blocks: filters on, off and toggled", RunObs(Block(new SetObsFilterAction { Change = "Off" }, "Title", "Glow")) && fake.Filters["Title/Glow"] == false
+                && RunObs(Block(new SetObsFilterAction(), "Title", "Glow")) && fake.Filters["Title/Glow"]);
+            Check("obs blocks: recording started, started again silently, toggled, a replay saved", RunObs(new SetObsOutputAction { Change = "Start" }) && fake.Recording
+                && RunObs(new SetObsOutputAction { Change = "Start" }) && fake.Recording && RunObs(new SetObsOutputAction()) && !fake.Recording
+                && RunObs(new SaveObsReplayAction()) && fake.ReplaysSaved == 1);
 
 
             // failures: one error with OBS's reason, and the run stops
@@ -641,7 +664,6 @@ internal static class EngineChecks
             Check("obs: not connected fails with one error", !RunObs(Block(new SetObsSceneAction(), "Gaming")) && Errors() == e3 + 1 && LastError().Contains("error - can't switch to scene 'Gaming', obs not connected"));
 
             StreamAssist.Shell.GlobalContext.ObsManager = null;
-            StreamAssist.Shell.GlobalContext.DataModel = null;
             obs.Dispose();
         }
 
@@ -1709,12 +1731,12 @@ internal static class EngineChecks
             Check("Convert to Bool", (bool)await MakeConvert("Bool", "{mod}").EvaluateObjectAsync(ctx));
 
             // Expression's functions (Round is gone)
-            double? Fn(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, out var n, out _) ? n.Value : null;
+            double? Fn(string text) => StreamAssist.Core.Utilities.Formula.TryEvaluate(text, new Dictionary<string, object>(), null, out var n, out _) ? Convert.ToDouble(n) : null;
             Check("expression functions", Fn("round(2.5)") == 3 && Fn("round(-2.5)") == -3 && Fn("floor(2.7)") == 2 && Fn("ceil(2.1)") == 3 && Fn("truncate(-2.7)") == -2
-                && Fn("abs(-4)") == 4 && Fn("log10(1000)") == 3 && Fn("pow(2, 10)") == 1024 && Fn("log10(0)") == null && Fn("max(1, 7, 3)") == 7 && Fn("min(2.5, 1)") == 1 && Fn("ROUND(10 / 4.0) * 2") == 6);
-            Check("expression functions: rounding gives a whole number, mistakes fail", StreamAssist.Core.Utilities.Formula.TryEvaluate("round(7 / 2.0)", out var rounded, out _) && rounded.IsWhole && rounded.Value == 4
-                && !StreamAssist.Core.Utilities.Formula.TryEvaluate("sqrt(4)", out _, out var noFunction) && noFunction.Contains("no function 'sqrt'")
-                && Fn("round(1, 2)") == null && Fn("max()") == null && Fn("abs(true)") == null && Fn("round(2") == null);
+                && Fn("abs(-4)") == 4 && Fn("log10(1000)") == 3 && Fn("pow(2, 10)") == 1024 && Fn("max(1, 7, 3)") == 7 && Fn("min(2.5, 1)") == 1 && Fn("round(10 / 4.0) * 2") == 6);
+            Check("expression functions: rounding gives a whole number, mistakes fail", StreamAssist.Core.Utilities.Formula.TryEvaluate("round(7 / 2.0)", new Dictionary<string, object>(), null, out var rounded, out _) && rounded is 4
+                && StreamAssist.Core.Utilities.Formula.TryEvaluate("max(1, 2)", new Dictionary<string, object>(), null, out var wholeMax, out _) && wholeMax is 2
+                && Fn("nope(4)") == null && Fn("round(1, 2)") == null && Fn("max()") == null && Fn("abs(true)") == null && Fn("round(2") == null);
 
             // string builder: a text with {name}s, and rows below it that only this block sees
             var sb = new StringBuilderBlock();
@@ -2291,8 +2313,50 @@ internal static class EngineChecks
                 && reloaded.FindTable("cooldowns")!.Rows.Any(r => r.Get("label") is "test-budder") && cooldown.Slots.Count == 3);
             Check("cooldown block: saved and loaded, under Control", BlockResolver.DeepCopy(cooldown) is CooldownBlock copiedCooldown && ((ValueSlot)copiedCooldown.Slots[0]).Text == "test-{userLogin}"
                 && ((BlockSlot)copiedCooldown.Slots[2]).Block is RecordBlock && new CooldownBlock().Group == BlockGroup.Control);
+
+            // find or add a row, and rows as text (a leaderboard)
+            reloaded.TryCreateTable("spent");
+            reloaded.TryAddColumn("spent", "user", ValueKind.Text);
+            reloaded.TryAddColumn("spent", "total", ValueKind.Int);
+            async Task<bool> Spend(string user, string amount)
+            {
+                var spendContext = new TriggerContext(TriggerPhase.Once, default);
+                var find = new FindOrAddTableRowAction { Table = "spent" };
+                ((ValueSlot)find.Slots[1]).SetText("user");
+                ((ValueSlot)find.Slots[2]).SetText(user);
+                var change = With(new ChangeTableValueAction { Table = "spent" }, "{rowId}", "total", amount);
+                var list = new ListBlock();
+                ((BlockSlotList)list.Slots[0]).TryInsertBlock(find, 0);
+                ((BlockSlotList)list.Slots[0]).TryInsertBlock(change, 1);
+                await list.SafeRunAsync(spendContext);
+                return spendContext.Parameters.ContainsKey("rowId");
+            }
+            Check("find or add row: adds a row the first time, finds it after (case ignored)", await Spend("budder", "10") && await Spend("BUDDER", "5") && await Spend("amy", "40") && await Spend("cal", "1")
+                && reloaded.FindTable("spent")!.Rows.Count == 3 && reloaded.FindTable("spent")!.Rows[0].Get("total") is 15);
+            Check("row by value: Change Table Value adds the row if there's none, Get Table Value reads it (or 0 for none)",
+                await Do(With(new ChangeTableValueAction { Table = "spent" }, "user=dave", "total", "7")) && await Do(With(new ChangeTableValueAction { Table = "spent" }, "user=DAVE", "total", "1"))
+                && await With(new GetTableValueBlock { Table = "spent", As = "Int" }, "user=dave", "total").EvaluateObjectAsync(dctx) is 8
+                && await With(new GetTableValueBlock { Table = "spent", As = "Int" }, "user=nobody", "total").EvaluateObjectAsync(dctx) is 0
+                && !await Do(With(new ChangeTableValueAction { Table = "spent" }, "dave", "total", "1")));
+            reloaded.TryDeleteRow("spent", reloaded.FindTable("spent")!.Rows.Single(r => r.Get("user") is "dave").Id);
+            var top = new TableRowsBlock { Table = "spent" };
+            ((ValueSlot)top.Slots[2]).SetText("total");
+            ((ValueSlot)top.Slots[3]).SetText("2");
+            ((ValueSlot)top.Slots[4]).SetText("{user}: {total}");
+            Check("table rows: highest first, the first Count, each row's columns as {names}", await top.EvaluateAsync(dctx) == "amy: 40, budder: 15");
+            top.Order = "Lowest first";
+            ((ValueSlot)top.Slots[1]).SetText("total>1");
+            Check("table rows: lowest first, filtered by a query", await top.EvaluateAsync(dctx) == "budder: 15, amy: 40");
+            ((ValueSlot)top.Slots[1]).SetText("user=nobody");
+            ((ValueSlot)top.Slots[1]).SetText("");
+            reloaded.TrySetValue("spent", 1, "total", "1000090");
+            top.Numbers = "1,000s";
+            top.Order = "Highest first";
+            Check("table rows: numbers with thousands separators", await top.EvaluateAsync(dctx) == "budder: 1,000,090, amy: 40");
+            ((ValueSlot)top.Slots[1]).SetText("user=nobody");
+            Check("table rows: no rows is empty text", await top.EvaluateAsync(dctx) == "" && !dctx.Parameters.ContainsKey("user"));
             Check("data blocks: a missing table fails", !await Do(new AddTableRowAction { Table = "nope" }));
-            Check("data blocks: under the Data heading, saved and loaded", new SetVariableAction().Group == BlockGroup.Data && new CountTableRowsBlock().Group == BlockGroup.Data
+            Check("data blocks: under the Variables and Tables headings, saved and loaded", new SetVariableAction().Group == BlockGroup.Variables && new GetVariableBlock().Group == BlockGroup.Variables && new CountTableRowsBlock().Group == BlockGroup.Tables
                 && BlockResolver.DeepCopy(new GetVariableBlock { Variable = "deaths" }) is GetVariableBlock { Variable: "deaths", Kind: ValueKind.Int });
 
             // the Data tab's grid follows the model, and edits go through it

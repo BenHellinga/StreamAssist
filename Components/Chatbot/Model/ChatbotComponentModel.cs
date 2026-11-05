@@ -255,7 +255,7 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // asks for a new channel point reward on twitch (the New reward panel, or anything else), the chatbot manager creates
+    // asks for a new channel point reward on twitch (the New redeem panel, or anything else), the chatbot manager creates
     // it as the streamer and adds a redeem row for it. Rewards made this way are the only ones the app can change later
     // (Set Reward Setting): twitch only lets the app that created a reward edit it
     public bool TryRequestCreateReward(string title, string cost, string prompt, bool userInputRequired)
@@ -335,7 +335,7 @@ public class ChatbotComponentModel : ModelBase
         if (place.Row != null && !place.Row.Target.IsEmpty)
             return Refuse(logErrors, out failure, CommandFailure.AlreadyExists, $"can't add {name}, already exists");
 
-        var send = new SendChatMessageAction();
+        var send = new SendChatMessageAction { Reply = "Yes" }; // commands answer the message that asked
         send.Message.SetText(text);
         var bindable = new BindableModel();
         bindable.Root.TrySetBlock(send);

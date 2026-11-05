@@ -39,6 +39,8 @@ public static class TwitchInfos
         new("Account Age Days", ValueKind.Int, "whole days since the account was made"),
         new("Created On", ValueKind.Text, "the date the account was made, e.g. 2019-06-02"),
         new("Description", ValueKind.Text, "their channel's bio"),
+        new("Last Category", ValueKind.Text, "the game / category their channel is set to, what they last streamed (live or not)"),
+        new("Last Title", ValueKind.Text, "their channel's stream title, from when they last set it"),
     ];
 
     // Set Chat Mode: slow mode takes seconds (3 to 120), followers only takes minutes followed (0 to 129600)

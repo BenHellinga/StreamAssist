@@ -108,7 +108,7 @@ public abstract class BlockSlotBase : IDisposable
     // slots call this just before placing a block Accepts said yes to: an "any type" block switches to the wanted kind
     protected void Adapt(BlockModel block)
     {
-        if (block is AdaptableValueBlock adaptable && !Fits(block) && WantedKind is { } kind)
+        if (block is AdaptableValueBlock adaptable && WantedKind is { } kind && (!Fits(block) || adaptable.FollowsSlot && adaptable.CanBe(kind)))
             adaptable.SetKindForPlacement(kind);
     }
 

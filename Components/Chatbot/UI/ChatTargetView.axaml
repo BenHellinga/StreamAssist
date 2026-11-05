@@ -37,7 +37,7 @@
                 Classes.Triggered="{Binding IsTriggered}"
                 MinWidth="100" MinHeight="25" VerticalAlignment="Top"
                 IsVisible="{Binding ShowBindBox}"
-                ToolTip.Tip="{Binding Command}"
+
                 DragDrop.AllowDrop="True"
                 DragDrop.DragOver="OnDragOver"
                 DragDrop.DragLeave="OnDragLeave"
@@ -53,9 +53,10 @@
                            Classes.Placeholder="{Binding !IsBound}"
                            Margin="6,0,0,0" MaxWidth="260" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
+                <!-- across both columns: only the command line needs room beside it for the buttons -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
                            Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                           Margin="6,0,0,2"/>
+                           Margin="6,0,6,2"/>
 
                 <Panel Grid.Row="0" Grid.Column="1">
                     <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>

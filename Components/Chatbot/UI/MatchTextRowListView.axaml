@@ -16,7 +16,7 @@
 
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="ui:MatchTextRowViewModel">
-                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="5">
 
                     <!-- an empty row (the one at the end that adds the next) has a dim border, in the background -->
                     <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top"

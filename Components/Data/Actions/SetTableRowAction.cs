@@ -16,7 +16,7 @@ public class SetTableRowAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Set Table Row";
-    [JsonIgnore] public override string Description => "Set Table Value for several cells of one row: a column name on each row with its value to the right, set top to bottom. Each value is converted to its column's type, and the first one that doesn't fit stops the run (the ones above it are already set).";
+    [JsonIgnore] public override string Description => "Set Table Value for several cells of one row: a column name on each row with its value to the right, set top to bottom. Each value is converted to its column's type, and the first one that doesn't fit stops the run (the ones above it are already set). Row is an id ({rowId}) or column=value, e.g. user={userLogin} (that row is added if there's none).";
 
 
 
@@ -25,7 +25,7 @@ public class SetTableRowAction : ActionBlock
 
 
     private readonly ValueSlot<string> _table;
-    private readonly ValueSlot<int> _row;
+    private readonly ValueSlot<string> _row;
     private readonly ValueSlotPairList _values;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -100,12 +100,13 @@ public class SetTableRowAction : ActionBlock
     {
         var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var table = await _table.EvaluateAsync(context);
-        var row = await _row.EvaluateAsync(context);
+        var rowRef = await _row.EvaluateAsync(context);
+        if (!data.TryFindRow(table, rowRef, addIfMissing: true, out var row)) throw new BlockFailedException("row not found"); // logged
 
         foreach (var (column, kind, value) in await _values.EvaluateFilledAsync(context))
         {
             if (column == "") throw Fail("a row needs a column name");
-            if (!data.TrySetValue(table, row, column, value, kind)) throw new BlockFailedException("value not set");
+            if (!data.TrySetValue(table, row!.Id, column, value, kind)) throw new BlockFailedException("value not set");
         }
     }
 }

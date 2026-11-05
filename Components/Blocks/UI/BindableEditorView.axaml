@@ -17,7 +17,8 @@
 
         <!-- editor -->
 
-        <Grid Grid.Column="0">
+        <!-- clipped, so a header wider than the column (block list dragged left) doesn't draw over the list -->
+        <Grid Grid.Column="0" ClipToBounds="True">
 
             <!-- nothing selected -->
 
@@ -47,13 +48,11 @@
                         <TextBox Width="250" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
                                  Text="{Binding BindLabel}" PlaceholderText="Optional"
                                  IsEnabled="{Binding CanEditBindLabel}"
-                                 Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"
-                                 ToolTip.Tip="Shown on its key / bind box as one more line (green, red while disabled)"/>
+                                 Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"/>
                     </StackPanel>
 
                     <Button Command="{Binding ParametersTogglePressedCommand}" IsVisible="{Binding HasParameters}"
-                            Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center"
-                            ToolTip.Tip="The parameters this has, for {name} in typed text">
+                            Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center">
                         <Panel>
                             <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
                             <TextBlock Text="Parameters ▾" IsVisible="{Binding IsParametersOpen}"/>

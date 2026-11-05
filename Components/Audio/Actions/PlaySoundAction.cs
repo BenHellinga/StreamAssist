@@ -15,7 +15,7 @@ public class PlaySoundAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Play Sound";
-    [JsonIgnore] public override string Description => "Plays an .mp3 or .wav file.";
+    [JsonIgnore] public override string Description => "Plays an .mp3 or .wav file. A folder (e.g. Sounds/hype) plays one of its sounds at random.";
     [JsonIgnore] public override BlockGroup Group => BlockGroup.App;
 
 

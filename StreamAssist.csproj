@@ -18,6 +18,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageReference Include="DynamicExpresso.Core" Version="2.19.5" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="RawInput.Sharp" Version="0.1.3" />

@@ -8,12 +8,13 @@
     <!-- label | typed value (a drop target for value blocks) or the placed value block's card, with an optional
          connector line above the value (e.g. Equals: value, ==, value) -->
 
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+    <!-- the label carries its own gap, so a slot without one (Expression, name / value rows) has none either -->
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
 
         <TextBlock Grid.Column="1" Grid.Row="0" Classes="Label" Text="{Binding Connector}" IsVisible="{Binding HasConnector}"
                    Margin="4,0,0,4"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="1" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+        <TextBlock Grid.Column="0" Grid.Row="1" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}" Margin="0,0,8,0"/>
 
         <!-- empty or typed: the placeholder says what fits, e.g. "+ int" (the border lights up when a block can be dropped) -->
 

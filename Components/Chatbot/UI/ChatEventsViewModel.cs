@@ -12,7 +12,7 @@ namespace StreamAssist.Components.Chatbot.UI;
 
 // the chatbot's Events tab: one bind box per stream event (Alerts), then the channel point redeems
 // a small tab bar at the bottom opens one panel at a time: Test (made-up values for the Test button on every row, so
-// alerts can be tried without twitch) or New reward (creates a channel point reward on twitch)
+// alerts can be tried without twitch) or New redeem (creates a channel point reward on twitch)
 public partial class ChatEventsViewModel : ViewModelBase
 {
     // private

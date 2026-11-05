@@ -34,7 +34,7 @@
                 </Viewbox>
                 <TextBlock Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
                            Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                           TextAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding BindLabel}"/>
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 
             <ContentControl Content="{Binding EditButtonsContext}">

@@ -15,7 +15,7 @@ public class SendChatMessageAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Send Chat Message";
-    [JsonIgnore] public override string Description => "Sends a message to your Twitch chat (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block). Sent as the bot if it's connected, otherwise as the streamer, unless Chat only as bot is ticked. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string Description => "Sends a message to your Twitch chat (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block). Sent as the bot if it's connected, otherwise as the streamer, unless Chat only as bot is ticked. Twitch actions wait their turn, one per second. Reply answers the chat message that started this run as a threaded reply (a plain message if it wasn't started by one).";
 
 
 
@@ -23,6 +23,7 @@ public class SendChatMessageAction : ActionBlock
 
 
 
+    private string _reply;
     private readonly ValueSlot<string> _message;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -31,6 +32,15 @@ public class SendChatMessageAction : ActionBlock
     // public
 
 
+
+    [ConfigurableParameter("Reply", ConfiguratorType.Menu)] [JsonPropertyName("reply")]
+    public string Reply
+    {
+        get => _reply;
+        set => SetParameter(ref _reply, value);
+    }
+
+    public static List<string> GetReplyMenuItems() => ["No", "Yes"];
 
     [JsonIgnore] public ValueSlot<string> Message => _message;
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -56,6 +66,7 @@ public class SendChatMessageAction : ActionBlock
 
     public SendChatMessageAction()
     {
+        _reply = "No";
         _message = new("Message");
         _slots = [_message];
 
@@ -77,7 +88,8 @@ public class SendChatMessageAction : ActionBlock
         if (string.IsNullOrWhiteSpace(message)) return;
 
         // waits its turn in the twitch action queue, a failure is already logged there
-        if (!await chatbot.TrySendChatMessageAsync(message, context.CancellationToken))
+        var replyTo = _reply == "Yes" && context.Parameters.TryGetValue("messageId", out var id) ? id : null;
+        if (!await chatbot.TrySendChatMessageAsync(message, context.CancellationToken, replyTo))
             throw new BlockFailedException("the message wasn't sent");
     }
 }

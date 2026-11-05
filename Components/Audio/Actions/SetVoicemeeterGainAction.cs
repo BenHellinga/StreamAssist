@@ -25,6 +25,7 @@ public class SetVoicemeeterGainAction : ActionBlock
 
 
     private string _channel;
+    private string _mode;
     private readonly ValueSlot<double> _gain;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -42,6 +43,16 @@ public class SetVoicemeeterGainAction : ActionBlock
     }
 
     public static List<string> GetChannelMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow());
+
+    // Set to the value, or Change by it (added to what it is now, e.g. -2 for a step down)
+    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
+    public string Mode
+    {
+        get => _mode;
+        set => SetParameter(ref _mode, value);
+    }
+
+    public static List<string> GetModeMenuItems() => ["Set to", "Change by"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
@@ -67,6 +78,7 @@ public class SetVoicemeeterGainAction : ActionBlock
     public SetVoicemeeterGainAction()
     {
         _channel = "Stereo Input 1";
+        _mode = "Set to";
         _gain = new("Gain dB");
         _slots = [_gain];
         _gain.SetText("0");
@@ -87,6 +99,12 @@ public class SetVoicemeeterGainAction : ActionBlock
         var gain = await _gain.EvaluateAsync(context);
 
         // a failure is already logged by the manager
+        if (_mode == "Change by")
+        {
+            if (!voicemeeter.TryGetGain(_channel, out var now)) throw new BlockFailedException("gain not read");
+            gain += now;
+        }
+
         if (!voicemeeter.TrySetGain(_channel, (float)gain)) throw new BlockFailedException("gain not set");
     }
 }

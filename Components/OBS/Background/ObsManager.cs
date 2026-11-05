@@ -153,6 +153,58 @@ public class ObsManager : IDisposable
 
 
     // width / height set the scale (OBS works them out from the source's own size times the scale)
+    // the 9 points a resize can keep still, as fractions across and down the source (0 = left / top, 1 = right / bottom)
+    public static readonly IReadOnlyList<(string Name, double X, double Y)> Anchors =
+    [
+        ("Top Left", 0, 0), ("Top", 0.5, 0), ("Top Right", 1, 0),
+        ("Left", 0, 0.5), ("Center", 0.5, 0.5), ("Right", 1, 0.5),
+        ("Bottom Left", 0, 1), ("Bottom", 0.5, 1), ("Bottom Right", 1, 1),
+    ];
+
+
+
+    // resizes a source in a scene to the size newSize gives from its current one (on-screen pixels), keeping the anchor
+    // point (e.g. its bottom-right corner) where it is. Its position is the point its alignment says (OBS: 1 left,
+    // 2 right, 4 top, 8 bottom, else centre), so the top-left is worked out from that and the new position put back the
+    // same way. Rotation isn't taken into account
+    public Task<(bool Ok, bool Value)> TryResizeAsync(string scene, string source, Func<double, double, (double Width, double Height)> newSize, string anchor) =>
+        TryRequestAsync($"resize '{source}'", async client =>
+        {
+            var (_, fx, fy) = Anchors.FirstOrDefault(a => a.Name == anchor);
+            if (Anchors.All(a => a.Name != anchor)) throw new ObsRequestException($"no anchor '{anchor}'");
+
+            var current = await TransformAsync(client, scene, source);
+            var t = current.Transform;
+            double width = t.GetProperty("width").GetDouble(), height = t.GetProperty("height").GetDouble();
+            if (width == 0 || height == 0) throw new ObsRequestException("it has no size to scale");
+            var alignment = t.GetProperty("alignment").GetInt32();
+            double Offset(double size, int start, int end) => (alignment & start) != 0 ? 0 : (alignment & end) != 0 ? size : size / 2;
+
+            var left = t.GetProperty("positionX").GetDouble() - Offset(width, 1, 2);
+            var top = t.GetProperty("positionY").GetDouble() - Offset(height, 4, 8);
+            var (anchorX, anchorY) = (left + fx * width, top + fy * height);
+
+            var (newWidth, newHeight) = newSize(width, height);
+            if (newWidth <= 0 || newHeight <= 0) throw new ObsRequestException("the new size has to be above 0");
+            var (newLeft, newTop) = (anchorX - fx * newWidth, anchorY - fy * newHeight);
+
+            await client.RequestAsync("SetSceneItemTransform", new JsonObject
+            {
+                ["sceneName"] = current.Scene,
+                ["sceneItemId"] = current.Id,
+                ["sceneItemTransform"] = new JsonObject
+                {
+                    ["scaleX"] = t.GetProperty("scaleX").GetDouble() * newWidth / width,
+                    ["scaleY"] = t.GetProperty("scaleY").GetDouble() * newHeight / height,
+                    ["positionX"] = newLeft + Offset(newWidth, 1, 2),
+                    ["positionY"] = newTop + Offset(newHeight, 4, 8),
+                },
+            });
+            return true;
+        });
+
+
+
     public Task<(bool Ok, bool Value)> TrySetTransformAsync(string scene, string source, ObsTransform transform, double value) =>
         TryRequestAsync($"set {transform.Name.ToLowerInvariant()} of '{source}'", async client =>
         {
@@ -218,6 +270,62 @@ public class ObsManager : IDisposable
         {
             if (change == ObsToggle.Toggle) await client.RequestAsync("ToggleInputMute", new JsonObject { ["inputName"] = source });
             else await client.RequestAsync("SetInputMute", new JsonObject { ["inputName"] = source, ["inputMuted"] = change == ObsToggle.On });
+            return true;
+        });
+
+
+
+    // a filter on a source (or a scene) on, off or toggled
+    public Task<(bool Ok, bool Value)> TrySetFilterEnabledAsync(string source, string filter, ObsToggle change) =>
+        TryRequestAsync($"turn filter '{filter}' on '{source}' on/off", async client =>
+        {
+            var enabled = change == ObsToggle.On;
+            if (change == ObsToggle.Toggle)
+            {
+                var now = await client.RequestAsync("GetSourceFilter", new JsonObject { ["sourceName"] = source, ["filterName"] = filter });
+                enabled = !now.GetProperty("filterEnabled").GetBoolean();
+            }
+
+            await client.RequestAsync("SetSourceFilterEnabled", new JsonObject { ["sourceName"] = source, ["filterName"] = filter, ["filterEnabled"] = enabled });
+            return true;
+        });
+
+
+
+    // OBS's outputs by name (Recording, Streaming, Replay Buffer, Virtual Camera) started, stopped or toggled; starting one
+    // that's already running (or stopping a stopped one) sends nothing, it's already what was asked
+    public static readonly IReadOnlyList<string> Outputs = ["Recording", "Streaming", "Replay Buffer", "Virtual Camera"];
+
+    public Task<(bool Ok, bool Value)> TrySetOutputAsync(string output, ObsToggle change) =>
+        TryRequestAsync($"start/stop {output.ToLowerInvariant()}", async client =>
+        {
+            var name = output switch
+            {
+                "Recording" => "Record",
+                "Streaming" => "Stream",
+                "Replay Buffer" => "ReplayBuffer",
+                "Virtual Camera" => "VirtualCam",
+                _ => throw new Exception($"no output '{output}'"),
+            };
+
+            if (change == ObsToggle.Toggle)
+            {
+                await client.RequestAsync($"Toggle{name}", null);
+                return true;
+            }
+
+            var active = (await client.RequestAsync($"Get{name}Status", null)).GetProperty("outputActive").GetBoolean();
+            if (active != (change == ObsToggle.On)) await client.RequestAsync((change == ObsToggle.On ? "Start" : "Stop") + name, null);
+            return true;
+        });
+
+
+
+    // saves the replay buffer's last moments to a file (the replay buffer has to be running)
+    public Task<(bool Ok, bool Value)> TrySaveReplayAsync() =>
+        TryRequestAsync("save replay", async client =>
+        {
+            await client.RequestAsync("SaveReplayBuffer", null);
             return true;
         });
 

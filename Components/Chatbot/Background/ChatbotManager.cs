@@ -139,11 +139,12 @@ public class ChatbotManager : IDisposable
 
 
     // sends a message to the streamer's channel (a repeat of the last one gets an invisible character so twitch posts it)
-    public Task<bool> TrySendChatMessageAsync(string message, CancellationToken ct = default) =>
+    // replyTo: a chat message's id to answer as a threaded reply (null or empty: a plain message)
+    public Task<bool> TrySendChatMessageAsync(string message, CancellationToken ct = default, string? replyTo = null) =>
         TryRunActionAsync("send chat message", async (account, channelId, token) =>
         {
             var text = AvoidDuplicate(message, _lastSentMessage);
-            await TwitchApi.SendChatMessageAsync(account, channelId, text, token);
+            await TwitchApi.SendChatMessageAsync(account, channelId, text, token, replyTo);
             _lastSentMessage = text;
         }, ct);
 
@@ -290,6 +291,14 @@ public class ChatbotManager : IDisposable
             var login = user.Trim().TrimStart('@').ToLowerInvariant();
             var found = await TwitchApi.GetUserInfoAsync(account, login, token) ?? throw new Exception($"there's no twitch user '{login}'");
             var created = found.GetProperty("created_at").GetDateTime().ToUniversalTime();
+
+            // what their channel is set to: only read, it's kept even while they're offline (a shoutout's "last playing")
+            if (info.Name is "Last Category" or "Last Title")
+            {
+                var channel = await TwitchApi.GetChannelAsync(account, found.GetProperty("id").GetString()!, token);
+                return channel.GetProperty(info.Name == "Last Category" ? "game_name" : "title").GetString() ?? "";
+            }
+
             return info.Name switch
             {
                 "Display Name" => found.GetProperty("display_name").GetString() ?? "",
@@ -408,7 +417,7 @@ public class ChatbotManager : IDisposable
             }
             catch (Exception ex) when (ex.Message.StartsWith("403"))
             {
-                throw new Exception("it was made outside StreamAssist, and twitch only lets the app that created a reward change it (create it with New reward in the Events tab)");
+                throw new Exception("it was made outside StreamAssist, and twitch only lets the app that created a reward change it (create it with New redeem in the Events tab)");
             }
         }, ct, asStreamer: true);
 
@@ -433,7 +442,7 @@ public class ChatbotManager : IDisposable
 
 
 
-    // the New reward panel asked: create it on twitch, then give it a redeem row to bind (a failure is already logged)
+    // the New redeem panel asked: create it on twitch, then give it a redeem row to bind (a failure is already logged)
     private async void OnCreateRewardRequested(NewReward reward)
     {
         if (!await TryCreateRewardAsync(reward)) return;

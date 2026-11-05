@@ -52,7 +52,7 @@
 
     <Style Selector="Border.InsertBefore">
         <Setter Property="Margin" Value="0,-3,0,0"/>
-        <Setter Property="Padding" Value="0,3,0,0"/>
+        <Setter Property="Padding" Value="0,1,0,0"/> <!-- + the 2px line = the 3px it reaches up, so the gap stays 5 -->
         <Setter Property="BorderThickness" Value="0,2,0,0"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Background" Value="Transparent"/>

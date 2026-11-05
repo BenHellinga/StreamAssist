@@ -27,7 +27,7 @@ public sealed class FakeObsServer : IDisposable
         {
             ["positionX"] = 10.0, ["positionY"] = 20.0, ["rotation"] = 0.0, ["scaleX"] = 1.0, ["scaleY"] = 1.0,
             ["sourceWidth"] = 400.0, ["sourceHeight"] = 100.0, ["width"] = 400.0, ["height"] = 100.0,
-            ["cropLeft"] = 0, ["cropRight"] = 0, ["cropTop"] = 0, ["cropBottom"] = 0,
+            ["cropLeft"] = 0, ["cropRight"] = 0, ["cropTop"] = 0, ["cropBottom"] = 0, ["alignment"] = 5, // top-left, OBS's default
         };
     }
 
@@ -43,6 +43,9 @@ public sealed class FakeObsServer : IDisposable
     private WebSocket? _socket;
 
     public string CurrentScene = "Gaming";
+    public readonly Dictionary<string, bool> Filters = []; // "source/filter" -> on
+    public bool Recording;
+    public int ReplaysSaved;
     public readonly List<string> SceneOrder = ["Gaming", "Just Chatting"]; // top to bottom, like OBS's Scenes list
     public readonly Dictionary<string, List<Item>> Scenes = new()
     {
@@ -166,7 +169,17 @@ public sealed class FakeObsServer : IDisposable
             case "SetSceneItemTransform":
                 var item = ItemFor();
                 foreach (var (key, value) in data["sceneItemTransform"]!.AsObject()) item.Transform[key] = value!.DeepClone();
+                // like OBS, the on-screen size follows the scale
+                item.Transform["width"] = item.Transform["sourceWidth"]!.GetValue<double>() * item.Transform["scaleX"]!.GetValue<double>();
+                item.Transform["height"] = item.Transform["sourceHeight"]!.GetValue<double>() * item.Transform["scaleY"]!.GetValue<double>();
                 return new();
+            case "GetSourceFilter": return new() { ["filterEnabled"] = Filters.GetValueOrDefault(Str("sourceName") + "/" + Str("filterName"), true) };
+            case "SetSourceFilterEnabled": Filters[Str("sourceName") + "/" + Str("filterName")] = data["filterEnabled"]!.GetValue<bool>(); return new();
+            case "GetRecordStatus": return new() { ["outputActive"] = Recording };
+            case "StartRecord": if (Recording) throw new InvalidOperationException("output already active"); Recording = true; return new();
+            case "StopRecord": if (!Recording) throw new InvalidOperationException("output not active"); Recording = false; return new();
+            case "ToggleRecord": Recording = !Recording; return new();
+            case "SaveReplayBuffer": ReplaysSaved++; return new();
             case "GetInputVolume": return new() { ["inputVolumeDb"] = InputFor().VolumeDb };
             case "SetInputVolume": InputFor().VolumeDb = data["inputVolumeDb"]!.GetValue<double>(); return new();
             case "GetInputMute": return new() { ["inputMuted"] = InputFor().Muted };

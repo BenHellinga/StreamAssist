@@ -23,7 +23,7 @@ public static class CommandActionHelper
 
         // the reply waits its turn in the twitch action queue, a failure to send is logged there
         if (reply != null && ChatEvents.IsFromChat(context.Parameters) && GlobalContext.ChatbotManager is { } chatbot)
-            await chatbot.TrySendChatMessageAsync(reply, context.CancellationToken);
+            await chatbot.TrySendChatMessageAsync(reply, context.CancellationToken, context.Parameters.TryGetValue("messageId", out var id) ? id : null);
 
         return new BlockFailedException(reason);
     }

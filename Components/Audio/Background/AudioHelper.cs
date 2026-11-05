@@ -41,6 +41,18 @@ public static class AudioHelper
             return false;
         }
 
+        // a folder plays one of its sounds at random (e.g. Sounds/hype for variety)
+        if (System.IO.Directory.Exists(fullPath))
+        {
+            var sounds = System.IO.Directory.GetFiles(fullPath).Where(IsSound).ToArray();
+            if (sounds.Length == 0)
+            {
+                AppLog.WriteError($"can't play '{path}' (no sounds in that folder)");
+                return false;
+            }
+            fullPath = sounds[Random.Shared.Next(sounds.Length)];
+        }
+
         if (!TryGetDeviceByString(deviceName, out var device)) return false;
 
         AudioFileReader audioFile;
@@ -66,6 +78,11 @@ public static class AudioHelper
 
         return true;
     }
+
+
+
+    private static bool IsSound(string file) =>
+        new[] { ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma" }.Contains(System.IO.Path.GetExtension(file).ToLowerInvariant());
 
 
 

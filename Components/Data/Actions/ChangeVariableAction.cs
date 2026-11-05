@@ -18,6 +18,7 @@ public class ChangeVariableAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Change Variable";
     [JsonIgnore] public override string Description => "Adds Amount to a number variable (negative takes away, e.g. a death counter), or flips a true/false one. Done in one step, so two runs at once can't lose a change the way Get then Set could.";
+    [JsonIgnore] public override BlockGroup Group => BlockGroup.Variables;
 
 
 

@@ -30,6 +30,10 @@ public abstract class AdaptableValueBlock : ValueBlock
     [JsonIgnore] protected override BlockGroup KindGroup => BlockGroup.Math;
     [JsonIgnore] public abstract IReadOnlyList<ValueKind> AllowedKinds { get; }
 
+    // true = always becomes the kind its slot wants, even when its current kind would fit (Expression: a formula has no
+    // kind of its own, so in a text slot it should give text, not a number turned into text)
+    [JsonIgnore] public virtual bool FollowsSlot => false;
+
 
 
     // events

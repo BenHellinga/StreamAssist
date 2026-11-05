@@ -14,7 +14,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
                     <TextBlock Classes="Label" Text="{Binding HeadingText}" VerticalAlignment="Center"/>
                     <Button Classes="Square Small" Content="{Binding Arrow}" Command="{Binding HeadingPressedCommand}"
-                            VerticalAlignment="Center" ToolTip.Tip="Collapse / expand"/>
+                            VerticalAlignment="Center"/>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding Tables}" IsVisible="{Binding !IsCollapsed}">
                     <ItemsControl.ItemsPanel>
@@ -50,8 +50,7 @@
                 <ContentControl Content="{Binding Custom}"/>
 
                 <!-- a new custom table: type its name (letters, digits and _), Enter or clicking away makes it -->
-                <TextBox Classes="New Commit" Text="{Binding NewTableName}" PlaceholderText="New table…"
-                         ToolTip.Tip="Type a name to make a custom table"/>
+                <TextBox Classes="New Commit" Text="{Binding NewTableName}" PlaceholderText="New table…"/>
             </StackPanel>
         </ScrollViewer>
 

@@ -15,15 +15,13 @@
         <Button Classes="Square Small Collapse"
                 Content="▴"
                 Command="{Binding CollapseButtonPressedCommand}"
-                IsVisible="{Binding CanCollapse}"
-                ToolTip.Tip="Collapse"/>
+                IsVisible="{Binding CanCollapse}"/>
 
         <!-- toggle disable -->
 
         <Button Classes="Square Small ToggleEnabled"
                 Content="+"
-                Command="{Binding ToggleButtonPressedCommand}"
-                ToolTip.Tip="Enable/disable this"/>
+                Command="{Binding ToggleButtonPressedCommand}"/>
 
         <!-- drag handle (same size as the Small buttons next to it) -->
 
@@ -37,8 +35,7 @@
 
         <Button Classes="Square Small RemoveAction"
                 Content="X"
-                Command="{Binding RemoveButtonPressedCommand}"
-                ToolTip.Tip="Remove"/>
+                Command="{Binding RemoveButtonPressedCommand}"/>
 
     </StackPanel>
 

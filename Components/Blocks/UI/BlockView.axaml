@@ -17,7 +17,7 @@
                 Classes.Disabled="{Binding IsDisabled}"
                 IsVisible="{Binding IsCollapsed}"
                 Width="100" Height="25" HorizontalAlignment="Left"
-                ToolTip.Tip="{Binding Name}"
+
                 PointerPressed="OnCollapsedPointerPressed">
             <TextBlock Text="▾" HorizontalAlignment="Center"/>
         </Border>
@@ -38,7 +38,7 @@
 
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- placed blocks only show their name, the description is in the block list (and on hover here) -->
-                    <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="10,10,5,5" ToolTip.Tip="{Binding Description}"/>
+                    <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="5,5,5,5"/>
                     <!-- only shown while the pointer is on this card (not a block inside it), hidden by opacity so the
                          title row keeps its size -->
                     <ui:EditButtons Grid.Column="1" x:Name="Buttons" Opacity="0" IsHitTestVisible="False"/>
@@ -46,7 +46,7 @@
 
                 <!-- settings, then the slots under them (or beside them, for blocks that ask) -->
 
-                <Grid Margin="5,0,5,5" ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto">
+                <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto">
 
                     <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
 

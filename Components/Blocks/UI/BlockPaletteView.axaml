@@ -44,7 +44,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
                                 <TextBlock Classes="Label" Text="{Binding HeadingText}" VerticalAlignment="Center"/>
                                 <Button Classes="Square Small" Content="{Binding Arrow}" Command="{Binding HeadingPressedCommand}"
-                                        VerticalAlignment="Center" ToolTip.Tip="Collapse / expand"/>
+                                        VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding ShowCards}">

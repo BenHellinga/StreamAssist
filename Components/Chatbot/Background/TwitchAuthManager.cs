@@ -66,7 +66,7 @@ public class TwitchAuthManager
             "user:read:chat",                  // read chat messages and chat notifications
             "user:write:chat",                 // send chat when there's no bot account
             "channel:read:redemptions",        // channel point redeems
-            "channel:manage:redemptions",      // read, change and create channel point rewards (Get / Set Reward Setting, New reward)
+            "channel:manage:redemptions",      // read, change and create channel point rewards (Get / Set Reward Setting, New redeem)
             "moderator:manage:announcements",  // Send Announcement
             "moderator:manage:chat_settings",  // Set Chat Mode
             "moderator:manage:shoutouts",      // Shoutout

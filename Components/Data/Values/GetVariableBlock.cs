@@ -18,6 +18,7 @@ public class GetVariableBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Get Variable";
     [JsonIgnore] public override string Description => "A variable's value (made in the Data tab, kept after the app closes). Picking a variable picks its type. In typed text, {var.name} works too.";
+    [JsonIgnore] public override BlockGroup Group => BlockGroup.Variables;
 
 
 

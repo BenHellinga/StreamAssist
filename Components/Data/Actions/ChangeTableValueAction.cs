@@ -17,7 +17,7 @@ public class ChangeTableValueAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Change Table Value";
-    [JsonIgnore] public override string Description => "Adds Amount to a number cell (negative takes away, an empty cell counts as 0), or flips a true/false one, in one step (e.g. a viewer's points). Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string Description => "Adds Amount to a number cell (negative takes away, an empty cell counts as 0), or flips a true/false one, in one step (e.g. a viewer's points). Table is the name of a table in the Data tab. Row is an id ({rowId}) or column=value, e.g. user={userLogin} (that row is added if there's none).";
 
 
 
@@ -26,7 +26,7 @@ public class ChangeTableValueAction : ActionBlock
 
 
     private readonly ValueSlot<string> _table;
-    private readonly ValueSlot<int> _row;
+    private readonly ValueSlot<string> _row;
     private readonly ValueSlot<string> _column;
     private readonly ValueSlot<double> _amount;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -109,10 +109,13 @@ public class ChangeTableValueAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        var row = await _row.EvaluateAsync(context);
+        var table = await _table.EvaluateAsync(context);
+        var rowRef = await _row.EvaluateAsync(context);
         var column = await _column.EvaluateAsync(context);
         var amount = await _amount.EvaluateAsync(context);
 
-        if (!data.TryChangeValue(await _table.EvaluateAsync(context), row, column, amount)) throw new BlockFailedException("value not changed");
+        // a failure is already logged by the model
+        if (!data.TryFindRow(table, rowRef, addIfMissing: true, out var row)) throw new BlockFailedException("row not found");
+        if (!data.TryChangeValue(table, row!.Id, column, amount)) throw new BlockFailedException("value not changed");
     }
 }

@@ -18,6 +18,7 @@ public class SetVariableAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Variable";
     [JsonIgnore] public override string Description => "Sets a variable (made in the Data tab, kept after the app closes) to a value, typed or from a block. It's converted to the variable's type and fails if it doesn't fit. For counting, use Change Variable.";
+    [JsonIgnore] public override BlockGroup Group => BlockGroup.Variables;
 
 
 

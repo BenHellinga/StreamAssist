@@ -17,7 +17,7 @@ public class GetTableValueBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public override string Name => "Get Table Value";
-    [JsonIgnore] public override string Description => "One cell: a row (by its id) and a column (by its name), read as text, a number or true/false. An empty cell reads as empty text, 0 or false. Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string Description => "One cell: a row (by its id) and a column (by its name), read as text, a number or true/false. An empty cell reads as empty text, 0 or false. Table is the name of a table in the Data tab. Row is an id ({rowId}) or column=value, e.g. user={userLogin} (no such row reads as empty).";
 
 
 
@@ -26,7 +26,7 @@ public class GetTableValueBlock : AdaptableValueBlock
 
 
     private readonly ValueSlot<string> _table;
-    private readonly ValueSlot<int> _row;
+    private readonly ValueSlot<string> _row;
     private readonly ValueSlot<string> _column;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -112,12 +112,12 @@ public class GetTableValueBlock : AdaptableValueBlock
         var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var tableName = await _table.EvaluateAsync(context);
         var table = data.FindTable(tableName) ?? throw Fail($"no table '{tableName}'");
-        var id = await _row.EvaluateAsync(context);
+        var rowRef = await _row.EvaluateAsync(context);
         var columnName = await _column.EvaluateAsync(context);
         var column = table.FindColumn(columnName) ?? throw Fail($"{table.Name} has no column '{columnName}'");
-        var row = table.FindRow(id) ?? throw Fail($"{table.Name} has no row {id}");
+        if (!data.TryFindRow(table.Name, rowRef, addIfMissing: false, out var row)) throw new BlockFailedException("row not found"); // logged
 
-        var value = row.Get(column.Name);
+        var value = row?.Get(column.Name); // no row with that value reads like an empty cell
         if (value == null) return Kind switch { ValueKind.Int => 0, ValueKind.Double => 0.0, ValueKind.Bool => false, _ => "" };
         if (!ValueTypes.TryConvert(value, column.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;

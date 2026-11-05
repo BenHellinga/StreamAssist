@@ -94,6 +94,15 @@ public abstract class ValueSlot : BlockSlotBase
 
 
 
+    // the typed text with each {name} going through fill (see TriggerContext.Format), or a placed block's value as text
+    public async Task<string> EvaluateTextAsync(TriggerContext context, Func<string, string, int, string> fill)
+    {
+        if (await EvaluateBlockAsync(context) is { } fromBlock) return (string)ValueTypes.Convert(fromBlock.Value, fromBlock.Kind, ValueKind.Text);
+        return context.Format(Text, fill);
+    }
+
+
+
     // protected
 
 

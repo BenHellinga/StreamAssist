@@ -17,7 +17,7 @@
 
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="ui:ValueSlotPairViewModel">
-                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="5">
                     <ContentControl Grid.Column="0" Content="{Binding Key}" MinWidth="160" VerticalAlignment="Top"/>
                     <ContentControl Grid.Column="1" Content="{Binding Value}" VerticalAlignment="Top"/>
                 </Grid>

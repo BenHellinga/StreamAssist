@@ -8,6 +8,40 @@
 
     <!-- chat command tree | chat block list -->
 
+    <!-- the tabs (each opens its panel under them, the open one closes it), a line, then the page; the config bar sits
+         right above the tabs (ChatbotComponentView), with no line between -->
+
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">
+                <Button Classes="Tab" Classes.Open="{Binding IsTestOpen}" Content="Test"
+                        Command="{Binding TestTabPressedCommand}"/>
+            </StackPanel>
+            <Grid IsVisible="{Binding IsTestOpen}" Margin="{StaticResource ContentInset}"
+                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="User" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding TestUser}"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Message" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding TestMessage}" PlaceholderText="e.g. !lurk">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding SendTestPressedCommand}"/>
+                    </TextBox.KeyBindings>
+                </TextBox>
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Badges" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <CheckBox IsChecked="{Binding TestIsModerator}" Content="Mod"/>
+                    <CheckBox IsChecked="{Binding TestIsVip}" Content="VIP"/>
+                    <CheckBox IsChecked="{Binding TestIsSubscriber}" Content="Sub"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Content="Send" Command="{Binding SendTestPressedCommand}"/>
+                    <TextBlock Classes="Description" Text="{Binding TestResult}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="100"/>
@@ -15,7 +49,7 @@
             <ColumnDefinition Width="{Binding ChatBlockListWidth, Mode=TwoWay}" MinWidth="100"/>
         </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="0" RowDefinitions="*,Auto">
+        <Grid Grid.Column="0">
 
             <!-- the two root chat block slots (BlockSlotViews through the ViewLocator), in the order messages try them,
                  clicking a bind box opens its binding below -->
@@ -26,49 +60,14 @@
                 <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                 <Border Padding="{StaticResource ScrollEndPadding}">
                     <StackPanel Spacing="5" Margin="5,0,10,0">
-                        <TextBlock Classes="Title" Text="Built-in"/>
+                        <!-- the title font has ~5px of space above its letters, pulled back so the text itself is 10 from what's above -->
+                        <TextBlock Classes="Title" Text="Built-in" Margin="0,-5,0,0"/>
                         <ContentControl Content="{Binding Root}"/>
-                        <TextBlock Classes="Title" Text="Custom" Margin="0,10,0,0"/>
+                        <TextBlock Classes="Title" Text="Custom" Margin="0,0,0,0"/>
                         <ContentControl Content="{Binding EditableRoot}"/>
                     </StackPanel>
                 </Border>
             </ScrollViewer>
-
-            <!-- a small tab bar like the Events tab's: clicking Test opens a panel under it that sends a made-up chat
-                 message through the trees, clicking it again closes it -->
-
-            <StackPanel Grid.Row="1" Spacing="10" Margin="0,5,0,5">
-                <Border Classes="Divider"/>
-
-                <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">
-                    <Button Classes="Tab" Classes.Open="{Binding IsTestOpen}" Content="Test"
-                            Command="{Binding TestTabPressedCommand}"
-                            ToolTip.Tip="Try chat commands with a made-up message, user and badges"/>
-                </StackPanel>
-
-                <Grid IsVisible="{Binding IsTestOpen}" Margin="{StaticResource ContentInset}"
-                      ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="User" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding TestUser}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Message" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding TestMessage}" PlaceholderText="e.g. !lurk">
-                        <TextBox.KeyBindings>
-                            <KeyBinding Gesture="Enter" Command="{Binding SendTestPressedCommand}"/>
-                        </TextBox.KeyBindings>
-                    </TextBox>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Badges" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                        <CheckBox IsChecked="{Binding TestIsModerator}" Content="Mod"/>
-                        <CheckBox IsChecked="{Binding TestIsVip}" Content="VIP"/>
-                        <CheckBox IsChecked="{Binding TestIsSubscriber}" Content="Sub"/>
-                    </StackPanel>
-                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                        <Button Content="Send" Command="{Binding SendTestPressedCommand}"
-                                ToolTip.Tip="Runs the message through the chat commands (Enter in the message box does too)"/>
-                        <TextBlock Classes="Description" Text="{Binding TestResult}" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Grid>
-            </StackPanel>
 
         </Grid>
 
@@ -79,5 +78,7 @@
         <blocks:BlockPaletteView Grid.Column="2" DataContext="{Binding ChatPalette}"/>
 
     </Grid>
+
+    </DockPanel>
 
 </UserControl>

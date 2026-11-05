@@ -28,6 +28,7 @@ public class MuteVoicemeeterAction : ActionBlock
     private string _channel;
     private string _muteSound;
     private string _unmuteSound;
+    private float _soundVolume;
 
 
 
@@ -64,6 +65,16 @@ public class MuteVoicemeeterAction : ActionBlock
         set => SetParameter(ref _unmuteSound, value);
     }
 
+    // how loud the mute / unmute sounds play (0 to 1)
+    [ConfigurableParameter("Sound Volume", ConfiguratorType.Slider)] [JsonPropertyName("soundVolume")]
+    public float SoundVolume
+    {
+        get => _soundVolume;
+        set => SetParameter(ref _soundVolume, value);
+    }
+
+    public static (double, double) GetSoundVolumeBounds() => (0, 1);
+
 
 
     // constructor
@@ -75,6 +86,7 @@ public class MuteVoicemeeterAction : ActionBlock
         _setType = "Toggle";
         _channel = "Stereo Input 1";
         _muteSound = "";
+        _soundVolume = 1;
         _unmuteSound = "";
     }
 
@@ -117,7 +129,7 @@ public class MuteVoicemeeterAction : ActionBlock
         if (!voicemeeter.TrySetMute(_channel, newState)) throw new BlockFailedException("mute not set");
 
         var sound = newState ? _muteSound : _unmuteSound;
-        if (newState != muted && sound.Trim() != "") AudioHelper.TryPlaySound(sound);
+        if (newState != muted && sound.Trim() != "") AudioHelper.TryPlaySound(sound, _soundVolume);
 
         return Task.CompletedTask;
     }
