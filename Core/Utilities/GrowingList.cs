@@ -42,6 +42,7 @@ public sealed class GrowingList<T> : IDisposable where T : class, IDisposable
 
     public event Action<T, int>? ItemInserted;
     public event Action<T>? ItemRemoved;
+    public event Action<T, int, int>? ItemMoved; // the item, where it was, where it is now
     public event Action? Changed; // an item was added or removed
 
 
@@ -80,6 +81,26 @@ public sealed class GrowingList<T> : IDisposable where T : class, IDisposable
 
         if (_items.Count == 0 || !_isEmpty(_items[^1]))
             Insert(_create(), _items.Count);
+    }
+
+
+
+    // moves a filled item so it ends up just before the item now at index (Count or past the filled ones = last
+    // filled one, the empty item always stays at the end). False for the empty item or one that isn't in the list
+    public bool Move(T item, int index)
+    {
+        var from = _items.IndexOf(item);
+        if (from < 0 || _isEmpty(item)) return false;
+
+        var to = Math.Clamp(index > from ? index - 1 : index, 0, _items.Count - 2);
+        if (to == from) return true;
+
+        _items.RemoveAt(from);
+        _items.Insert(to, item);
+
+        ItemMoved?.Invoke(item, from, to);
+        Changed?.Invoke();
+        return true;
     }
 
 

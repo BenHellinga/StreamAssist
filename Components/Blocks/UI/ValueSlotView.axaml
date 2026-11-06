@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.Blocks.UI.ValueSlotView"
              x:DataType="ui:ValueSlotViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- label | typed value (a drop target for value blocks) or the placed value block's card, with an optional
          connector line above the value (e.g. Equals: value, ==, value) -->
@@ -12,9 +13,9 @@
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
 
         <TextBlock Grid.Column="1" Grid.Row="0" Classes="Label" Text="{Binding Connector}" IsVisible="{Binding HasConnector}"
-                   Margin="4,0,0,4"/>
+                   Margin="{s:Gap ConnectorMargin}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row="1" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}" Margin="0,0,8,0"/>
+        <TextBlock Grid.Column="0" Grid.Row="1" Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}" Margin="{s:Gap SlotLabelMargin}"/>
 
         <!-- empty or typed: the placeholder says what fits, e.g. "+ int" (the border lights up when a block can be dropped) -->
 

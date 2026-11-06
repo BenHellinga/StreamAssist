@@ -4,48 +4,21 @@
              x:DataType="ui:ChatCommandsViewModel"
 
              xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
-             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- chat command tree | chat block list -->
 
-    <!-- the tabs (each opens its panel under them, the open one closes it), a line, then the page; the config bar sits
-         right above the tabs (ChatbotComponentView), with no line between -->
+    <!-- a line under the config bar (ChatbotComponentView), then the page. Test (a made-up chat message run through
+         both trees, saying which command caught it) sits right above Built-in -->
 
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,10">
-            <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">
-                <Button Classes="Tab" Classes.Open="{Binding IsTestOpen}" Content="Test"
-                        Command="{Binding TestTabPressedCommand}"/>
-            </StackPanel>
-            <Grid IsVisible="{Binding IsTestOpen}" Margin="{StaticResource ContentInset}"
-                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
-                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="User" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding TestUser}"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Message" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding TestMessage}" PlaceholderText="e.g. !lurk">
-                    <TextBox.KeyBindings>
-                        <KeyBinding Gesture="Enter" Command="{Binding SendTestPressedCommand}"/>
-                    </TextBox.KeyBindings>
-                </TextBox>
-                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Badges" VerticalAlignment="Center"/>
-                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                    <CheckBox IsChecked="{Binding TestIsModerator}" Content="Mod"/>
-                    <CheckBox IsChecked="{Binding TestIsVip}" Content="VIP"/>
-                    <CheckBox IsChecked="{Binding TestIsSubscriber}" Content="Sub"/>
-                </StackPanel>
-                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                    <Button Content="Send" Command="{Binding SendTestPressedCommand}"/>
-                    <TextBlock Classes="Description" Text="{Binding TestResult}" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
-        </StackPanel>
-
-        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
 
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="100"/>
-            <ColumnDefinition Width="{StaticResource SplitterLength}"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="{Binding ChatBlockListWidth, Mode=TwoWay}" MinWidth="100"/>
         </Grid.ColumnDefinitions>
 
@@ -59,11 +32,37 @@
                           HorizontalScrollBarVisibility="Auto">
                 <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                 <Border Padding="{StaticResource ScrollEndPadding}">
-                    <StackPanel Spacing="5" Margin="5,0,10,0">
-                        <!-- the title font has ~5px of space above its letters, pulled back so the text itself is 10 from what's above -->
-                        <TextBlock Classes="Title" Text="Built-in" Margin="0,-5,0,0"/>
+                    <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap ScrollInset}">
+                        <!-- Test and its panel (a made-up chat message run through both trees), then the two trees, big titles and their
+                             roots LargeVerticalGap apart -->
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                            <Button Classes="Tab" Classes.Open="{Binding IsTestOpen}" Content="Test" HorizontalAlignment="Left"
+                                    Command="{Binding TestTabPressedCommand}"/>
+                            <Grid IsVisible="{Binding IsTestOpen}"
+                                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="User" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding TestUser}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Message" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding TestMessage}" PlaceholderText="e.g. !lurk">
+                                    <TextBox.KeyBindings>
+                                        <KeyBinding Gesture="Enter" Command="{Binding SendTestPressedCommand}"/>
+                                    </TextBox.KeyBindings>
+                                </TextBox>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Badges" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                                    <CheckBox IsChecked="{Binding TestIsModerator}" Content="Mod"/>
+                                    <CheckBox IsChecked="{Binding TestIsVip}" Content="VIP"/>
+                                    <CheckBox IsChecked="{Binding TestIsSubscriber}" Content="Sub"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                                    <Button Content="Send" Command="{Binding SendTestPressedCommand}"/>
+                                    <TextBlock Classes="Description" Text="{Binding TestResult}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                        <TextBlock Classes="Title" Text="Built-in" Margin="{s:Gap BigTitleMargin}"/>
                         <ContentControl Content="{Binding Root}"/>
-                        <TextBlock Classes="Title" Text="Custom" Margin="0,0,0,0"/>
+                        <TextBlock Classes="Title" Text="Custom" Margin="{s:Gap BigTitleMargin}"/>
                         <ContentControl Content="{Binding EditableRoot}"/>
                     </StackPanel>
                 </Border>
@@ -71,7 +70,7 @@
 
         </Grid>
 
-        <GridSplitter Grid.Column="1" Margin="{StaticResource ColumnSplitterMargin}" Classes="ColumnSplitter"/>
+        <GridSplitter Grid.Column="1" Classes="ColumnSplitter"/>
 
         <!-- chat block list -->
 

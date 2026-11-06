@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.DockView"
+             x:DataType="ui:DockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a dock is something the user made, so it looks like a block: a green outline, its name box top-left, the edit
+         buttons top-right (drag and remove only), a divider, then its body. While a dock or a card is dragged over it, the half it
+         would go to is outlined (DropMarker, placed in code-behind) -->
+
+    <!-- the edit buttons show only while the pointer is on the dock (hidden by opacity, so nothing moves) -->
+    <UserControl.Styles>
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border#Card:pointerover blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- the card's border is a line: a LineGap ring inside it, the header ContentPadding further in (like a panel's
+         header), the divider at the ring. The drop marker sits over the whole card, outside the ring -->
+
+    <Panel Margin="{s:Gap PadAll}">
+    <Border x:Name="Card" Classes="Panel Bound" DragDrop.AllowDrop="True" Padding="{s:Gap LineZoneAll}">
+
+        <Panel>
+            <DockPanel>
+
+                <!-- name, the kind's buttons beside it, at fixed sizes: a narrow dock crops them on the right, they never
+                     squeeze. The edit buttons (drag, remove) sit on top in the corner, like a block's, so they're always
+                     there to use, over the header if the dock is that narrow. A divider under it, as under the window's
+                     panel headers -->
+
+                <Panel DockPanel.Dock="Top" ClipToBounds="True">
+
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Margin="{s:Gap PadAll}" HorizontalAlignment="Left">
+
+                        <TextBox Classes="Commit" Text="{Binding NameInput}" Width="150"
+                                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+
+                        <Button Content="Clear" Command="{Binding ClearPressedCommand}"
+                                VerticalAlignment="Center" IsVisible="{Binding IsConsole}"/>
+
+                        <!-- timers: a row's three buttons for all of them (pause shows play while all are paused), dimmed
+                             while none run, then the seconds every ＋ adds (this one to all, each row's to its own) -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" VerticalAlignment="Center"
+                                    IsVisible="{Binding Timers, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
+                                        Opacity="{Binding Timers.IsEmpty, Converter={x:Static ui:DockView.DimWhenTrue}, FallbackValue=1}">
+                                <Button Classes="Square Medium" Command="{Binding Timers.PauseAllPressedCommand}">
+                                    <Panel>
+                                        <Path Classes="Icon" Data="{StaticResource PauseIcon}" IsVisible="{Binding Timers.AnyRunning, FallbackValue=False}"/>
+                                        <Path Classes="Icon" Data="{StaticResource PlayIcon}" IsVisible="{Binding !Timers.AnyRunning, FallbackValue=False}"/>
+                                    </Panel>
+                                </Button>
+                                <Button Classes="Square Medium" Command="{Binding Timers.FinishAllPressedCommand}">
+                                    <Path Classes="Icon" Data="{StaticResource SkipIcon}"/>
+                                </Button>
+                                <Button Classes="Square Medium" Command="{Binding Timers.CancelAllPressedCommand}">
+                                    <Path Classes="Icon" Data="{StaticResource StopIcon}"/>
+                                </Button>
+                            </StackPanel>
+                            <TextBox Text="{Binding Timers.AddSeconds, FallbackValue=''}" Width="80" PlaceholderText="Seconds"
+                                     Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+                            <Button Classes="Square Medium" Content="＋" Command="{Binding Timers.AddTimeAllPressedCommand}"/>
+                        </StackPanel>
+
+                        <!-- buttons: press every one, top to bottom -->
+                        <Button Classes="Square Medium" VerticalAlignment="Center"
+                                Command="{Binding Buttons.PressAllPressedCommand}"
+                                IsVisible="{Binding Buttons, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Path Classes="Icon" Data="{StaticResource PlayIcon}"/>
+                        </Button>
+                    </StackPanel>
+
+                </Panel>
+
+                <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+                <ContentControl Content="{Binding Body}"/>
+
+            </DockPanel>
+
+            <!-- over the header, out of the ring: CornerGap from the border like a block's -->
+            <blocks:EditButtons Classes="HoverOnly" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap RingCornerMargin}"/>
+        </Panel>
+
+    </Border>
+
+    <Border x:Name="DropMarker" IsVisible="False" IsHitTestVisible="False" Background="{StaticResource PanelFillHover}"
+            BorderBrush="{StaticResource Bound}" BorderThickness="1" CornerRadius="3"/>
+    </Panel>
+
+</UserControl>

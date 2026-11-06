@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.Blocks.UI.BlockPaletteView"
              x:DataType="ui:BlockPaletteViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- search box | block list -->
 
@@ -13,14 +14,14 @@
              with the one beside it -->
 
         <TextBox DockPanel.Dock="Top"
-                 Margin="{StaticResource HeaderMargin}"
+                 Margin="{s:Gap PadAll}"
                  Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                  Text="{Binding SearchText}"
                  PlaceholderText="Search blocks…"/>
 
-        <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
 
-        <TextBlock DockPanel.Dock="Top" Margin="5,5,5,0"
+        <TextBlock DockPanel.Dock="Top" Margin="{s:Gap TopInset}"
                    Classes="Description"
                    Text="No matching blocks"
                    IsVisible="{Binding !HasResults}"/>
@@ -29,19 +30,19 @@
              ViewLocator) -->
 
         <ScrollViewer Classes="Gapped">
-            <ItemsControl ItemsSource="{Binding Groups}" Margin="5,0,5,0">
+            <ItemsControl ItemsSource="{Binding Groups}" Margin="{s:Gap ScrollInset}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Spacing="10"/>
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="ui:BlockGroupViewModel">
-                        <StackPanel Spacing="5">
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
 
                             <!-- the title, then the arrow: only the arrow (a small button) collapses / expands -->
-                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
                                 <TextBlock Classes="Label" Text="{Binding HeadingText}" VerticalAlignment="Center"/>
                                 <Button Classes="Square Small" Content="{Binding Arrow}" Command="{Binding HeadingPressedCommand}"
                                         VerticalAlignment="Center"/>
@@ -50,7 +51,7 @@
                             <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding ShowCards}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <StackPanel Spacing="5"/>
+                                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                             </ItemsControl>

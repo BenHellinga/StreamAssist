@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Chatbot.Model;
@@ -46,6 +47,12 @@ public sealed class MatchTextRowList : BlockSlotBase
         remove => _rows.ItemRemoved -= value;
     }
 
+    public event Action<MatchTextRow, int, int>? RowMoved // the row, where it was, where it is now
+    {
+        add => _rows.ItemMoved += value;
+        remove => _rows.ItemMoved -= value;
+    }
+
 
 
     // constructor
@@ -61,6 +68,27 @@ public sealed class MatchTextRowList : BlockSlotBase
 
 
     // public api
+
+
+
+    // moves a filled match text row to just before the one now at index (the list's length = last), e.g. dragged there to
+    // reorder. The empty one at the end can't move
+    public bool TryMoveRow(MatchTextRow item, int index)
+    {
+        if (!_rows.Items.Contains(item))
+        {
+            AppLog.WriteError("can't move match text row, not in this list");
+            return false;
+        }
+
+        if (!_rows.Move(item, index))
+        {
+            AppLog.WriteError("can't move an empty match text row");
+            return false;
+        }
+
+        return true;
+    }
 
 
 

@@ -3,75 +3,85 @@
              x:Class="StreamAssist.Components.Connections.UI.ConnectionsComponentView"
              x:DataType="ui:ConnectionsComponentViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Connections.UI">
+             xmlns:ui="using:StreamAssist.Components.Connections.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- one section per connection, each row is a ConnectionRowView through the ViewLocator
          each section's content is inset, the dividers between sections run edge to edge -->
 
-    <ScrollViewer Classes="Gapped" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+    <ScrollViewer Classes="Gapped Lined" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
         <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
         <Border Padding="{StaticResource ScrollEndPadding}">
-            <StackPanel Spacing="10">
+            <StackPanel Spacing="{s:Gap ContentPadding}" Margin="{s:Gap ScrollInset}">
 
                 <!-- twitch: the app both accounts log in through (hidden, the eye button shows them, safe to have on stream) -->
 
-                <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
-                    <TextBlock Classes="Title" Text="Twitch"/>
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title" Text="Twitch" Margin="{s:Gap BigTitleMargin}"/>
 
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Classes="Label" Text="Client ID" Width="100"/>
-                        <TextBox Text="{Binding ClientIdInput}" Width="260"
-                                 PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From dev.twitch.tv"/>
-                        <TextBlock Classes="Label" Text="Client Secret"/>
-                        <TextBox Text="{Binding ClientSecretInput}" Width="260"
-                                 PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From dev.twitch.tv"/>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label" Text="Client ID" Width="100"/>
+                            <TextBox Text="{Binding ClientIdInput}" Width="260"
+                                     PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From dev.twitch.tv"/>
+                            <TextBlock Classes="Label" Text="Client Secret"/>
+                            <TextBox Text="{Binding ClientSecretInput}" Width="260"
+                                     PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From dev.twitch.tv"/>
+                        </StackPanel>
+
+                        <ContentControl Content="{Binding TwitchStreamer}"/>
+                        <ContentControl Content="{Binding TwitchBot}"/>
                     </StackPanel>
-
-                    <ContentControl Content="{Binding TwitchStreamer}"/>
-                    <ContentControl Content="{Binding TwitchBot}"/>
                 </StackPanel>
 
                 <Border Classes="Divider"/>
 
-                <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
-                    <TextBlock Classes="Title" Text="Voicemeeter"/>
-                    <ContentControl Content="{Binding Voicemeeter}"/>
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title" Text="Voicemeeter" Margin="{s:Gap BigTitleMargin}"/>
+
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <ContentControl Content="{Binding Voicemeeter}"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <Border Classes="Divider"/>
 
                 <!-- obs: its websocket server (OBS: Tools > WebSocket Server Settings), password hidden like twitch's -->
 
-                <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
-                    <TextBlock Classes="Title" Text="OBS"/>
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title" Text="OBS" Margin="{s:Gap BigTitleMargin}"/>
 
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Classes="Label" Text="Address" Width="100"/>
-                        <TextBox Text="{Binding ObsAddressInput}" Width="260" PlaceholderText="localhost:4455"/>
-                        <TextBlock Classes="Label" Text="Password"/>
-                        <TextBox Text="{Binding ObsPasswordInput}" Width="260"
-                                 PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From OBS"/>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label" Text="Address" Width="100"/>
+                            <TextBox Text="{Binding ObsAddressInput}" Width="260" PlaceholderText="localhost:4455"/>
+                            <TextBlock Classes="Label" Text="Password"/>
+                            <TextBox Text="{Binding ObsPasswordInput}" Width="260"
+                                     PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From OBS"/>
+                        </StackPanel>
+
+                        <ContentControl Content="{Binding Obs}"/>
                     </StackPanel>
-
-                    <ContentControl Content="{Binding Obs}"/>
                 </StackPanel>
 
                 <Border Classes="Divider"/>
 
                 <!-- spotify: your app on developer.spotify.com (hidden like twitch's), whose Redirect URI has to be the one shown -->
 
-                <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
-                    <TextBlock Classes="Title" Text="Spotify"/>
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title" Text="Spotify" Margin="{s:Gap BigTitleMargin}"/>
 
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Classes="Label" Text="Client ID" Width="100"/>
-                        <TextBox Text="{Binding SpotifyClientIdInput}" Width="260"
-                                 PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From developer.spotify.com"/>
-                        <TextBlock Classes="Label" Text="Redirect URI"/>
-                        <SelectableTextBlock Classes="Description" Text="{Binding SpotifyRedirectUri}" VerticalAlignment="Center"/>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label" Text="Client ID" Width="100"/>
+                            <TextBox Text="{Binding SpotifyClientIdInput}" Width="260"
+                                     PasswordChar="●" Classes="revealPasswordButton" PlaceholderText="From developer.spotify.com"/>
+                            <TextBlock Classes="Label" Text="Redirect URI"/>
+                            <SelectableTextBlock Classes="Description" Text="{Binding SpotifyRedirectUri}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <ContentControl Content="{Binding Spotify}"/>
                     </StackPanel>
-
-                    <ContentControl Content="{Binding Spotify}"/>
                 </StackPanel>
 
             </StackPanel>

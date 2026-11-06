@@ -38,7 +38,15 @@ public class KeyboardSaveManager : IDisposable
 
 
 
-    private void OnSlotAdded(KeyboardSlotModel slot)
+    private void OnSlotMoved(KeyboardSlotModel _, int __, int ___) => Save();
+
+
+
+    private void OnSlotSettingChanged(bool _) => Save();
+
+
+
+    private void OnSlotAdded(KeyboardSlotModel slot, int _)
     {
         SubscribeToKeyboardSlotModel(slot);
         Save();
@@ -106,6 +114,7 @@ public class KeyboardSaveManager : IDisposable
     {
         list.SlotCreated += OnSlotAdded;
         list.SlotDeleted += OnSlotRemoved;
+        list.SlotMoved += OnSlotMoved;
         list.Changed += OnConfigsChanged;
 
         foreach (var slot in list.Slots)
@@ -118,6 +127,7 @@ public class KeyboardSaveManager : IDisposable
     {
         list.SlotCreated -= OnSlotAdded;
         list.SlotDeleted -= OnSlotRemoved;
+        list.SlotMoved -= OnSlotMoved;
         list.Changed -= OnConfigsChanged;
 
         foreach (var slot in list.Slots)
@@ -130,6 +140,8 @@ public class KeyboardSaveManager : IDisposable
     {
         slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
         slot.LayoutChanged += OnLayoutChanged;
+        slot.IsDisabledChanged += OnSlotSettingChanged;
+        slot.IsCollapsedChanged += OnSlotSettingChanged;
     }
 
 
@@ -138,6 +150,8 @@ public class KeyboardSaveManager : IDisposable
     {
         slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         slot.LayoutChanged -= OnLayoutChanged;
+        slot.IsDisabledChanged -= OnSlotSettingChanged;
+        slot.IsCollapsedChanged -= OnSlotSettingChanged;
     }
 
 

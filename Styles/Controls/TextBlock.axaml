@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:StreamAssist.Styles">
 
     <Style Selector="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
@@ -16,10 +17,16 @@
     <Style Selector="TextBlock.Label">
     </Style>
 
+    <!-- a heading under a big title (e.g. Alerts / Redeems): the font's empty space above and below its letters is
+         pulled back, so the text itself is the stack's 10 from what's around it -->
+    <Style Selector="TextBlock.Subheading">
+        <Setter Property="Margin" Value="0,-4,0,-4"/>
+    </Style>
+
     <!-- a slot's label beside it (an if's "if" / "then" / "else"), level with the first line of what's in the slot -->
     <Style Selector="TextBlock.SlotLabel">
         <Setter Property="VerticalAlignment" Value="Top"/>
-        <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="Margin" Value="{s:Gap SlotLabelTextMargin}"/>
     </Style>
 
     <!-- :is so a SelectableTextBlock (text that can be copied, e.g. spotify's redirect uri) looks the same -->

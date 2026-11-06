@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -10,7 +12,8 @@ namespace StreamAssist.Components.Blocks.Model;
 
 
 
-// something that can be triggered (a key, a chat command, ...), holds one root block
+// something that can be triggered (a key, a chat command, ...), holds a root list of blocks run top to bottom (like a
+// List block without its box, so a script can be rearranged in place: a block can wait at the bottom meanwhile)
 public class BindableModel : ModelBase
 {
     // private
@@ -19,7 +22,7 @@ public class BindableModel : ModelBase
 
     private bool _isDisabled;
     private string _label;
-    private readonly BlockSlot _root;
+    private readonly BlockSlotList _root;
     private readonly CancellationTokenSource _cancellation;
     private Action? _unbindSelf;
 
@@ -31,8 +34,8 @@ public class BindableModel : ModelBase
 
     [JsonIgnore] public bool IsDisabled => _isDisabled;
     [JsonIgnore] public string Label => _label; // optional name shown on its key / bind box (e.g. "On Hold"), "" for none
-    [JsonIgnore] public BlockSlot Root => _root;
-    [JsonIgnore] public bool HasBlock => _root.Block != null;
+    [JsonIgnore] public BlockSlotList Root => _root;
+    [JsonIgnore] public bool HasBlock => _root.Blocks.Count > 0;
 
 
 
@@ -56,10 +59,10 @@ public class BindableModel : ModelBase
     }
 
     [JsonInclude] [JsonPropertyName("root")]
-    private PendingBlockData? JsonRoot
+    private List<PendingBlockData> JsonRoot
     {
         get => _root.GetData();
-        set => _root.LoadData(value);
+        set => _root.LoadData(value ?? []);
     }
 
 
@@ -88,7 +91,7 @@ public class BindableModel : ModelBase
         _unbindSelf = null;
 
         _root.Changed += OnRootChanged;
-        _root.BlockChanged += OnRootBlockChanged;
+        _root.BlockRemoved += OnRootBlockRemoved;
     }
 
 
@@ -97,7 +100,7 @@ public class BindableModel : ModelBase
     public static BindableModel CreateDefault()
     {
         var bindable = new BindableModel();
-        bindable._root.TrySetBlock(new OnPressedBlock());
+        bindable.TryAddBlock(new OnPressedBlock());
         return bindable;
     }
 
@@ -124,10 +127,19 @@ public class BindableModel : ModelBase
     private void Trigger(TriggerPhase phase, IReadOnlyDictionary<string, string>? parameters = null)
     {
         if (_isDisabled) return;
-        if (_root.Block is not ExecutableBlock root) return;
+        if (!HasBlock) return;
 
         Triggered?.Invoke();
-        _ = root.SafeRunAsync(new TriggerContext(phase, _cancellation.Token, parameters));
+        _ = RunRootAsync(new TriggerContext(phase, _cancellation.Token, parameters));
+    }
+
+
+
+    // each root block runs in turn (waiting for the one before), and like in a List an error or a Stop ends the run
+    private async Task RunRootAsync(TriggerContext context)
+    {
+        foreach (var block in _root.Blocks.OfType<ExecutableBlock>().ToArray())
+            if (!await block.SafeRunAsync(context)) return;
     }
 
 
@@ -168,10 +180,16 @@ public class BindableModel : ModelBase
 
 
 
-    // removes the root block, which also removes this bindable from its owner (see OnRootBlockChanged)
+    // adds a block at the bottom of the root list
+    public bool TryAddBlock(BlockModel block) => _root.TryInsertBlock(block, _root.Blocks.Count);
+
+
+
+    // removes every root block, which also removes this bindable from its owner (see OnRootBlockRemoved)
     public void Clear()
     {
-        if (_root.Block != null) _root.RemoveBlock(_root.Block);
+        foreach (var block in _root.Blocks.ToArray())
+            _root.RemoveBlock(block);
     }
 
 
@@ -203,9 +221,9 @@ public class BindableModel : ModelBase
 
     // a bindable with no root block has nothing to run, so it removes itself from its owner
     // the last block went: its label goes too, then it unbinds itself
-    private void OnRootBlockChanged(BlockModel? _, BlockModel? newBlock)
+    private void OnRootBlockRemoved(BlockModel _)
     {
-        if (newBlock != null) return;
+        if (HasBlock) return;
 
         SetLabel("");
         _unbindSelf?.Invoke();
@@ -220,7 +238,7 @@ public class BindableModel : ModelBase
     public override void Dispose()
     {
         _root.Changed -= OnRootChanged;
-        _root.BlockChanged -= OnRootBlockChanged;
+        _root.BlockRemoved -= OnRootBlockRemoved;
 
         _cancellation.Cancel(); // stops anything still running
         _cancellation.Dispose();

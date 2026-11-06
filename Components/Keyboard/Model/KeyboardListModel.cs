@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.OutputConsole.Model;
 
 namespace StreamAssist.Components.Keyboard.Model;
 
@@ -72,7 +73,8 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public event Action<KeyboardSlotModel>? SlotCreated;
+    public event Action<KeyboardSlotModel, int>? SlotCreated; // the slot, where it went
+    public event Action<KeyboardSlotModel, int, int>? SlotMoved; // the slot, where it was, where it is now
     public event Action<KeyboardSlotModel>? SlotDeleted;
     public event Action? DevicesChanged; // the keyboards plugged in changed (each slot has looked for its own again)
     public event Action? Changed; // the configs' contents, the config in use, or which configs there are changed (saved)
@@ -139,12 +141,50 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public void CreateSlot(out KeyboardSlotModel slot)
+    // a keyboard slot at the end
+    public void CreateSlot(out KeyboardSlotModel slot) => TryCreateSlot(KeyboardSlotModel.KeyboardLayout, _slots.Count, out slot);
+
+
+
+    // a slot of this layout (the Keyboard tab's input device cards: Keyboard, Generic) before the one now at index
+    // (the list's length = at the end)
+    public bool TryCreateSlot(string layout, int index, out KeyboardSlotModel slot)
     {
-        slot = new KeyboardSlotModel(_devices, NextSlotId());
+        slot = null!;
+        if (!KeyboardSlotModel.Layouts.Contains(layout))
+        {
+            AppLog.WriteError($"no keyboard layout '{layout}'");
+            return false;
+        }
+
+        slot = new KeyboardSlotModel(_devices, NextSlotId(), layout);
         slot.ShowConfig(_configs.Selected?.ForSlot(slot.Id));
-        _slots.Add(slot);
-        SlotCreated?.Invoke(slot);
+
+        index = Math.Clamp(index, 0, _slots.Count);
+        _slots.Insert(index, slot);
+        SlotCreated?.Invoke(slot, index);
+        return true;
+    }
+
+
+
+    // a slot to just before the one now at index (the list's length = last), e.g. dragged there to reorder
+    public bool TryMoveSlot(KeyboardSlotModel slot, int index)
+    {
+        var from = _slots.IndexOf(slot);
+        if (from < 0)
+        {
+            AppLog.WriteError("can't move keyboard, not in the list");
+            return false;
+        }
+
+        var to = Math.Clamp(index > from ? index - 1 : index, 0, _slots.Count - 1);
+        if (to == from) return true;
+
+        _slots.RemoveAt(from);
+        _slots.Insert(to, slot);
+        SlotMoved?.Invoke(slot, from, to);
+        return true;
     }
 
 

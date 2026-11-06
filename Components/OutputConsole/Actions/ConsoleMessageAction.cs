@@ -14,8 +14,8 @@ public class ConsoleMessageAction : ActionBlock
 
 
 
-    [JsonIgnore] public override string Name => "Console Message";
-    [JsonIgnore] public override string Description => "Prints the message to the console (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block).";
+    [JsonIgnore] public override string Name => "App Console Message";
+    [JsonIgnore] public override string Description => "Prints the message to the app console on the left (for a Dashboard console dock use Dock Message; type it, {name} is replaced with a parameter, e.g. {user}, or place a text block).";
 
 
 

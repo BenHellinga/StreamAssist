@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Theme.UI.ThemeComponentView"
+             x:DataType="ui:ThemeComponentViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Theme.UI"
+             xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a section per kind of setting (like the Connections tab): Colors, then Spacing. Each row: what it is | its value
+         (applied when the box is left) | Reset while it's changed. A changed value's label is bright, an unchanged one
+         is plain -->
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.Changed">
+            <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer Classes="Gapped Lined" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <Border Padding="{StaticResource ScrollEndPadding}">
+            <StackPanel Spacing="{s:Gap ContentPadding}" Margin="{s:Gap ScrollInset}">
+
+                <!-- colors: a swatch (not clickable, outlined so a dark one still shows) and its value as text -->
+
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title" Text="Colors" Margin="{s:Gap BigTitleMargin}"/>
+
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <ItemsControl ItemsSource="{Binding Colors}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:ThemeColorRowViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                                        <!-- 320 + the swatch and its gap = the spacing rows' 350, so the value boxes line up -->
+                                        <TextBlock Classes="Label" Classes.Changed="{Binding IsChanged}" Text="{Binding Label}" Width="320"/>
+                                        <Border Classes="Panel" Background="{Binding Swatch}"
+                                                Width="{StaticResource ControlHeight}" Height="{StaticResource ControlHeight}"/>
+                                        <TextBox Classes="Commit" Text="{Binding Input}" Width="100"/>
+                                        <Button Content="Reset" Command="{Binding ResetCommand}" IsVisible="{Binding IsChanged}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Content="Reset all colors" Command="{Binding ResetColorsCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Border Classes="Divider"/>
+
+                <!-- spacing: only the base values, everything else is worked out from them (Styles/Gap.cs) -->
+
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title" Text="Spacing" Margin="{s:Gap BigTitleMargin}"/>
+
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <ItemsControl ItemsSource="{Binding Spacing}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:ThemeSpacingRowViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                                        <TextBlock Classes="Label" Classes.Changed="{Binding IsChanged}" Text="{Binding Label}" Width="350"/>
+                                        <TextBox Classes="Commit" Text="{Binding Input}" Width="100"/>
+                                        <Button Content="Reset" Command="{Binding ResetCommand}" IsVisible="{Binding IsChanged}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Content="Reset all spacing" Command="{Binding ResetSpacingCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+
+</UserControl>

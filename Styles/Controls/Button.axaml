@@ -29,6 +29,28 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
     </Style>
 
+    <!-- an icon (Styles/Resources/Icons.axaml) takes the button's text colour, and the hover one like the text does
+         (the hover colour is set on the button's template presenter, which a Path isn't inside of, hence its own rule) -->
+
+    <Style Selector="Button Path.Icon">
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="Height" Value="10"/>
+        <Setter Property="Stretch" Value="None"/>
+        <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}"/>
+    </Style>
+    <Style Selector="Button:pointerover Path.Icon">
+        <Setter Property="Fill" Value="{DynamicResource TextBright}"/>
+    </Style>
+    <Style Selector="Button Path.Icon.Line">
+        <Setter Property="Fill" Value="{x:Null}"/>
+        <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+        <Setter Property="StrokeThickness" Value="1.5"/>
+    </Style>
+    <Style Selector="Button:pointerover Path.Icon.Line">
+        <Setter Property="Fill" Value="{x:Null}"/>
+        <Setter Property="Stroke" Value="{DynamicResource TextBright}"/>
+    </Style>
+
     <!-- width always matches height -->
 
     <Style Selector="Button.Square">

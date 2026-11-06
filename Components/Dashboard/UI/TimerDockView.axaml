@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.TimerDockView"
+             x:DataType="ui:TimerDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- this dock's running timers, soonest first: name | time left | pause (play while paused) | finish now | cancel |
+         ＋ (adds the header's time box) -->
+
+    <ScrollViewer Classes="Gapped">
+        <StackPanel Margin="{s:Gap ScrollInset}">
+
+            <TextBlock Classes="Description" Text="No timers running" IsVisible="{Binding IsEmpty}"/>
+
+            <!-- everything left-aligned: the name and time columns are shared by all rows (a shared size scope), so the
+                 times and buttons still line up under each other -->
+            <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ui:TimerRowViewModel">
+                        <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="TimerName"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="TimerLeft"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Name}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <!-- muted while paused -->
+                            <TextBlock Grid.Column="1" Classes="Label" Text="{Binding Left}" VerticalAlignment="Center" Margin="{s:Gap SmallGapSides}"
+                                       Classes.Placeholder="{Binding IsPaused}"/>
+
+                            <Button Grid.Column="2" Classes="Square Medium" Command="{Binding PausePressedCommand}">
+                                <Panel>
+                                    <Path Classes="Icon" Data="{StaticResource PauseIcon}" IsVisible="{Binding !IsPaused}"/>
+                                    <Path Classes="Icon" Data="{StaticResource PlayIcon}" IsVisible="{Binding IsPaused}"/>
+                                </Panel>
+                            </Button>
+
+                            <Button Grid.Column="3" Classes="Square Medium"
+                                    Command="{Binding FinishPressedCommand}">
+                                <Path Classes="Icon" Data="{StaticResource SkipIcon}"/>
+                            </Button>
+
+                            <Button Grid.Column="4" Classes="Square Medium"
+                                    Command="{Binding CancelPressedCommand}">
+                                <Path Classes="Icon" Data="{StaticResource StopIcon}"/>
+                            </Button>
+
+                            <Button Grid.Column="5" Classes="Square Medium" Content="＋" Command="{Binding AddTimePressedCommand}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -20,7 +20,7 @@
         </Style>
     </UserControl.Styles>
 
-    <StackPanel Orientation="Horizontal" Spacing="10">
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
 
         <TextBlock Classes="Label" Text="{Binding Label}" Width="100"/>
 

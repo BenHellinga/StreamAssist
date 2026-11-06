@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Keyboard.UI.InputDevicePaletteView"
+             x:DataType="ui:InputDevicePaletteViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Keyboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- search box | a card per kind of input device (an InputDeviceCardView through the ViewLocator), dragged into the
+         keyboards -->
+
+    <DockPanel>
+
+        <TextBox DockPanel.Dock="Top"
+                 Margin="{s:Gap PadAll}"
+                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="Search input devices…"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <ScrollViewer Classes="Gapped">
+            <ItemsControl ItemsSource="{Binding Shown}" Margin="{s:Gap ScrollInset}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

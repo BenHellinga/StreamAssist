@@ -1,6 +1,7 @@
+using Avalonia.Controls;
 using Avalonia.Input;
-using StreamAssist.Core.Mvvm;
 using StreamAssist.Core.Dragging;
+using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Blocks.UI;
 
@@ -15,13 +16,13 @@ public partial class BlockSlotListView : ViewBase
 
 
 
-    private void OnZoneDragOver(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragOver(DataContext, e);
+    private void OnZoneDragOver(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragOver(DataContext, e, sender as Border);
 
 
 
-    private void OnZoneDragLeave(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragLeave(DataContext, e);
+    private void OnZoneDragLeave(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragLeave(DataContext, e, sender as Border);
 
 
 
-    private void OnZoneDrop(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDrop(DataContext, e);
+    private void OnZoneDrop(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDrop(DataContext, e, sender as Border);
 }

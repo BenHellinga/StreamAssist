@@ -59,7 +59,7 @@ public class KeybindManager : IDisposable
 
 
 
-    // every slot using this keyboard, and the bindable its selected config has on this key
+    // every slot using this keyboard (and switched on), and the bindable its selected config has on this key
     // (returned as a list first, since triggering can change slots/configs while we loop)
     private List<BindableModel> GetBindings(string device, ushort vk)
     {
@@ -67,7 +67,7 @@ public class KeybindManager : IDisposable
 
         foreach (var slot in _listModel.Slots)
         {
-            if (slot.SelectedDevice?.DevicePath != device) continue;
+            if (slot.IsDisabled || slot.SelectedDevice?.DevicePath != device) continue;
             if (slot.SelectedConfig is not { } config) continue;
 
             if (config.Keybinds.TryGetValue(vk, out var bindable))

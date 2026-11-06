@@ -7,7 +7,8 @@
              xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
 
              Width="{Binding W}"
-             Height="{Binding H}">
+             Height="{Binding H}"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- the edit buttons only exist on a key that has a binding, and only show while the pointer is on it (their styles are
          in KeyboardSlotView, once for every key) -->
@@ -29,7 +30,7 @@
 
         <Grid>
             <StackPanel VerticalAlignment="Center">
-                <Viewbox StretchDirection="DownOnly" Margin="2,0">
+                <Viewbox StretchDirection="DownOnly" Margin="{s:Gap KeyLabelMargin}">
                     <TextBlock Text="{Binding Label}" TextAlignment="Center"/>
                 </Viewbox>
                 <TextBlock Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"

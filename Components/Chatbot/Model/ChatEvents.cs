@@ -19,6 +19,12 @@ public static class ChatEvents
     public const string Raid = "raid";
     public const string StreamOnline = "streamOnline";
     public const string StreamOffline = "streamOffline";
+    public const string AppStarted = "appStarted"; // once per launch, after the startup connection attempts (AppStartedManager)
+
+
+
+    // the app's own events (the Events tab's App section), the rest come from twitch
+    public static bool IsApp(string key) => key == AppStarted;
 
 
 
@@ -32,6 +38,7 @@ public static class ChatEvents
         (Raid, "Raid"),
         (StreamOnline, "Stream Online"),
         (StreamOffline, "Stream Offline"),
+        (AppStarted, "App Started"),
     ];
 
 
@@ -43,26 +50,26 @@ public static class ChatEvents
     // every chatbot trigger gets these
     public static readonly IReadOnlyList<ParameterInfo> Common =
     [
-        new("channel", ValueKind.Text, "your channel's display name"),
-        new("channelLogin", ValueKind.Text, "your channel's login name (lowercase)"),
-        new("channelId", ValueKind.Text, "your channel's twitch id"),
-        new("timestamp", ValueKind.Text, "when it happened, e.g. 2026-10-28 18:30:00"),
+        new("channel", ValueKind.Text, "your channel's display name", "TestChannel"),
+        new("channelLogin", ValueKind.Text, "your channel's login name (lowercase)", "testchannel"),
+        new("channelId", ValueKind.Text, "your channel's twitch id", "0"),
+        new("timestamp", ValueKind.Text, "when it happened, e.g. 2026-10-28 18:30:00", "2026-01-01 18:30:00"),
     ];
 
     private static IReadOnlyList<ParameterInfo> User(string who) =>
     [
-        new("user", ValueKind.Text, $"{who}'s display name"),
-        new("userLogin", ValueKind.Text, $"{who}'s login name (lowercase)"),
-        new("userId", ValueKind.Text, $"{who}'s twitch id"),
+        new("user", ValueKind.Text, $"{who}'s display name", "TestUser"),
+        new("userLogin", ValueKind.Text, $"{who}'s login name (lowercase)", "testuser"),
+        new("userId", ValueKind.Text, $"{who}'s twitch id", "0"),
     ];
 
     // a chat message (chat commands add rest, and whatever their Parse Parameter blocks and regex groups capture)
     public static readonly IReadOnlyList<ParameterInfo> Chat =
     [
         .. User("the chatter"),
-        new("message", ValueKind.Text, "the whole message"),
-        new("messageId", ValueKind.Text, "the message's twitch id"),
-        new("color", ValueKind.Text, "the chatter's name color, e.g. #00FF7F (empty if they never picked one)"),
+        new("message", ValueKind.Text, "the whole message", "hello chat"),
+        new("messageId", ValueKind.Text, "the message's twitch id", "0"),
+        new("color", ValueKind.Text, "the chatter's name color, e.g. #00FF7F (empty if they never picked one)", "#00FF7F"),
         new("badges", ValueKind.Text, "the chatter's badges, e.g. moderator,subscriber"),
         new("isBroadcaster", ValueKind.Bool, "true if it's you"),
         new("isModerator", ValueKind.Bool, "true if the chatter is a moderator"),
@@ -76,9 +83,9 @@ public static class ChatEvents
     public static readonly IReadOnlyList<ParameterInfo> Redeem =
     [
         .. User("the viewer who redeemed it"),
-        new("reward", ValueKind.Text, "the reward's title"),
-        new("rewardId", ValueKind.Text, "the reward's twitch id"),
-        new("cost", ValueKind.Int, "how many channel points it cost"),
+        new("reward", ValueKind.Text, "the reward's title", "Test reward"),
+        new("rewardId", ValueKind.Text, "the reward's twitch id", "0"),
+        new("cost", ValueKind.Int, "how many channel points it cost", "100"),
         new("input", ValueKind.Text, "what the viewer typed (if the reward asks for text)"),
         .. Common,
     ];
@@ -92,30 +99,31 @@ public static class ChatEvents
         Sub =>
         [
             .. User("the subscriber"),
-            new("tier", ValueKind.Int, "1, 2 or 3 (Prime counts as 1)"),
-            new("months", ValueKind.Int, "how many months in total, 1 for a new sub"),
-            new("streak", ValueKind.Int, "months in a row (empty if they hid it)"),
-            new("message", ValueKind.Text, "their resub message (empty for a new sub)"),
+            new("tier", ValueKind.Int, "1, 2 or 3 (Prime counts as 1)", "1"),
+            new("months", ValueKind.Int, "how many months in total, 1 for a new sub", "1"),
+            new("streak", ValueKind.Int, "months in a row (empty if they hid it)", "1"),
+            new("message", ValueKind.Text, "their resub message (empty for a new sub)", "hello chat"),
             .. Common,
         ],
         GiftSubs =>
         [
             .. User("the gifter (\"Anonymous\" if hidden)"),
-            new("count", ValueKind.Int, "how many subs they gifted this time"),
-            new("tier", ValueKind.Int, "1, 2 or 3"),
+            new("count", ValueKind.Int, "how many subs they gifted this time", "5"),
+            new("tier", ValueKind.Int, "1, 2 or 3", "1"),
             new("anonymous", ValueKind.Bool, "true if the gifter is hidden"),
-            new("totalGifted", ValueKind.Int, "how many they've gifted in total (empty if hidden)"),
+            new("totalGifted", ValueKind.Int, "how many they've gifted in total (empty if hidden)", "5"),
             .. Common,
         ],
         Cheer =>
         [
             .. User("the cheerer (\"Anonymous\" if hidden)"),
-            new("bits", ValueKind.Int, "how many bits"),
-            new("message", ValueKind.Text, "the cheer message"),
+            new("bits", ValueKind.Int, "how many bits", "100"),
+            new("message", ValueKind.Text, "the cheer message", "hello chat"),
             new("anonymous", ValueKind.Bool, "true if the cheerer is hidden"),
             .. Common,
         ],
-        Raid => [.. User("the raider"), new("viewers", ValueKind.Int, "how many viewers came with the raid"), .. Common],
+        Raid => [.. User("the raider"), new("viewers", ValueKind.Int, "how many viewers came with the raid", "5"), .. Common],
+        AppStarted => [new("timestamp", ValueKind.Text, "when it started, e.g. 2026-10-28 18:30:00", "2026-01-01 18:30:00")],
         _ => Common,
     };
 

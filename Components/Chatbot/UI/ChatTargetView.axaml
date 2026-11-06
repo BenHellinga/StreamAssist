@@ -4,7 +4,8 @@
              x:DataType="ui:ChatTargetViewModel"
 
              xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
-             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- the buttons only show while the pointer is on a bind box that has a binding (hidden by opacity, so nothing moves) -->
 
@@ -21,7 +22,7 @@
 
     <!-- the chat block slot | bind box, filling one hides the other -->
 
-    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Top">
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" VerticalAlignment="Top">
 
         <!-- keep matching into another chat block (a BlockSlotView through the ViewLocator) -->
 
@@ -51,12 +52,12 @@
                 <!-- long commands end in ... (the label line below has no limit) -->
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Command}"
                            Classes.Placeholder="{Binding !IsBound}"
-                           Margin="6,0,0,0" MaxWidth="260" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+                           Margin="{s:Gap BoxTextMargin}" MaxWidth="260" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
 
                 <!-- across both columns: only the command line needs room beside it for the buttons -->
                 <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
                            Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                           Margin="6,0,6,2"/>
+                           Margin="{s:Gap BindLabelMargin}"/>
 
                 <Panel Grid.Row="0" Grid.Column="1">
                     <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>

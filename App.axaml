@@ -20,6 +20,7 @@
                 <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Brushes.axaml"/>
                 <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Typography.axaml"/>
                 <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Spacing.axaml"/>
+                <ResourceInclude Source="avares://StreamAssist/Styles/Resources/Icons.axaml"/>
                 <ResourceInclude Source="avares://StreamAssist/Components/Blocks/UI/Configurator/ConfiguratorTemplates.axaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
@@ -36,7 +37,6 @@
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/Border.axaml"/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/Button.axaml"/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/CheckBox.axaml"/>
-        <StyleInclude Source="avares://StreamAssist/Styles/Controls/TabStrip.axaml"/>
         <StyleInclude Source="avares://StreamAssist/Styles/Controls/ScrollViewer.axaml"/>
     </Application.Styles>
 

@@ -1,18 +1,26 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:StreamAssist.Styles">
 
     <Style Selector="GridSplitter">
         <Setter Property="Background" Value="{DynamicResource Splitter}"/>
     </Style>
 
+    <!-- a thick line between regions: ThickLineThickness wide, keeping LineGap clear on either side (it sits in an Auto
+         column / row, so that's all the room it takes) -->
+
     <Style Selector="GridSplitter.ColumnSplitter">
         <Setter Property="Cursor" Value="SizeWestEast"/>
-        <Setter Property="MinWidth" Value="5"/>
+        <Setter Property="Width" Value="{DynamicResource ThickLineThickness}"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Margin" Value="{s:Gap VerticalLineZone}"/>
     </Style>
 
     <Style Selector="GridSplitter.RowSplitter">
         <Setter Property="Cursor" Value="SizeNorthSouth"/>
-        <Setter Property="MinHeight" Value="5"/>
+        <Setter Property="Height" Value="{DynamicResource ThickLineThickness}"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Margin" Value="{s:Gap HorizontalLineZone}"/>
     </Style>
 
 </Styles>

@@ -8,17 +8,21 @@ namespace StreamAssist.Core.Dragging;
 
 
 // the drop target nearest the pointer handles a drag (marked handled), so a target inside another (a block in a list,
-// a slot inside that block) never also drops into the outer one
+// a slot inside that block) never also drops into the outer one, unless it passes the payload on (IDroppable.PassesOn):
+// then the event goes on up, and the outer target's handler names its own border (the one it lights up), since the
+// nearest Droppable border to the pointer is still the inner one
 public static class DropBehaviorHandler
 {
-    public static void OnDragOver(object? target, DragEventArgs e)
+    public static void OnDragOver(object? target, DragEventArgs e, Border? ownBorder = null)
     {
         e.DragEffects = DragDropEffects.None;
 
-        if (FindDroppableBorder(e.Source) is not { } border) return;
-        e.Handled = true;
+        if ((ownBorder ?? FindDroppableBorder(e.Source)) is not { } border) return;
 
         var payload = e.DataTransfer.TryGetValue(DragDropPayload.Format);
+        if (PassesOn(target, payload)) return;
+        e.Handled = true;
+
         if (payload is null) return;
 
         if (target is not IDroppable droppable) return;
@@ -30,9 +34,10 @@ public static class DropBehaviorHandler
 
 
 
-    public static void OnDragLeave(object? target, DragEventArgs e)
+    public static void OnDragLeave(object? target, DragEventArgs e, Border? ownBorder = null)
     {
-        if (FindDroppableBorder(e.Source) is not { } border) return;
+        if ((ownBorder ?? FindDroppableBorder(e.Source)) is not { } border) return;
+        if (PassesOn(target, e.DataTransfer.TryGetValue(DragDropPayload.Format))) return;
         e.Handled = true;
 
         border.Classes.Set("Dragover", false);
@@ -40,13 +45,15 @@ public static class DropBehaviorHandler
 
 
 
-    public static void OnDrop(object? target, DragEventArgs e)
+    public static void OnDrop(object? target, DragEventArgs e, Border? ownBorder = null)
     {
-        if (FindDroppableBorder(e.Source) is not { } border) return;
+        if ((ownBorder ?? FindDroppableBorder(e.Source)) is not { } border) return;
+
+        var payload = e.DataTransfer.TryGetValue(DragDropPayload.Format);
+        if (PassesOn(target, payload)) return;
         e.Handled = true;
 
         border.Classes.Set("Dragover", false);
-        var payload = e.DataTransfer.TryGetValue(DragDropPayload.Format);
         if (payload is null) return;
 
         if (target is not IDroppable droppable) return;
@@ -58,6 +65,11 @@ public static class DropBehaviorHandler
 
 
     // private
+
+
+
+    private static bool PassesOn(object? target, object? payload) =>
+        payload is not null && target is IDroppable droppable && droppable.PassesOn(payload);
 
 
 

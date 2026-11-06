@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Input;
 using StreamAssist.Core.Dragging;
 using StreamAssist.Core.Mvvm;
@@ -15,15 +16,15 @@ public partial class ChatTargetView : ViewBase
 
 
 
-    private void OnDragOver(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragOver(DataContext, e);
+    private void OnDragOver(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragOver(DataContext, e, sender as Border);
 
 
 
-    private void OnDragLeave(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragLeave(DataContext, e);
+    private void OnDragLeave(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDragLeave(DataContext, e, sender as Border);
 
 
 
-    private void OnDrop(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDrop(DataContext, e);
+    private void OnDrop(object? sender, DragEventArgs e) => DropBehaviorHandler.OnDrop(DataContext, e, sender as Border);
 
 
 

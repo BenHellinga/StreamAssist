@@ -22,6 +22,7 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasConnector))] private string _connector; // e.g. "==" above Equals' second value
     private bool _isInList; // one of a growing list's slots
     private readonly string? _placeholder; // instead of the type, e.g. a name box's "Name…"
+    private readonly IDroppable? _list; // the growing list this slot is in, which reorders its items (see PassesOn)
 
 
 
@@ -44,11 +45,12 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
 
 
-    public ValueSlotViewModel(ValueSlot slot, bool isInList = false, string? placeholder = null)
+    public ValueSlotViewModel(ValueSlot slot, bool isInList = false, string? placeholder = null, IDroppable? list = null)
     {
         _slot = slot;
         _isInList = isInList;
         _placeholder = placeholder;
+        _list = list;
         _text = _slot.Text;
         _block = null;
         _connector = _slot.Connector;
@@ -86,6 +88,11 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
         && _slot.BlockSlot.Block == null
         && _slot.BlockSlot.Accepts(blockPayload.Block)
         && !blockPayload.Block.ContainsSlot(_slot);
+
+
+
+    // in a growing list, a block from another of its items is the list's to handle: it moves that item before this one
+    public bool PassesOn(object payload) => _list?.CanAcceptDropPayload(payload) == true;
 
 
 

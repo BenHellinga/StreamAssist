@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.Blocks.UI.BlockCardView"
              x:DataType="ui:BlockCardViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- block card in the block list -->
 
@@ -12,12 +13,12 @@
 
         <StackPanel>
             <!-- name | what a value block gives (the slots it fits), muted -->
-            <DockPanel Margin="5,5,5,2">
+            <DockPanel Margin="{s:Gap CardTitleMargin}">
                 <TextBlock DockPanel.Dock="Right" Classes="Description" Text="{Binding TypeText}" VerticalAlignment="Center"
-                           Margin="10,0,0,0" IsVisible="{Binding TypeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                           Margin="{s:Gap SmallGapBefore}" IsVisible="{Binding TypeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 <TextBlock Classes="Label" Text="{Binding Name}"/>
             </DockPanel>
-            <TextBlock Classes="Description" Margin="5,0,5,5"
+            <TextBlock Classes="Description" Margin="{s:Gap CardBodyMargin}"
                        Text="{Binding Description}"
                        MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
         </StackPanel>

@@ -28,12 +28,14 @@ public abstract class ExecutableBlock : BlockModel
 
 
 
-    // runs this block and logs any error instead of passing it up, used for the top block of a tree
-    public async Task SafeRunAsync(TriggerContext context)
+    // runs this block and logs any error instead of passing it up, used for the top block of a tree. False if the run
+    // ended early (an error, a Stop, cancelled), so a root list knows not to go on
+    public async Task<bool> SafeRunAsync(TriggerContext context)
     {
         try
         {
             await RunAsync(context);
+            return true;
         }
         catch (OperationCanceledException) when (context.CancellationToken.IsCancellationRequested)
         {
@@ -51,6 +53,8 @@ public abstract class ExecutableBlock : BlockModel
         {
             AppLog.WriteError($"{Name}: {ex.Message}");
         }
+
+        return false;
     }
 
 

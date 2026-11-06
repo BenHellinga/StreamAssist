@@ -3,17 +3,19 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Components.Chatbot.Model;
+using StreamAssist.Core.Dragging;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Chatbot.UI;
 
 
 
-// the chatbot's Events tab: one bind box per stream event (Alerts), then the channel point redeems
-// a small tab bar at the bottom opens one panel at a time: Test (made-up values for the Test button on every row, so
-// alerts can be tried without twitch) or New redeem (creates a channel point reward on twitch)
-public partial class ChatEventsViewModel : ViewModelBase
+// the Events tab: one bind box per event, the app's (App) then twitch's (Alerts), then the channel point redeems with
+// New redeem under them (creates a channel point reward on twitch). Bindings are tested with the editor's Test button.
+// Dragging a redeem's binding onto another redeem row moves the whole row before that one
+public partial class ChatEventsViewModel : ViewModelBase, IDroppable
 {
     // private
 
@@ -22,13 +24,8 @@ public partial class ChatEventsViewModel : ViewModelBase
     private readonly ChatbotComponentModel _model;
     private readonly RedeemList _redeemList; // the shown config's (only made while there's one), kept to unsubscribe from it
     private readonly ObservableCollection<RedeemRowViewModel> _redeems;
-    private readonly IReadOnlyList<ChatEventSlotViewModel> _events;
-
-    [ObservableProperty] private bool _isTestOpen;
-    [ObservableProperty] private string _testUser;
-    [ObservableProperty] private string _testAmount; // months, gift count, bits, viewers or cost
-    [ObservableProperty] private string _testTier;
-    [ObservableProperty] private string _testText; // message or redeem input
+    private readonly IReadOnlyList<ChatTargetViewModel> _appEvents;
+    private readonly IReadOnlyList<ChatTargetViewModel> _twitchEvents;
 
     [ObservableProperty] private bool _isNewRewardOpen;
     [ObservableProperty] private string _newRewardTitle;
@@ -43,7 +40,8 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
     public ObservableCollection<RedeemRowViewModel> Redeems => _redeems;
-    public IReadOnlyList<ChatEventSlotViewModel> Events => _events;
+    public IReadOnlyList<ChatTargetViewModel> AppEvents => _appEvents; // their bind boxes, in ChatEvents.All order
+    public IReadOnlyList<ChatTargetViewModel> TwitchEvents => _twitchEvents;
 
 
 
@@ -56,12 +54,6 @@ public partial class ChatEventsViewModel : ViewModelBase
         _model = model;
         _redeemList = model.Redeems!;
 
-        _isTestOpen = false;
-        _testUser = "TestUser";
-        _testAmount = "5";
-        _testTier = "1";
-        _testText = "";
-
         _isNewRewardOpen = false;
         _newRewardTitle = "";
         _newRewardCost = "100";
@@ -72,10 +64,12 @@ public partial class ChatEventsViewModel : ViewModelBase
         foreach (var row in _redeemList.Rows)
             _redeems.Add(CreateRedeemRow(row));
 
-        _events = _model.Events.Select(slot => new ChatEventSlotViewModel(slot, _model, TestEvent, _isTestOpen)).ToList();
+        _appEvents = _model.Events.Where(slot => ChatEvents.IsApp(slot.Key)).Select(slot => new ChatTargetViewModel(slot.Target, _model)).ToList();
+        _twitchEvents = _model.Events.Where(slot => !ChatEvents.IsApp(slot.Key)).Select(slot => new ChatTargetViewModel(slot.Target, _model)).ToList();
 
         _redeemList.RowInserted += OnRedeemRowInserted;
         _redeemList.RowRemoved += OnRedeemRowRemoved;
+        _redeemList.RowMoved += OnRedeemRowMoved;
     }
 
 
@@ -84,20 +78,8 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
 
-    // clicking a tab opens its panel (closing the other one), clicking the open tab closes it
-    [RelayCommand] private void OnTestTabPressed()
-    {
-        IsTestOpen = !IsTestOpen;
-        if (IsTestOpen) IsNewRewardOpen = false;
-    }
-
-
-
-    [RelayCommand] private void OnNewRewardTabPressed()
-    {
-        IsNewRewardOpen = !IsNewRewardOpen;
-        if (IsNewRewardOpen) IsTestOpen = false;
-    }
+    // New redeem opens its panel under it, clicking it again closes it
+    [RelayCommand] private void OnNewRewardTabPressed() => IsNewRewardOpen = !IsNewRewardOpen;
 
 
 
@@ -108,22 +90,32 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
 
-    partial void OnIsTestOpenChanged(bool value)
+    // drag drop (only the redeem rows' lines above them are targets here)
+
+
+
+    // only reordering: the binding of one of the redeem rows
+    public bool CanAcceptDropPayload(object payload) => FindRedeemRow(payload) != null;
+
+
+
+    public bool PassesOn(object payload) => !CanAcceptDropPayload(payload);
+
+
+
+    // zoneContext is the row it was dropped on, it goes before that one
+    public void OnDroppedOn(object payload, object? zoneContext)
     {
-        foreach (var row in _redeems) row.ShowTest = value;
-        foreach (var slot in _events) slot.ShowTest = value;
+        if (FindRedeemRow(payload) is not { } row) return;
+        if (zoneContext is not RedeemRowViewModel before) return;
+
+        _redeemList.TryMoveRow(row, _redeems.IndexOf(before));
     }
 
 
 
-    // test buttons run the binding through the model, like the real event would
-    private void TestRedeem(RedeemRow row) =>
-        row.Target.TryRun(ChatEvents.SampleParameters(null, TestUser, TestAmount, TestTier, TestText, row.Title));
-
-
-
-    private void TestEvent(ChatEventSlot slot) =>
-        slot.Target.TryRun(ChatEvents.SampleParameters(slot.Key, TestUser, TestAmount, TestTier, TestText));
+    private RedeemRow? FindRedeemRow(object payload) =>
+        payload is BindableDragPayload dragged ? _redeemList.Rows.FirstOrDefault(r => r.Target.Bindable == dragged.Bindable) : null;
 
 
 
@@ -132,6 +124,10 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
     private void OnRedeemRowInserted(RedeemRow row, int index) => _redeems.Insert(index, CreateRedeemRow(row));
+
+
+
+    private void OnRedeemRowMoved(RedeemRow _, int from, int to) => _redeems.Move(from, to);
 
 
 
@@ -150,7 +146,7 @@ public partial class ChatEventsViewModel : ViewModelBase
 
 
 
-    private RedeemRowViewModel CreateRedeemRow(RedeemRow row) => new(row, _model, TestRedeem, IsTestOpen);
+    private RedeemRowViewModel CreateRedeemRow(RedeemRow row) => new(row, _model, this);
 
 
 
@@ -162,8 +158,10 @@ public partial class ChatEventsViewModel : ViewModelBase
     {
         _redeemList.RowInserted -= OnRedeemRowInserted;
         _redeemList.RowRemoved -= OnRedeemRowRemoved;
+        _redeemList.RowMoved -= OnRedeemRowMoved;
 
         foreach (var row in _redeems) row.Dispose();
-        foreach (var slot in _events) slot.Dispose();
+        foreach (var target in _appEvents) target.Dispose();
+        foreach (var target in _twitchEvents) target.Dispose();
     }
 }

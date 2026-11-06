@@ -3,15 +3,16 @@
              x:Class="StreamAssist.Components.Data.UI.TableListView"
              x:DataType="ui:TableListViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Data.UI">
+             xmlns:ui="using:StreamAssist.Components.Data.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- search | Built-in and Custom tables (click a heading to collapse it) | a new custom table -->
 
     <UserControl.DataTemplates>
         <DataTemplate DataType="ui:TableGroupViewModel">
-            <StackPanel Spacing="5">
+            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                 <!-- the title, then the arrow: only the arrow (a small button) collapses / expands -->
-                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
                     <TextBlock Classes="Label" Text="{Binding HeadingText}" VerticalAlignment="Center"/>
                     <Button Classes="Square Small" Content="{Binding Arrow}" Command="{Binding HeadingPressedCommand}"
                             VerticalAlignment="Center"/>
@@ -19,7 +20,7 @@
                 <ItemsControl ItemsSource="{Binding Tables}" IsVisible="{Binding !IsCollapsed}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Spacing="5"/>
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
@@ -37,15 +38,15 @@
     <DockPanel>
 
         <TextBox DockPanel.Dock="Top"
-                 Margin="{StaticResource HeaderMargin}"
+                 Margin="{s:Gap PadAll}"
                  Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                  Text="{Binding SearchText}"
                  PlaceholderText="Search tables…"/>
 
-        <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
 
         <ScrollViewer Classes="Gapped">
-            <StackPanel Spacing="10" Margin="5,0,5,0">
+            <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}">
                 <ContentControl Content="{Binding BuiltIn}"/>
                 <ContentControl Content="{Binding Custom}"/>
 

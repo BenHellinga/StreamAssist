@@ -53,6 +53,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
     // where the slots go in the card: under the settings, or beside them (e.g. Parse Parameter)
     public int SlotsRow => _block.SlotsBesideSettings ? 0 : 1;
+    public bool HasSlots => _block.Slots.Count > 0; // a block without any doesn't show the (empty) slot area
     public int SlotsColumn => _block.SlotsBesideSettings ? 1 : 0;
 
 
@@ -114,6 +115,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
     public bool CanCollapse => true;
+    public bool CanToggle => true;
     [RelayCommand] private void OnCollapseButtonPressed() => _block.SetIsCollapsed(true);
     [RelayCommand] private void OnExpandPressed() => _block.SetIsCollapsed(false);
 

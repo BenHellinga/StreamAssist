@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.OutputConsole.UI.LogView"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a log's lines (the app console, a Dashboard console dock): one selectable text for the whole log, so it can
+         be selected and copied across lines (Ctrl+A / Ctrl+C or right click). It's built in code-behind from Text, so
+         each line's [time] can be muted, and new lines scroll it to the bottom -->
+
+    <ScrollViewer x:Name="LogScrollViewer" Classes="Gapped">
+        <!-- fills the whole log (transparent background) so clicking empty space still focuses it for Ctrl+A
+             (inset with Padding, not Margin, so filling the log doesn't make it scrollable) -->
+        <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent" Padding="{s:Gap PadSides}"
+                             MinHeight="{Binding #LogScrollViewer.Viewport.Height}"/>
+    </ScrollViewer>
+
+</UserControl>

@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Threading;
 using StreamAssist.Components.OutputConsole.Model;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Keyboard.UI;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Core.Persistence;
@@ -14,6 +15,7 @@ using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.Connections.UI;
 using StreamAssist.Components.Chatbot.Background;
+using StreamAssist.Core.Connections;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Chatbot.UI;
 using StreamAssist.Components.OBS.Background;
@@ -24,6 +26,12 @@ using StreamAssist.Components.Data.Model;
 using StreamAssist.Components.Data.UI;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Spotify.Model;
+using StreamAssist.Components.Dashboard.Background;
+using StreamAssist.Components.Dashboard.Model;
+using StreamAssist.Components.Dashboard.UI;
+using StreamAssist.Components.Theme.Background;
+using StreamAssist.Components.Theme.Model;
+using StreamAssist.Components.Theme.UI;
 
 namespace StreamAssist.Shell;
 
@@ -39,6 +47,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private ObsComponentModel _obsComponentModel;
     private SpotifyComponentModel _spotifyComponentModel;
     private DataModel _dataModel;
+    private DashboardComponentModel _dashboardComponentModel;
+    private ThemeComponentModel _themeComponentModel;
 
     // managers
     private WindowLayoutSaveManager _windowLayoutSaveManager;
@@ -55,6 +65,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private SpotifySaveManager _spotifySaveManager;
     private SpotifyManager _spotifyManager;
     private DataStore _dataStore;
+    private DashboardSaveManager _dashboardSaveManager;
+    private TimerManager _timerManager;
+    private AppStartedManager _appStartedManager;
+    private ThemeManager _themeManager;
 
     // main view models
     private PanelViewModel _outputConsolePanelViewModel;
@@ -90,7 +104,12 @@ public partial class MainWindowViewModel : ViewModelBase
         JsonFileStore.ReportWarning = AppLog.WriteWarning;
         AppPaths.EnsureAssetFolders(); // Assets/Sounds, Images, Videos, for the user's files
 
-        // data (tables and variables) first, so blocks loading below can already look up variables
+        // the theme next, so the window is drawn with it from the start
+
+        _themeComponentModel = ThemeManager.Load();
+        _themeManager = new(_themeComponentModel); // reads the shipped defaults, applies the user's changes, saves new ones
+
+        // data (tables and variables) before the other models, so blocks loading below can already look up variables
 
         _dataModel = new();
         _dataStore = new(_dataModel, System.IO.Path.Combine(JsonFileStore.RootDir, "data.db")); // loads it, then saves every change
@@ -106,6 +125,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _audioComponentModel = AudioSaveManager.Load();
         _obsComponentModel = ObsSaveManager.Load();
         _spotifyComponentModel = SpotifySaveManager.Load();
+        _dashboardComponentModel = DashboardSaveManager.Load();
 
         // managers
 
@@ -121,6 +141,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _obsSaveManager = new(_obsComponentModel);
         _obsManager = new(_obsComponentModel); // connects if connect on startup is ticked
+
+        _dashboardSaveManager = new(_dashboardComponentModel);
+        _timerManager = new(_dashboardComponentModel);
 
         _spotifySaveManager = new(_spotifyComponentModel);
         _spotifyManager = new(_spotifyComponentModel); // connects if connect on startup is ticked
@@ -138,6 +161,14 @@ public partial class MainWindowViewModel : ViewModelBase
         GlobalContext.ObsManager = _obsManager;
         GlobalContext.SpotifyComponentModel = _spotifyComponentModel;
         GlobalContext.SpotifyManager = _spotifyManager;
+        GlobalContext.DashboardComponentModel = _dashboardComponentModel;
+
+        // the App Started event, once the startup connection attempts are over (set up last, it uses the managers)
+
+        _appStartedManager = new(_chatbotComponentModel, () =>
+            _chatbotManager.StreamerConnection == ConnectionStatus.Connecting || _chatbotManager.BotConnection == ConnectionStatus.Connecting
+            || _voicemeeterManager.Status == ConnectionStatus.Connecting || _obsManager.Status == ConnectionStatus.Connecting
+            || _spotifyManager.Status == ConnectionStatus.Connecting);
 
         // view models
 
@@ -149,22 +180,26 @@ public partial class MainWindowViewModel : ViewModelBase
         // tab
         _tabFiles = new()
         {
+            ["Dashboard"] = DashboardSaveManager.FileName,
             ["Keyboard"] = "keyboard",
             ["Chat"] = "chatbot",
             ["Events"] = "chatbot",
             ["Connections"] = CredentialStore.FileName,
         };
         _tabs = [
+            new("Dashboard", () => Guarded("Dashboard", () => DashboardComponentViewModel.ActivateTab(_dashboardComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Keyboard", () => Guarded("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Chat", () => Guarded("Chat", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Events", () => Guarded("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Data", () => DataComponentViewModel.ActivateTab(_dataModel, _sidePanelViewModel, _bottomPanelViewModel)),
             new("Connections", () => Guarded("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _obsComponentModel, _obsManager, _spotifyComponentModel, _spotifyManager, _sidePanelViewModel, _bottomPanelViewModel))),
+            new("Themes", () => ThemeComponentViewModel.ActivateTab(_themeComponentModel, _sidePanelViewModel, _bottomPanelViewModel)),
         ];
 
         // reopen the last selected tab (set through the field so the content is only created once)
         _selectedTab = _tabs.FirstOrDefault(t => t.Label == _windowLayoutModel.SelectedTab) ?? _tabs[0];
         _activeContent = _selectedTab.CreateTabViewModel();
+        _selectedTab.IsSelected = true;
 
         _windowLayoutModel.SelectedTabChanged += OnLayoutSelectedTabChanged;
         JsonFileStore.BrokenChanged += OnFileBrokenChanged;
@@ -176,8 +211,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
 
 
+    // a tab button was clicked (or a drag hovered over it)
+    [RelayCommand] private void OnTabPressed(ViewModelTabItem tab) => SelectedTab = tab;
+
+
+
     partial void OnSelectedTabChanged(ViewModelTabItem value)
     {
+        foreach (var tab in _tabs) tab.IsSelected = tab == value;
+
         ViewModelBase oldContent = ActiveContent;
         ActiveContent = value.CreateTabViewModel();
         oldContent?.Dispose();
@@ -246,11 +288,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _dataStore.Dispose();
 
+        _timerManager.Dispose();
+        _appStartedManager.Dispose();
+        _dashboardSaveManager.Dispose();
+        _dashboardComponentModel.Dispose();
+
         _chatCommandManager.Dispose();
         _chatEventManager.Dispose();
         _chatbotManager.Dispose();
         _chatbotSaveManager.Dispose();
         _keyboardComponentManager.Dispose();
         _windowLayoutSaveManager.Dispose();
+        _themeManager.Dispose();
     }
 }

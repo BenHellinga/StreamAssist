@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.DashboardComponentView"
+             x:DataType="ui:DashboardComponentViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the config bar, a divider, then the docks' regions (a DockView, or a DockSplitView holding more, through the
+         ViewLocator), inset so the docks' outlines are 10 from the lines around them, and the dock list beside them
+         past a splitter (like the Chat tab's block list). The regions' fill takes a card dropped on the empty dashboard -->
+
+    <DockPanel>
+
+        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{s:Gap PadAll}"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="100"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="{Binding DockListWidth, Mode=TwoWay}" MinWidth="100"/>
+            </Grid.ColumnDefinitions>
+
+            <Panel x:Name="Regions" Grid.Column="0" Margin="0" Background="{StaticResource PanelFill}" DragDrop.AllowDrop="True">
+                <ContentControl Content="{Binding Regions}"/>
+            </Panel>
+
+            <GridSplitter Grid.Column="1" Classes="ColumnSplitter"/>
+
+            <ui:DockPaletteView Grid.Column="2" DataContext="{Binding DockPalette}"/>
+        </Grid>
+
+    </DockPanel>
+
+</UserControl>

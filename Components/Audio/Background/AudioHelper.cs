@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Persistence;
 
@@ -77,6 +79,32 @@ public static class AudioHelper
         };
 
         return true;
+    }
+
+
+
+    // plays audio already in memory (e.g. Speak Text's speech) on a device, finished when it has played (or failed to
+    // start, false). It owns the stream from here and disposes it
+    public static Task<bool> PlayWaveAsync(WaveStream wave, float volume, string? deviceName)
+    {
+        if (!TryGetDeviceByString(deviceName, out var device))
+        {
+            wave.Dispose();
+            return Task.FromResult(false);
+        }
+
+        var done = new TaskCompletionSource<bool>();
+        var outputDevice = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
+        outputDevice.Init(new VolumeSampleProvider(wave.ToSampleProvider()) { Volume = volume });
+        outputDevice.PlaybackStopped += (_, _) =>
+        {
+            outputDevice.Dispose();
+            wave.Dispose();
+            done.TrySetResult(true);
+        };
+        outputDevice.Play();
+
+        return done.Task;
     }
 
 

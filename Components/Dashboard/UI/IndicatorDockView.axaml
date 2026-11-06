@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.IndicatorDockView"
+             x:DataType="ui:IndicatorDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the name's text is the status, coloured like a connection's: green = on, red = off, grey = nothing has set it
+         yet (hover and typing keep the colour, the app-wide TextBox style would brighten it). The empty last row is a
+         ghost box until a name is typed; emptying a name removes its row -->
+
+    <UserControl.Styles>
+        <Style Selector="TextBox.Indicator, TextBox.Indicator:pointerover, TextBox.Indicator:focus">
+            <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+        </Style>
+        <Style Selector="TextBox.Indicator.On, TextBox.Indicator.On:pointerover, TextBox.Indicator.On:focus">
+            <Setter Property="Foreground" Value="{DynamicResource Bound}"/>
+        </Style>
+        <Style Selector="TextBox.Indicator.Off, TextBox.Indicator.Off:pointerover, TextBox.Indicator.Off:focus">
+            <Setter Property="Foreground" Value="{DynamicResource Disabled}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer Classes="Gapped">
+        <ItemsControl ItemsSource="{Binding Rows}" Margin="{s:Gap ScrollInset}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ui:IndicatorRowViewModel">
+                    <TextBox Classes="Indicator" Width="150" HorizontalAlignment="Left"
+                             Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                             Classes.On="{Binding IsOn}" Classes.Off="{Binding IsOff}"
+                             Text="{Binding Name}" PlaceholderText="New indicator…"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+
+</UserControl>

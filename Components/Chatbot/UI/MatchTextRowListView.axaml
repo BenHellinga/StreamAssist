@@ -3,30 +3,37 @@
              x:Class="StreamAssist.Components.Chatbot.UI.MatchTextRowListView"
              x:DataType="ui:MatchTextRowListViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
-    <!-- one row per pattern: text box | bind box or the chat block that continues after it -->
+    <!-- one row per pattern: text box | bind box or the chat block that continues after it. Dropping a row's binding or
+         block on another row moves it before that one (the line above it lights up) -->
 
-    <ItemsControl ItemsSource="{Binding Rows}">
+    <ItemsControl ItemsSource="{Binding Rows}" Margin="{s:Gap PadBelow}">
         <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-                <StackPanel Spacing="5"/>
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
             </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
 
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="ui:MatchTextRowViewModel">
-                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="5">
+                <Border Classes="Droppable InsertBefore"
+                        DragDrop.DragOver="OnRowDragOver"
+                        DragDrop.DragLeave="OnRowDragLeave"
+                        DragDrop.Drop="OnRowDrop">
+                    <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
 
-                    <!-- an empty row (the one at the end that adds the next) has a dim border, in the background -->
-                    <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top"
-                             Classes.New="{Binding Pattern, Converter={x:Static StringConverters.IsNullOrEmpty}}"
-                             Text="{Binding Pattern}" PlaceholderText="Text or /regex/…"/>
+                        <!-- an empty row (the one at the end that adds the next) has a dim border, in the background -->
+                        <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top" Margin="{s:Gap PadLeft}"
+                                 Classes.New="{Binding Pattern, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                 Text="{Binding Pattern}" PlaceholderText="Text or /regex/…"/>
 
-                    <!-- bind box + slot (a ChatTargetView through the ViewLocator), only once the row has text -->
-                    <ContentControl Grid.Column="1" Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>
+                        <!-- bind box + slot (a ChatTargetView through the ViewLocator), only once the row has text -->
+                        <ContentControl Grid.Column="1" Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>
 
-                </Grid>
+                    </Grid>
+                </Border>
             </DataTemplate>
         </ItemsControl.ItemTemplate>
     </ItemsControl>

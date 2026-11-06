@@ -7,13 +7,15 @@ using StreamAssist.Core.Mvvm;
 using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.Blocks.UI;
+using StreamAssist.Core.Dragging;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-// view model to modify a KeyboardListModel object
-public partial class KeyboardListViewModel : ViewModelBase, IDisposable
+// the Keyboard tab's input device boxes, top to bottom. An input device card dropped on a box adds one before it (on
+// the drop zone at the end, last); a box dragged by its grip moves the same way
+public partial class KeyboardListViewModel : ViewModelBase, IDisposable, IDroppable
 {
     // private
 
@@ -59,7 +61,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
             _deviceMenuItems.Add(new(device.GetDisplayLabel(), device));
 
         foreach (var slot in _list.Slots)
-            CreateSlot(slot);
+            CreateSlot(slot, _slots.Count);
 
         SubscribeToKeyboardListModel(_list);
         _list.Configs.ListChanged += OnConfigsChanged;
@@ -71,11 +73,24 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    [RelayCommand] private void OnAddSlotRequested() => _list.CreateSlot(out var _);
+    // drag drop
 
 
 
-    [RelayCommand] private void OnRemoveSlotRequested() => _list.TryDeleteSlot(_list.Slots.Last());
+    public bool CanAcceptDropPayload(object payload) =>
+        payload is NewInputDevicePayload || payload is KeyboardSlotDragPayload dragged && _list.Slots.Contains(dragged.Slot);
+
+
+
+    // zoneContext is the box it was dropped on (it goes before that one), or nothing for the zone at the end
+    public void OnDroppedOn(object payload, object? zoneContext)
+    {
+        var index = zoneContext is KeyboardSlotViewModel before ? _slots.IndexOf(before) : _slots.Count;
+        if (index < 0) index = _slots.Count;
+
+        if (payload is NewInputDevicePayload card) _list.TryCreateSlot(card.Layout, index, out _);
+        else if (payload is KeyboardSlotDragPayload dragged) _list.TryMoveSlot(dragged.Slot, index);
+    }
 
 
 
@@ -83,7 +98,11 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
 
 
 
-    private void OnSlotCreated(KeyboardSlotModel slot) => CreateSlot(slot);
+    private void OnSlotCreated(KeyboardSlotModel slot, int index) => CreateSlot(slot, index);
+
+
+
+    private void OnSlotMoved(KeyboardSlotModel _, int from, int to) => _slots.Move(from, to);
 
 
 
@@ -127,6 +146,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         list.SlotCreated += OnSlotCreated;
         list.SlotDeleted += OnSlotDeleted;
+        list.SlotMoved += OnSlotMoved;
         list.DevicesChanged += OnDevicesChanged;
     }
 
@@ -136,15 +156,16 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable
     {
         list.SlotCreated -= OnSlotCreated;
         list.SlotDeleted -= OnSlotDeleted;
+        list.SlotMoved -= OnSlotMoved;
         list.DevicesChanged -= OnDevicesChanged;
     }
 
 
 
-    private void CreateSlot(KeyboardSlotModel slot)
+    private void CreateSlot(KeyboardSlotModel slot, int index)
     {
-        var viewModel = new KeyboardSlotViewModel(slot, _inputManager, _deviceMenuItems, _keyConfigurator);
-        _slots.Add(viewModel);
+        var viewModel = new KeyboardSlotViewModel(slot, _list, _inputManager, _deviceMenuItems, _keyConfigurator);
+        _slots.Insert(index, viewModel);
     }
 
 

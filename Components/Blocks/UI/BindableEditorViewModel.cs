@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,9 +17,20 @@ namespace StreamAssist.Components.Blocks.UI;
 // the bottom panel block editor: one bindable's block tree on the left, the block list on the right
 // every tab that edits bindables uses this (the keyboard's KeybindViewModel builds on it, the chatbot uses it directly)
 // something with no binding yet (an unbound key or bind box) gets a draft: an unsaved binding that's only saved
-// (by the owner's save callback) on its first change, and thrown away if nothing was changed
+// (by the owner's save callback) on its first change, and thrown away if nothing was changed. Test runs the binding
+// once with the values in the Parameters list (each listed parameter's, plus extra name / value rows); the values are
+// remembered by name for the session, so switching bindings keeps what was typed
 public partial class BindableEditorViewModel : ViewModelBase
 {
+    // shared by every editor while the app runs: Test's values by parameter name, and the extra rows
+
+
+
+    private static readonly Dictionary<string, string> TestValues = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly List<(string Name, string Value)> ExtraTestValues = [];
+
+
+
     // private
 
 
@@ -28,7 +41,7 @@ public partial class BindableEditorViewModel : ViewModelBase
     private readonly CallbackBlocker _labelBlocker; // stops the label box writing back a label it was just given
     private Func<BindableModel, bool>? _saveDraft; // set while it's a draft
 
-    [ObservableProperty] private BlockSlotViewModel? _rootSlot;
+    [ObservableProperty] private BlockSlotListViewModel? _rootSlot; // the root list, run top to bottom
     [ObservableProperty] private bool _hasBindable;
     [ObservableProperty] private string _bindLabel; // the label box above the blocks, typing in it sets the bindable's label
     [ObservableProperty] private bool _isBindDisabled; // colours the label red like the key / bind box
@@ -36,7 +49,6 @@ public partial class BindableEditorViewModel : ViewModelBase
     [ObservableProperty] private string _label;
     [ObservableProperty] private string _emptyText; // shown when nothing is being edited, e.g. "No key selected"
     [ObservableProperty] private IReadOnlyList<ParameterInfo> _parameters; // what Get Parameter can read here
-    [ObservableProperty] private bool _hasParameters;
     [ObservableProperty] private bool _isParametersOpen; // the Parameters list is expanded (stays open between bindings)
     [ObservableProperty] private GridLength _blockListWidth; // bound two-way to the block list column
 
@@ -48,6 +60,8 @@ public partial class BindableEditorViewModel : ViewModelBase
 
     public BlockPaletteViewModel Palette => _palette;
     public BindableModel? Bindable => _bindable;
+    public ObservableCollection<TestParameterViewModel> TestParameters { get; } // one per listed parameter
+    public ObservableCollection<TestParameterViewModel> ExtraParameters { get; } // typed name / value rows, the last one empty
 
 
 
@@ -61,7 +75,7 @@ public partial class BindableEditorViewModel : ViewModelBase
         _emptyText = emptyText;
 
         _palette = new(layout,
-            BlockGroup.Control, BlockGroup.Logic, BlockGroup.Math, BlockGroup.Text, BlockGroup.Parameters, BlockGroup.Variables, BlockGroup.Tables, BlockGroup.App,
+            BlockGroup.Control, BlockGroup.Logic, BlockGroup.Math, BlockGroup.Text, BlockGroup.Parameters, BlockGroup.Variables, BlockGroup.Tables, BlockGroup.App, BlockGroup.Dashboard,
             BlockGroup.Twitch, BlockGroup.Obs, BlockGroup.Voicemeeter, BlockGroup.Spotify);
 
         _labelBlocker = new();
@@ -72,8 +86,12 @@ public partial class BindableEditorViewModel : ViewModelBase
         _hasBindable = false;
         _label = "";
         _parameters = [];
-        _hasParameters = false;
         _isParametersOpen = false;
+        TestParameters = [];
+        ExtraParameters = [];
+
+        foreach (var (name, value) in ExtraTestValues) AddExtra(name, value);
+        AddExtra("", "");
         _blockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.BlockListPanel, 200));
 
         _layout.PanelSizeChanged += OnLayoutPanelSizeChanged;
@@ -104,7 +122,15 @@ public partial class BindableEditorViewModel : ViewModelBase
     public void SetParameters(IReadOnlyList<ParameterInfo>? parameters)
     {
         Parameters = parameters ?? [];
-        HasParameters = Parameters.Count > 0;
+
+        foreach (var row in TestParameters) row.Edited -= OnTestParameterEdited;
+        TestParameters.Clear();
+        foreach (var parameter in Parameters)
+        {
+            var row = new TestParameterViewModel(parameter, TestValues.TryGetValue(parameter.Name, out var typed) ? typed : SampleFor(parameter));
+            row.Edited += OnTestParameterEdited;
+            TestParameters.Add(row);
+        }
     }
 
 
@@ -142,6 +168,42 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
     [RelayCommand] private void OnParametersTogglePressed() => IsParametersOpen = !IsParametersOpen;
+
+
+
+    // runs the binding once, like its trigger would, with the Parameters list's values (extra rows win over listed
+    // ones with the same name). A disabled binding doesn't run, as for its real trigger
+    [RelayCommand] private void OnTestPressed()
+    {
+        if (_bindable == null) return;
+
+        var parameters = new Dictionary<string, string>();
+        foreach (var row in TestParameters) parameters[row.Name] = row.Value;
+        foreach (var row in ExtraParameters.Where(r => r.Name.Trim() != "")) parameters[row.Name.Trim()] = row.Value;
+
+        _bindable.TriggerOnce(parameters);
+    }
+
+
+
+    private void OnTestParameterEdited()
+    {
+        foreach (var row in TestParameters) TestValues[row.Name] = row.Value;
+    }
+
+
+
+    // like a growing list: an emptied row goes (unless it's the last), typing in the last adds a new empty one
+    private void OnExtraParameterEdited()
+    {
+        for (var i = ExtraParameters.Count - 2; i >= 0; i--)
+            if (ExtraParameters[i].IsEmpty) RemoveExtra(ExtraParameters[i]);
+
+        if (ExtraParameters.Count == 0 || !ExtraParameters[^1].IsEmpty) AddExtra("", "");
+
+        ExtraTestValues.Clear();
+        ExtraTestValues.AddRange(ExtraParameters.Where(r => !r.IsEmpty).Select(r => (r.Name, r.Value)));
+    }
 
 
 
@@ -223,6 +285,33 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
 
+    // what Test starts with for a parameter nothing was typed for yet
+    private static string SampleFor(ParameterInfo parameter) => parameter.Sample != "" ? parameter.Sample : parameter.Kind switch
+    {
+        ValueKind.Int or ValueKind.Double => "1",
+        ValueKind.Bool => "false",
+        _ => "",
+    };
+
+
+
+    private void AddExtra(string name, string value)
+    {
+        var row = new TestParameterViewModel(name, value);
+        row.Edited += OnExtraParameterEdited;
+        ExtraParameters.Add(row);
+    }
+
+
+
+    private void RemoveExtra(TestParameterViewModel row)
+    {
+        row.Edited -= OnExtraParameterEdited;
+        ExtraParameters.Remove(row);
+    }
+
+
+
     private void Show(BindableModel bindable, string label, IReadOnlyList<ParameterInfo>? parameters, Func<BindableModel, bool>? saveDraft)
     {
         ClearBindable();
@@ -231,7 +320,7 @@ public partial class BindableEditorViewModel : ViewModelBase
         _saveDraft = saveDraft;
         if (_saveDraft != null) _bindable.Changed += OnDraftChanged;
 
-        RootSlot = new BlockSlotViewModel(bindable.Root);
+        RootSlot = new BlockSlotListViewModel(bindable.Root);
         Label = label;
         _bindable.LabelChanged += OnBindableLabelChanged;
         _bindable.IsDisabledChanged += OnBindableIsDisabledChanged;
@@ -255,5 +344,8 @@ public partial class BindableEditorViewModel : ViewModelBase
 
         _layout.PanelSizeChanged -= OnLayoutPanelSizeChanged;
         _palette.Dispose();
+
+        foreach (var row in TestParameters) row.Edited -= OnTestParameterEdited;
+        foreach (var row in ExtraParameters) row.Edited -= OnExtraParameterEdited;
     }
 }

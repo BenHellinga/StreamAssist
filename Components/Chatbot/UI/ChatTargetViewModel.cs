@@ -22,6 +22,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
     private readonly ChatTarget _target;
     private readonly ChatbotComponentModel _model;
     private readonly BlockSlotViewModel _child;
+    private readonly IDroppable? _list; // the rows this one is in (Match Text rows, redeems), which reorder (see PassesOn)
     private BindableModel? _bindable;
 
     [ObservableProperty] private string _bindLabel; // the binding's label as a second line, "" for none
@@ -50,10 +51,11 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
 
 
-    public ChatTargetViewModel(ChatTarget target, ChatbotComponentModel model)
+    public ChatTargetViewModel(ChatTarget target, ChatbotComponentModel model, IDroppable? list = null)
     {
         _target = target;
         _model = model;
+        _list = list;
         _child = new(_target.Child);
         _bindable = null;
         _bindLabel = "";
@@ -93,6 +95,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
     // bind boxes can't collapse (the button is hidden)
     public bool CanCollapse => false;
+    public bool CanToggle => true;
     [RelayCommand] private void OnCollapseButtonPressed() { }
 
 
@@ -106,6 +109,11 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
         payload is BindableDragPayload bindablePayload
         && bindablePayload.Bindable != _bindable
         && _target.IsEmpty;
+
+
+
+    // another row's binding dropped here moves that whole row before this one (the rows handle it)
+    public bool PassesOn(object payload) => _list?.CanAcceptDropPayload(payload) == true;
 
 
 

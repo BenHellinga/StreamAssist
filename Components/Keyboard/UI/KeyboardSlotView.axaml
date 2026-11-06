@@ -4,7 +4,8 @@
              x:DataType="keyboard:KeyboardSlotViewModel"
 
              xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
-             xmlns:blocks="using:StreamAssist.Components.Blocks.UI">
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- a bound key's edit buttons show only while the pointer is on it (hidden by opacity, so nothing moves). Here once
          for every key of the slot, rather than in each KeyView -->
@@ -18,25 +19,29 @@
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="IsHitTestVisible" Value="True"/>
         </Style>
+
+        <!-- the box's own corner buttons: hidden the same way, shown while the pointer is on the box (its own only, not
+             the keys') -->
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border#Card:pointerover > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
     </UserControl.Styles>
 
-    <!-- keyboard slot -->
+    <!-- an input device box, like a block: a green outline (red while off), a LineGap ring inside it. The device dropdown
+         as its header, a divider at the ring, then the keys ContentGap from the border (hidden while collapsed). The
+         corner buttons (collapse, on / off, drag, remove) show on hover, CornerGap from the border, out of the ring -->
 
-    <StackPanel Spacing="10">
+    <Border x:Name="Card" Classes="Panel Bound" Classes.Disabled="{Binding IsDisabled}" Padding="{s:Gap LineZoneAll}">
+        <Panel>
+            <DockPanel>
 
-        <!-- menu -->
-
-        <StackPanel Orientation="Horizontal" Spacing="20">
-
-            <!-- device related -->
-
-            <StackPanel Orientation="Horizontal" Spacing="10">
-
-                <TextBlock Classes="Label" Text="Device"/>
-
-                <!-- device dropdown -->
-
-                <ComboBox ItemsSource="{Binding DeviceMenuItems}"
+                <ComboBox DockPanel.Dock="Top" Margin="{s:Gap PadAll}" HorizontalAlignment="Left"
+                          ItemsSource="{Binding DeviceMenuItems}"
                           SelectedItem="{Binding MenuDevice}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="keyboard:DeviceMenuItem">
@@ -45,43 +50,40 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
-            </StackPanel>
+                <Border DockPanel.Dock="Top" Classes="Divider" IsVisible="{Binding !IsCollapsed}"/>
 
-            <!-- layout: the keyboard picture, or every key code (F13-F24, media keys, ...) -->
+                <!-- keyboard (each KeyViewModel becomes a KeyView through the ViewLocator), as wide as the box -->
 
-            <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBlock Classes="Label" Text="Layout"/>
-                <ComboBox ItemsSource="{Binding Layouts}" SelectedItem="{Binding MenuLayout}"/>
-            </StackPanel>
-        </StackPanel>
+                <Decorator x:Name="KeyboardHost" Margin="{s:Gap PadAll}" IsVisible="{Binding !IsCollapsed}">
+                    <ItemsControl ItemsSource="{Binding Keys}"
+                                  Width="{Binding CurrentWidth}"
+                                  Height="{Binding CurrentHeight}">
 
-        <!-- keyboard (each KeyViewModel becomes a KeyView through the ViewLocator) -->
+                        <!-- canvas -->
 
-        <Decorator x:Name="KeyboardHost">
-            <ItemsControl ItemsSource="{Binding Keys}"
-                          Width="{Binding CurrentWidth}"
-                          Height="{Binding CurrentHeight}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
 
-                <!-- canvas -->
+                        <!-- position each key -->
 
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Canvas/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerTheme>
+                            <ControlTheme TargetType="ContentPresenter"
+                                          x:DataType="keyboard:KeyViewModel">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </ControlTheme>
+                        </ItemsControl.ItemContainerTheme>
 
-                <!-- position each key -->
+                    </ItemsControl>
+                </Decorator>
 
-                <ItemsControl.ItemContainerTheme>
-                    <ControlTheme TargetType="ContentPresenter"
-                                  x:DataType="keyboard:KeyViewModel">
-                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
-                    </ControlTheme>
-                </ItemsControl.ItemContainerTheme>
+            </DockPanel>
 
-            </ItemsControl>
-        </Decorator>
+            <blocks:EditButtons Classes="HoverOnly" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap RingCornerMargin}"/>
+        </Panel>
+    </Border>
 
-    </StackPanel>
 </UserControl>

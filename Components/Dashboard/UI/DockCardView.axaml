@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.DockCardView"
+             x:DataType="ui:DockCardViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a kind of dock in the dock list, looks like a block card -->
+
+    <Border Classes="Panel Draggable" PointerPressed="OnPointerPressed">
+        <StackPanel>
+            <TextBlock Classes="Label" Text="{Binding Name}" Margin="{s:Gap CardTitleMargin}"/>
+            <TextBlock Classes="Description" Text="{Binding Description}" Margin="{s:Gap CardBodyMargin}"
+                       MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+    </Border>
+
+</UserControl>

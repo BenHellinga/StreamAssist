@@ -9,8 +9,10 @@ namespace StreamAssist.Components.Keyboard.Model;
 
 
 
-// contains the data for a single keyboard slot: its keyboard and layout. Its keys belong to the tab's config in use
-// (KeyboardConfigModel, found by the slot's id), which the list hands it through ShowConfig
+// contains the data for a single keyboard slot (an input device box on the Keyboard tab): its keyboard, its layout
+// (picked when it's made: a keyboard picture, or Generic, every key code), and whether it's off (its keys run nothing)
+// or collapsed (only its header shows). Its keys belong to the tab's config in use (KeyboardConfigModel, found by the
+// slot's id), which the list hands it through ShowConfig
 public class KeyboardSlotModel : ModelBase
 {
     // constants
@@ -36,6 +38,8 @@ public class KeyboardSlotModel : ModelBase
     private KeybindConfigModel? _selectedConfig;
     private string? _pendingDeviceString;
     private string _layout;
+    private bool _isDisabled;
+    private bool _isCollapsed;
 
 
 
@@ -47,6 +51,8 @@ public class KeyboardSlotModel : ModelBase
     [JsonIgnore] public InputDeviceModel? SelectedDevice => _selectedDevice;
     [JsonIgnore] public KeybindConfigModel? SelectedConfig => _selectedConfig;
     [JsonIgnore] public string Layout => _layout;
+    [JsonIgnore] public bool IsDisabled => _isDisabled;
+    [JsonIgnore] public bool IsCollapsed => _isCollapsed;
 
 
 
@@ -75,6 +81,20 @@ public class KeyboardSlotModel : ModelBase
         set => _layout = Layouts.Contains(value) ? value : KeyboardLayout;
     }
 
+    [JsonInclude] [JsonPropertyName("isDisabled")]
+    private bool JsonIsDisabled
+    {
+        get => _isDisabled;
+        set => _isDisabled = value;
+    }
+
+    [JsonInclude] [JsonPropertyName("isCollapsed")]
+    private bool JsonIsCollapsed
+    {
+        get => _isCollapsed;
+        set => _isCollapsed = value;
+    }
+
 
 
     // events
@@ -84,6 +104,8 @@ public class KeyboardSlotModel : ModelBase
     public event Action<InputDeviceModel?, InputDeviceModel?>? SelectedDeviceChanged;
     public event Action<KeybindConfigModel?, KeybindConfigModel?>? SelectedConfigChanged; // the tab switched configs
     public event Action<string>? LayoutChanged;
+    public event Action<bool>? IsDisabledChanged;
+    public event Action<bool>? IsCollapsedChanged;
 
 
 
@@ -100,11 +122,13 @@ public class KeyboardSlotModel : ModelBase
         _selectedConfig = null;
         _pendingDeviceString = null;
         _layout = KeyboardLayout;
+        _isDisabled = false;
+        _isCollapsed = false;
     }
 
 
 
-    public KeyboardSlotModel(IReadOnlyList<InputDeviceModel>? devices, int id)
+    public KeyboardSlotModel(IReadOnlyList<InputDeviceModel>? devices, int id, string layout = KeyboardLayout)
     {
         _devices = devices;
         _id = id;
@@ -112,7 +136,9 @@ public class KeyboardSlotModel : ModelBase
         _selectedDevice = null;
         _selectedConfig = null;
         _pendingDeviceString = null;
-        _layout = KeyboardLayout;
+        _layout = layout;
+        _isDisabled = false;
+        _isCollapsed = false;
     }
 
 
@@ -166,6 +192,31 @@ public class KeyboardSlotModel : ModelBase
         _layout = layout;
         LayoutChanged?.Invoke(_layout);
         return true;
+    }
+
+
+
+    // on / off, collapsed
+
+
+
+    // an off slot's keys run nothing (the KeybindManager skips it); they still light up when pressed
+    public void SetIsDisabled(bool isDisabled)
+    {
+        if (isDisabled == _isDisabled) return;
+
+        _isDisabled = isDisabled;
+        IsDisabledChanged?.Invoke(_isDisabled);
+    }
+
+
+
+    public void SetIsCollapsed(bool isCollapsed)
+    {
+        if (isCollapsed == _isCollapsed) return;
+
+        _isCollapsed = isCollapsed;
+        IsCollapsedChanged?.Invoke(_isCollapsed);
     }
 
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -28,7 +29,8 @@ public class MuteVoicemeeterAction : ActionBlock
     private string _channel;
     private string _muteSound;
     private string _unmuteSound;
-    private float _soundVolume;
+    private readonly ValueSlot<double> _soundVolume;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -65,15 +67,21 @@ public class MuteVoicemeeterAction : ActionBlock
         set => SetParameter(ref _unmuteSound, value);
     }
 
-    // how loud the mute / unmute sounds play (0 to 1)
-    [ConfigurableParameter("Sound Volume", ConfiguratorType.Slider)] [JsonPropertyName("soundVolume")]
-    public float SoundVolume
-    {
-        get => _soundVolume;
-        set => SetParameter(ref _soundVolume, value);
-    }
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
-    public static (double, double) GetSoundVolumeBounds() => (0, 1);
+
+
+    // json
+
+
+
+    // how loud the mute / unmute sounds play (0 to 1, kept to that range), typed or from a block
+    [JsonInclude] [JsonPropertyName("soundVolume")]
+    private ValueSlotData JsonSoundVolume
+    {
+        get => _soundVolume.GetData();
+        set => _soundVolume.LoadData(value);
+    }
 
 
 
@@ -86,8 +94,13 @@ public class MuteVoicemeeterAction : ActionBlock
         _setType = "Toggle";
         _channel = "Stereo Input 1";
         _muteSound = "";
-        _soundVolume = 1;
+        _soundVolume = new("Sound Volume");
         _unmuteSound = "";
+        _slots = [_soundVolume];
+
+        _soundVolume.SetText("1");
+
+        TrackSlots();
     }
 
 
@@ -111,7 +124,7 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
 
-    protected override Task ExecuteAsync(TriggerContext context)
+    protected override async Task ExecuteAsync(TriggerContext context)
     {
         var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
 
@@ -129,8 +142,11 @@ public class MuteVoicemeeterAction : ActionBlock
         if (!voicemeeter.TrySetMute(_channel, newState)) throw new BlockFailedException("mute not set");
 
         var sound = newState ? _muteSound : _unmuteSound;
-        if (newState != muted && sound.Trim() != "") AudioHelper.TryPlaySound(sound, _soundVolume);
+        if (newState == muted || sound.Trim() == "") return;
 
-        return Task.CompletedTask;
+        var volume = await _soundVolume.EvaluateAsync(context);
+        if (double.IsNaN(volume)) throw Fail("sound volume isn't a number");
+
+        AudioHelper.TryPlaySound(sound, (float)Math.Clamp(volume, 0, 1));
     }
 }

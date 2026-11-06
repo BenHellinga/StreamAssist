@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Core.Dragging;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Blocks.UI;
@@ -17,11 +18,11 @@ public class ValueSlotPairViewModel : ViewModelBase
 
 
 
-    public ValueSlotPairViewModel(ValueSlotPair pair, string keyPlaceholder)
+    public ValueSlotPairViewModel(ValueSlotPair pair, string keyPlaceholder, IDroppable list)
     {
         _pair = pair;
-        Key = new(pair.Key, isInList: true, placeholder: keyPlaceholder);
-        Value = new(pair.Value, isInList: true);
+        Key = new(pair.Key, isInList: true, placeholder: keyPlaceholder, list: list);
+        Value = new(pair.Value, isInList: true, list: list);
     }
 
 
@@ -39,8 +40,9 @@ public class ValueSlotPairViewModel : ViewModelBase
 
 
 
-// a growing list of name / value rows (e.g. Set Parameters), top to bottom, the last one always empty
-public class ValueSlotPairListViewModel : ViewModelBase
+// a growing list of name / value rows (e.g. Set Parameters), top to bottom, the last one always empty. Dragging a
+// row's block (name or value) onto another row moves the whole row before that one, so they can be reordered
+public class ValueSlotPairListViewModel : ViewModelBase, IDroppable
 {
     // private
 
@@ -69,9 +71,34 @@ public class ValueSlotPairListViewModel : ViewModelBase
         _items = [];
 
         foreach (var item in _list.Items)
-            _items.Add(new(item, _list.KeyPlaceholder));
+            _items.Add(new(item, _list.KeyPlaceholder, this));
 
         SubscribeToValueSlotPairList(_list);
+    }
+
+
+
+    // drag drop
+
+
+
+    // only reordering: a block that sits in one of this list's rows
+    public bool CanAcceptDropPayload(object payload) => FindItem(payload) != null;
+
+
+
+    // anything else goes on to the target around this list (e.g. inserting before the block it's in)
+    public bool PassesOn(object payload) => !CanAcceptDropPayload(payload);
+
+
+
+    // zoneContext is the row it was dropped on, it goes before that one
+    public void OnDroppedOn(object payload, object? zoneContext)
+    {
+        if (FindItem(payload) is not { } item) return;
+        if (zoneContext is not ValueSlotPairViewModel before) return;
+
+        _list.TryMoveItem(item, _items.IndexOf(before));
     }
 
 
@@ -80,7 +107,11 @@ public class ValueSlotPairListViewModel : ViewModelBase
 
 
 
-    private void OnItemInserted(ValueSlotPair item, int index) => _items.Insert(index, new(item, _list.KeyPlaceholder));
+    private void OnItemMoved(ValueSlotPair _, int from, int to) => _items.Move(from, to);
+
+
+
+    private void OnItemInserted(ValueSlotPair item, int index) => _items.Insert(index, new(item, _list.KeyPlaceholder, this));
 
 
 
@@ -99,10 +130,18 @@ public class ValueSlotPairListViewModel : ViewModelBase
 
 
 
+    private ValueSlotPair? FindItem(object payload) =>
+        payload is BlockDragPayload blockPayload
+            ? _list.Items.FirstOrDefault(i => i.Key.BlockSlot.Block == blockPayload.Block || i.Value.BlockSlot.Block == blockPayload.Block)
+            : null;
+
+
+
     private void SubscribeToValueSlotPairList(ValueSlotPairList list)
     {
         list.ItemInserted += OnItemInserted;
         list.ItemRemoved += OnItemRemoved;
+        list.ItemMoved += OnItemMoved;
     }
 
 
@@ -111,6 +150,7 @@ public class ValueSlotPairListViewModel : ViewModelBase
     {
         list.ItemInserted -= OnItemInserted;
         list.ItemRemoved -= OnItemRemoved;
+        list.ItemMoved -= OnItemMoved;
     }
 
 

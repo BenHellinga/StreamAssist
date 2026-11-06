@@ -23,7 +23,7 @@ public class WindowLayoutModel : ModelBase
     public const string SidePanel = "sidePanel";
     public const string BottomPanel = "bottomPanel";
     public const string BlockListPanel = "blockList";
-    public const string ChatBlockListPanel = "chatBlockList";
+    public const string SideListPanel = "sideList"; // the Chat, Dashboard and Keyboard tabs' lists beside their page share one width, so switching tabs doesn't move it
 
 
 

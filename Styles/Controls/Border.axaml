@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- panel look (opt-in with Classes="Panel" so borders inside built-in controls are left alone) -->
 
@@ -16,10 +17,18 @@
         </Setter>
     </Style>
 
-    <!-- divider line -->
+    <!-- thin lines: a divider across a region (ThinLineThickness tall, LineGap clear above and below, edge to edge of
+         its region, which already keeps LineGap from any splitter), and a vertical one inside a region -->
 
     <Style Selector="Border.Divider">
-        <Setter Property="Height" Value="1"/>
+        <Setter Property="Height" Value="{DynamicResource ThinLineThickness}"/>
+        <Setter Property="Margin" Value="{s:Gap HorizontalLineZone}"/>
+        <Setter Property="Background" Value="{DynamicResource Border}"/>
+    </Style>
+
+    <Style Selector="Border.VerticalDivider">
+        <Setter Property="Width" Value="{DynamicResource ThinLineThickness}"/>
+        <Setter Property="Margin" Value="{s:Gap VerticalLineZone}"/>
         <Setter Property="Background" Value="{DynamicResource Border}"/>
     </Style>
 
@@ -52,12 +61,25 @@
 
     <Style Selector="Border.InsertBefore">
         <Setter Property="Margin" Value="0,-3,0,0"/>
-        <Setter Property="Padding" Value="0,1,0,0"/> <!-- + the 2px line = the 3px it reaches up, so the gap stays 5 -->
-        <Setter Property="BorderThickness" Value="0,2,0,0"/>
+        <Setter Property="Padding" Value="0,2,0,0"/> <!-- + the 1px line = the 3px it reaches up, so the gap stays 5 and the line is its middle pixel -->
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="DragDrop.AllowDrop" Value="True"/>
     </Style>
+    <!-- the line of a list's first item sits above the list, outside it and outside whatever holds the list (a slot list,
+         a block, a view): lists, the part that draws their items, and views don't clip, so it shows. Scroll areas still
+         clip (their own presenter), and anything that must clip says so itself (ClipToBounds="True") -->
+    <Style Selector=":is(ItemsControl)">
+        <Setter Property="ClipToBounds" Value="False"/>
+    </Style>
+    <Style Selector=":is(ItemsControl) /template/ ItemsPresenter">
+        <Setter Property="ClipToBounds" Value="False"/>
+    </Style>
+    <Style Selector=":is(UserControl)">
+        <Setter Property="ClipToBounds" Value="False"/>
+    </Style>
+
     <Style Selector="Border.InsertBefore.Dragover">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>

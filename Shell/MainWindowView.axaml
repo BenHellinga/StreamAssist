@@ -4,16 +4,18 @@
         x:DataType="shell:MainWindowViewModel"
 
         xmlns:shell="using:StreamAssist.Shell"
+        xmlns:mvvm="using:StreamAssist.Core.Mvvm"
 
         Title="StreamAssist"
-        Background="{DynamicResource MainBackground}">
+        Background="{DynamicResource MainBackground}"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- output console | * -->
 
-    <Grid Margin="5">
+    <Grid Margin="{s:Gap LineZoneAll}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="{Binding OutputConsolePanel.Length, Mode=TwoWay}" MinWidth="100"/>
-            <ColumnDefinition Width="{StaticResource SplitterLength}"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*" MinWidth="100"/>
         </Grid.ColumnDefinitions>
 
@@ -21,7 +23,7 @@
 
         <shell:PanelView Grid.Column="0" DataContext="{Binding OutputConsolePanel}"/>
 
-        <GridSplitter Grid.Column="1" Margin="{StaticResource ColumnSplitterMargin}" Classes="ColumnSplitter"/>
+        <GridSplitter Grid.Column="1" Classes="ColumnSplitter"/>
 
         <!-- tab strip | * -->
 
@@ -32,14 +34,26 @@
                 <RowDefinition Height="*" MinHeight="100"/>
             </Grid.RowDefinitions>
 
-            <!-- tab strip -->
+            <!-- the tab buttons: the shown one is purple (Button.Tab.Open). Dragging something over one switches to it
+                 (so a block or binding can be carried to another tab), see the code-behind -->
 
-            <ListBox Grid.Row="0" Margin="{StaticResource HeaderMargin}"
-                     Classes="TopTabStrip"
-                     ItemsSource="{Binding Tabs}"
-                     SelectedItem="{Binding SelectedTab}"/>
+            <ItemsControl Grid.Row="0" Margin="{s:Gap PadAll}" ItemsSource="{Binding Tabs}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="mvvm:ViewModelTabItem">
+                        <Button Classes="Tab" Classes.Open="{Binding IsSelected}" Content="{Binding Label}"
+                                Command="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).TabPressedCommand}"
+                                CommandParameter="{Binding}"
+                                DragDrop.AllowDrop="True"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
-            <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+            <Border Grid.Row="1" Classes="Divider"/>
 
             <!-- * | side panel -->
 
@@ -65,16 +79,16 @@
 
                     <ContentControl Grid.Row="0" Content="{Binding ActiveContent}"/>
 
-                    <GridSplitter Grid.Row="1" Margin="{StaticResource RowSplitterMargin}" Classes="RowSplitter"
-                                  MinHeight="{Binding BottomPanel.SplitterMinLength}"/>
+                    <GridSplitter Grid.Row="1" Classes="RowSplitter"
+                                  IsVisible="{Binding BottomPanel.IsShown}"/>
 
                     <!-- bottom panel -->
 
                     <shell:PanelView Grid.Row="2" DataContext="{Binding BottomPanel}"/>
                 </Grid>
 
-                <GridSplitter Grid.Column="1" Margin="{StaticResource ColumnSplitterMargin}" Classes="ColumnSplitter"
-                              MinWidth="{Binding SidePanel.SplitterMinLength}"/>
+                <GridSplitter Grid.Column="1" Classes="ColumnSplitter"
+                              IsVisible="{Binding SidePanel.IsShown}"/>
 
                 <!-- side panel -->
 

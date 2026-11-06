@@ -124,6 +124,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
     // keys can't collapse (the button is hidden)
     public bool CanCollapse => false;
+    public bool CanToggle => true;
     [RelayCommand] private void OnCollapseButtonPressed() { }
 
 
@@ -134,6 +135,11 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
     // a key is a binding slot: it only takes whole bindings, and only when it doesn't already have one
     // (blocks are placed in the editor, not dropped on keys)
+    // anything but a binding (e.g. an input device box being moved) goes on to the list around it
+    public bool PassesOn(object payload) => payload is not BindableDragPayload;
+
+
+
     public bool CanAcceptDropPayload(object payload) =>
         payload is BindableDragPayload bindablePayload
         && _config != null

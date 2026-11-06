@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Blocks.Model;
@@ -60,6 +61,12 @@ public sealed class ValueSlotList : BlockSlotBase
         remove => _items.ItemRemoved -= value;
     }
 
+    public event Action<ValueSlot, int, int>? ItemMoved // the row, where it was, where it is now
+    {
+        add => _items.ItemMoved += value;
+        remove => _items.ItemMoved -= value;
+    }
+
 
 
     // constructor
@@ -77,6 +84,27 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
     // public api
+
+
+
+    // moves a filled item to just before the one now at index (the list's length = last), e.g. dragged there to
+    // reorder. The empty one at the end can't move
+    public bool TryMoveItem(ValueSlot item, int index)
+    {
+        if (!_items.Items.Contains(item))
+        {
+            AppLog.WriteError("can't move item, not in this list");
+            return false;
+        }
+
+        if (!_items.Move(item, index))
+        {
+            AppLog.WriteError("can't move an empty item");
+            return false;
+        }
+
+        return true;
+    }
 
 
 

@@ -9,6 +9,7 @@ using StreamAssist.Components.OBS.Background;
 using StreamAssist.Components.OBS.Model;
 using StreamAssist.Components.Spotify.Background;
 using StreamAssist.Components.Spotify.Model;
+using StreamAssist.Components.Dashboard.Model;
 
 namespace StreamAssist.Shell;
 
@@ -39,4 +40,6 @@ public static class GlobalContext
     public static SpotifyComponentModel? SpotifyComponentModel { get; set; }
 
     public static SpotifyManager? SpotifyManager { get; set; } // e.g. for playing a song
+
+    public static DashboardComponentModel? DashboardComponentModel { get; set; } // e.g. for writing to a console dock
 }

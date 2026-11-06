@@ -58,7 +58,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
         _root = new(model.Root!); // only made while there's a chat config (see ChatbotComponentViewModel)
         _editableRoot = new(model.EditableRoot!);
         _chatPalette = new(_layout, BlockGroup.Chat);
-        _chatBlockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.ChatBlockListPanel, 200));
+        _chatBlockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.SideListPanel, 250));
 
         _isTestOpen = false;
         _testUser = "TestUser";
@@ -99,7 +99,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
     // the chat block list splitter was dragged
     partial void OnChatBlockListWidthChanged(GridLength value)
     {
-        if (value.IsAbsolute) _layout.SetPanelSize(WindowLayoutModel.ChatBlockListPanel, value.Value);
+        if (value.IsAbsolute) _layout.SetPanelSize(WindowLayoutModel.SideListPanel, value.Value);
     }
 
 
@@ -111,7 +111,7 @@ public partial class ChatCommandsViewModel : ViewModelBase
     // something else (e.g. an action) changed the chat block list width
     private void OnLayoutPanelSizeChanged(string panel, double size)
     {
-        if (panel == WindowLayoutModel.ChatBlockListPanel) ChatBlockListWidth = new(size);
+        if (panel == WindowLayoutModel.SideListPanel) ChatBlockListWidth = new(size);
     }
 
 

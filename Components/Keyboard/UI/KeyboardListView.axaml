@@ -3,74 +3,53 @@
              x:Class="StreamAssist.Components.Keyboard.UI.KeyboardListView"
              x:DataType="keyboard:KeyboardListViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI">
+             xmlns:keyboard="using:StreamAssist.Components.Keyboard.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
-    <!-- the tab's config (every keyboard's keys switch with it), a divider, then the keyboard list -->
+    <!-- the input device boxes, top to bottom: dropping a card or a box on a box puts it before that one (the line above
+         it lights up), dropping it on the ghost slot at the end adds it last (the slot lights up). With no config, a
+         page that says to make one -->
 
-    <DockPanel>
+    <Panel>
 
-        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{StaticResource HeaderMargin}"/>
-        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
-
-        <!-- no config: an empty page that says to make one -->
         <ContentControl Content="{Binding NoConfig}" IsVisible="{Binding !HasConfig}"/>
 
         <ScrollViewer IsVisible="{Binding HasConfig}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto"
                       Classes="Gapped">
-
-            <!-- stack of keyboard list and add/remove buttons -->
-
-            <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
+            <!-- the padding is room to scroll the last box up (Spacing.axaml ScrollEndPadding) -->
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}">
                     <ItemsControl ItemsSource="{Binding Slots}">
-
-                        <!-- stack of keyboard/divider pairs -->
-
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel Spacing="10"/>
+                                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
 
-                        <!-- stack of one keyboard/divider pair -->
-
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="keyboard:KeyboardSlotViewModel">
-                                <StackPanel Spacing="9">
-
-                                    <!-- keyboard slot -->
-
-                                    <keyboard:KeyboardSlotView Margin="5,0"/>
-
-                                    <Border Classes="Divider"/>
-
-                                </StackPanel>
+                                <Border Classes="Droppable InsertBefore"
+                                        DragDrop.DragOver="OnZoneDragOver"
+                                        DragDrop.DragLeave="OnZoneDragLeave"
+                                        DragDrop.Drop="OnZoneDrop">
+                                    <keyboard:KeyboardSlotView/>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
-
                     </ItemsControl>
 
-                    <!-- horizontal stack of add/remove buttons -->
+                    <!-- the ghost slot at the end: dropped on it, it goes last (it lights up itself, like any empty slot) -->
 
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                Spacing="10">
-
-                        <Button Classes="Square Large"
-                                Content="＋"
-                                Command="{Binding AddSlotRequestedCommand}"/>
-
-                        <Button Classes="Square Large"
-                                Content="－"
-                                Command="{Binding RemoveSlotRequestedCommand}"/>
-
-                    </StackPanel>
+                    <blocks:DropZone DragDrop.DragOver="OnZoneDragOver"
+                                     DragDrop.DragLeave="OnZoneDragLeave"
+                                     DragDrop.Drop="OnZoneDrop"/>
                 </StackPanel>
             </Border>
         </ScrollViewer>
 
-    </DockPanel>
+    </Panel>
+
 </UserControl>

@@ -3,11 +3,12 @@
              x:Class="StreamAssist.Components.Blocks.UI.EditButtons"
              x:DataType="ui:IEditButtons"
 
-             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- small corner buttons for a key or block -->
 
-    <StackPanel Orientation="Horizontal" Spacing="2" Margin="2"
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource CornerGap}" Margin="{s:Gap CornerMargin}"
                 HorizontalAlignment="Right" VerticalAlignment="Top">
 
         <!-- collapse (blocks only) -->
@@ -17,11 +18,12 @@
                 Command="{Binding CollapseButtonPressedCommand}"
                 IsVisible="{Binding CanCollapse}"/>
 
-        <!-- toggle disable -->
+        <!-- toggle disable (not on docks) -->
 
         <Button Classes="Square Small ToggleEnabled"
                 Content="+"
-                Command="{Binding ToggleButtonPressedCommand}"/>
+                Command="{Binding ToggleButtonPressedCommand}"
+                IsVisible="{Binding CanToggle}"/>
 
         <!-- drag handle (same size as the Small buttons next to it) -->
 

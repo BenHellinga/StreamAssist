@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Chatbot.Model;
@@ -43,6 +44,12 @@ public sealed class RedeemList : IDisposable
         remove => _rows.ItemRemoved -= value;
     }
 
+    public event Action<RedeemRow, int, int>? RowMoved // the row, where it was, where it is now
+    {
+        add => _rows.ItemMoved += value;
+        remove => _rows.ItemMoved -= value;
+    }
+
     public event Action? Changed; // a title, binding or row changed (saved to chatbot.json)
 
 
@@ -60,6 +67,27 @@ public sealed class RedeemList : IDisposable
 
 
     // public api
+
+
+
+    // moves a filled redeem to just before the one now at index (the list's length = last), e.g. dragged there to
+    // reorder. The empty one at the end can't move
+    public bool TryMoveRow(RedeemRow item, int index)
+    {
+        if (!_rows.Items.Contains(item))
+        {
+            AppLog.WriteError("can't move redeem, not in the redeems");
+            return false;
+        }
+
+        if (!_rows.Move(item, index))
+        {
+            AppLog.WriteError("can't move an empty redeem");
+            return false;
+        }
+
+        return true;
+    }
 
 
 

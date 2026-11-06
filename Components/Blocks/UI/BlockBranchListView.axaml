@@ -8,12 +8,12 @@
     <!-- if / else if branches: the condition beside its "if" / "else if" and the then slot under it (lined up with the
          block's "else"), dropping a condition on a branch starts a new branch before it -->
 
-    <StackPanel Spacing="5">
+    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
 
         <ItemsControl ItemsSource="{Binding Branches}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <StackPanel Spacing="5"/>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
@@ -23,7 +23,7 @@
                             DragDrop.DragOver="OnZoneDragOver"
                             DragDrop.DragLeave="OnZoneDragLeave"
                             DragDrop.Drop="OnZoneDrop">
-                        <Grid RowDefinitions="Auto,Auto" RowSpacing="5">
+                        <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource SmallVerticalGap}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>

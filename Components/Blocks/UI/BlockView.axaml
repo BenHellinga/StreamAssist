@@ -4,9 +4,22 @@
              x:DataType="ui:BlockViewModel"
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI"
-             xmlns:configurator="using:StreamAssist.Components.Blocks.UI.Configurator">
+             xmlns:configurator="using:StreamAssist.Components.Blocks.UI.Configurator"
+        xmlns:s="using:StreamAssist.Styles">
 
-    <!-- top-left, never stretched to fill whatever it sits in (e.g. the editor's scroll area) -->
+    <!-- top-left, never stretched to fill whatever it sits in (e.g. the editor's scroll area). Its border is a line: a
+         LineGap ring inside it (LineZoneAll), nested blocks at the ring, content ContentPadding further in. Empty slots
+         and value boxes pad themselves (the styles below, which reach every slot inside this block), so a block placed
+         in one fills that space and its border lands at the ring -->
+
+    <UserControl.Styles>
+        <Style Selector="ui|DropZone">
+            <Setter Property="Margin" Value="{s:Gap PadAll}"/>
+        </Style>
+        <Style Selector="Border.ValueDrop">
+            <Setter Property="Margin" Value="{s:Gap PadAll}"/>
+        </Style>
+    </UserControl.Styles>
 
     <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
 
@@ -29,7 +42,7 @@
                 Classes.Disabled="{Binding IsDisabled}"
                 IsVisible="{Binding !IsCollapsed}"
                 HorizontalAlignment="Left"
-                x:Name="Card"
+                x:Name="Card" Padding="{s:Gap LineZoneAll}"
                 PointerExited="OnCardPointerExited">
             <StackPanel>
 
@@ -38,10 +51,10 @@
 
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- placed blocks only show their name, the description is in the block list (and on hover here) -->
-                    <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="5,5,5,5"/>
+                    <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="{s:Gap BlockTitleMargin}"/>
                     <!-- only shown while the pointer is on this card (not a block inside it), hidden by opacity so the
                          title row keeps its size -->
-                    <ui:EditButtons Grid.Column="1" x:Name="Buttons" Opacity="0" IsHitTestVisible="False"/>
+                    <ui:EditButtons Grid.Column="1" x:Name="Buttons" Opacity="0" IsHitTestVisible="False" Margin="{s:Gap RingCornerMargin}"/>
                 </Grid>
 
                 <!-- settings, then the slots under them (or beside them, for blocks that ask) -->
@@ -50,10 +63,10 @@
 
                     <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
 
-                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Configurators}">
+                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Configurators}" Margin="{s:Gap PadBelow}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
-                                <ContentControl Content="{Binding}" Margin="5,0,5,5"
+                                <ContentControl Content="{Binding}" Margin="{s:Gap BlockBodyMargin}"
                                                 ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -62,10 +75,11 @@
                     <!-- nested slots (each becomes a BlockSlotView or BlockSlotListView through the ViewLocator) -->
 
                     <ItemsControl Grid.Row="{Binding SlotsRow}" Grid.Column="{Binding SlotsColumn}"
-                                  ItemsSource="{Binding Slots}" Margin="5,0,5,5">
+                                  ItemsSource="{Binding Slots}" Margin="{s:Gap BlockSlotsMargin}"
+                                  IsVisible="{Binding HasSlots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel Spacing="5"/>
+                                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>

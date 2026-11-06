@@ -37,10 +37,11 @@
     <!-- a ghost field: a box you type in to make a new thing (the empty row at the end of a list, "New table…"), barely
          there (ghost border and placeholder). Pointing at it or typing in it lights it up like any box -->
     <Style Selector="TextBox.New">
-        <Setter Property="BorderBrush" Value="{DynamicResource GhostBorder}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Ghost}"/>
     </Style>
     <Style Selector="TextBox.New /template/ TextBlock#PART_Placeholder">
-        <Setter Property="Foreground" Value="{DynamicResource GhostText}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Ghost}"/>
+        <Setter Property="Opacity" Value="1"/>
     </Style>
 
     <!-- plain: editable, but just the text on the background until it's being typed in (e.g. the Data tab's cells) -->

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Chatbot.Model;
+using StreamAssist.Core.Dragging;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Chatbot.UI;
@@ -33,10 +34,10 @@ public partial class MatchTextRowViewModel : ViewModelBase
 
 
 
-    public MatchTextRowViewModel(MatchTextRow row, ChatbotComponentModel model)
+    public MatchTextRowViewModel(MatchTextRow row, ChatbotComponentModel model, IDroppable list)
     {
         _row = row;
-        _target = new(_row.Target, model);
+        _target = new(_row.Target, model, list);
 
         _pattern = _row.Pattern;
         _showTarget = !_row.IsEmpty;

@@ -4,14 +4,15 @@
              x:DataType="ui:BindableEditorViewModel"
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI"
-             xmlns:model="using:StreamAssist.Components.Blocks.Model">
+             xmlns:model="using:StreamAssist.Components.Blocks.Model"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- editor | block list -->
 
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="100"/>
-            <ColumnDefinition Width="{StaticResource SplitterLength}"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="{Binding BlockListWidth, Mode=TwoWay}" MinWidth="100"/>
         </Grid.ColumnDefinitions>
 
@@ -36,14 +37,15 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- header: what's being edited | the Parameters toggle (only when the trigger has parameters) -->
+                <!-- header: what's being edited, its label, Test (runs it once with the Parameters list's values) | the
+                     Parameters toggle -->
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="15"
-                            Margin="{StaticResource HeaderMargin}" Height="{StaticResource ControlHeight}">
-                    <!-- what it is, then its label box after the same gap the text itself uses ("Key: 7     Config: ...") -->
-                    <StackPanel Orientation="Horizontal">
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
+                            Margin="{s:Gap PadAll}" Height="{StaticResource ControlHeight}">
+                    <!-- what it is, then "Label:" and its box -->
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
                         <TextBlock Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
-                        <TextBlock Classes="Label" Text="     Label: " VerticalAlignment="Center"/>
+                        <TextBlock Classes="Label" Text="Label:" VerticalAlignment="Center"/>
                         <!-- greyed out until there's a saved binding with blocks (a draft or an empty one can't be labelled) -->
                         <TextBox Width="250" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
                                  Text="{Binding BindLabel}" PlaceholderText="Optional"
@@ -51,7 +53,10 @@
                                  Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"/>
                     </StackPanel>
 
-                    <Button Command="{Binding ParametersTogglePressedCommand}" IsVisible="{Binding HasParameters}"
+                    <Button Content="Test" Command="{Binding TestPressedCommand}"
+                            Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center"/>
+
+                    <Button Command="{Binding ParametersTogglePressedCommand}"
                             Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center">
                         <Panel>
                             <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
@@ -60,32 +65,65 @@
                     </Button>
                 </StackPanel>
 
-                <Border Grid.Row="1" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                <Border Grid.Row="1" Classes="Divider"/>
 
-                <!-- parameters: name | type | what it is, then a divider before the blocks -->
+                <!-- parameters: name | the value Test uses | type | what it is, then the extra name / value rows (the last
+                     one empty, typing in it adds the next), then a divider before the blocks -->
 
-                <StackPanel Grid.Row="2" Spacing="5" IsVisible="{Binding IsParametersOpen}">
-                    <ItemsControl ItemsSource="{Binding Parameters}" Margin="5,5,5,0" Grid.IsSharedSizeScope="True">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="model:ParameterInfo">
-                                <Grid ColumnSpacing="31">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="name"/>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="kind"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <SelectableTextBlock Grid.Column="0" Text="{Binding Name}"/>
-                                    <TextBlock Grid.Column="1" Classes="Description" Text="{Binding Kind}"/>
-                                    <TextBlock Grid.Column="2" Classes="Description" Text="{Binding Description}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                <StackPanel Grid.Row="2" Spacing="{DynamicResource SmallVerticalGap}" IsVisible="{Binding IsParametersOpen}">
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap TopInset}" Grid.IsSharedSizeScope="True">
+                        <ItemsControl ItemsSource="{Binding TestParameters}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:TestParameterViewModel">
+                                    <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="name"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="value"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="kind"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <SelectableTextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" MinWidth="150"/>
+                                        <TextBox Grid.Column="1" Width="200" Text="{Binding Value}" PlaceholderText="Value…"/>
+                                        <TextBlock Grid.Column="2" Classes="Description" Text="{Binding Kind}" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Classes="Description" Text="{Binding Description}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                    <Border Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+                        <ItemsControl ItemsSource="{Binding ExtraParameters}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:TestParameterViewModel">
+                                    <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="name"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="value"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Width="150" HorizontalAlignment="Left" Text="{Binding Name}" PlaceholderText="Extra parameter…"
+                                                 Classes.New="{Binding IsEmpty}"/>
+                                        <TextBox Grid.Column="1" Width="200" Text="{Binding Value}" PlaceholderText="Value…"
+                                                 IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <Border Classes="Divider"/>
                 </StackPanel>
 
-                <!-- the bindable's single slot (a BlockSlotView through the ViewLocator) -->
+                <!-- the bindable's root list (a BlockSlotListView through the ViewLocator): its blocks run top to bottom, with no
+                     box of its own, and the drop zone at the end is where a block can wait while the rest is rearranged -->
 
                 <ScrollViewer Grid.Row="3"
                               VerticalScrollBarVisibility="Auto"
@@ -93,14 +131,14 @@
                               Classes="Gapped">
                     <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                     <Border Padding="{StaticResource ScrollEndPadding}">
-                        <ContentControl Content="{Binding RootSlot}" Margin="5,0,10,0"/>
+                        <ContentControl Content="{Binding RootSlot}" Margin="{s:Gap ScrollInset}"/>
                     </Border>
                 </ScrollViewer>
 
             </Grid>
         </Grid>
 
-        <GridSplitter Grid.Column="1" Margin="{StaticResource ColumnSplitterMargin}" Classes="ColumnSplitter"/>
+        <GridSplitter Grid.Column="1" Classes="ColumnSplitter"/>
 
         <!-- block list -->
 

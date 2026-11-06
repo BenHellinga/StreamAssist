@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Shell;
 
@@ -24,6 +26,7 @@ public partial class MainWindowView : Window
         DataContext = _viewModel;
 
         AddHandler(PointerPressedEvent, OnBackgroundPointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(DragDrop.DragOverEvent, OnTabDragOver, handledEventsToo: true);
 
         // restore the saved window layout before the window is shown
         ApplyLayoutBounds();
@@ -40,6 +43,17 @@ public partial class MainWindowView : Window
     {
         if (e.Source is InputElement { Focusable: true }) return;
         FocusManager?.Focus(null);
+    }
+
+
+
+    // something dragged over a tab button switches to that tab (so it can be dropped on its page)
+    private void OnTabDragOver(object? sender, DragEventArgs e)
+    {
+        if (e.Source is not Visual source) return;
+        if (source.FindAncestorOfType<Button>(includeSelf: true) is not { Classes: var classes, DataContext: ViewModelTabItem tab } || !classes.Contains("Tab")) return;
+
+        if (tab != _viewModel.SelectedTab) _viewModel.SelectedTab = tab;
     }
 
 

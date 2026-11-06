@@ -5,14 +5,26 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
-    <!-- one value slot per item (a ValueSlotView through the ViewLocator), the last one is always empty -->
+    <!-- one value slot per item, the last one is always empty. Dropping an item's block on another item moves it before
+         that one (the line above it lights up; on a typed box the box passes it on, see ValueSlotViewModel.PassesOn) -->
 
     <ItemsControl ItemsSource="{Binding Items}">
         <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-                <StackPanel Spacing="5"/>
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
             </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="ui:ValueSlotViewModel">
+                <Border Classes="Droppable InsertBefore"
+                        DragDrop.DragOver="OnZoneDragOver"
+                        DragDrop.DragLeave="OnZoneDragLeave"
+                        DragDrop.Drop="OnZoneDrop">
+                    <ui:ValueSlotView/>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
     </ItemsControl>
 
 </UserControl>

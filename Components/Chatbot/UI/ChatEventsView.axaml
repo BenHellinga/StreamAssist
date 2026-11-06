@@ -3,132 +3,113 @@
              x:Class="StreamAssist.Components.Chatbot.UI.ChatEventsView"
              x:DataType="ui:ChatEventsViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
-    <!-- alerts, then redeems (one left-aligned column), under the Test / New redeem tabs
-         each section's content is inset, the dividers between sections run edge to edge -->
-
-    <!-- the tabs (each opens its panel under them, the open one closes it), a line, then the page; the config bar sits
-         right above the tabs (ChatbotComponentView), with no line between -->
+    <!-- by where things come from: App (the app's own events, e.g. App Started), then Twitch (its alerts, then the
+         channel point redeems with New redeem under them). A divider after each source, not between Alerts and
+         Redeems. Each section's content is inset, the dividers run edge to edge. Testing is the editor's Test button.
+         The config bar sits right above (ChatbotComponentView), the divider under it is this page's first line -->
 
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,10">
-            <StackPanel Orientation="Horizontal" Spacing="5" Margin="{StaticResource ContentInset}">
-                <Button Classes="Tab" Classes.Open="{Binding IsTestOpen}" Content="Test"
-                        Command="{Binding TestTabPressedCommand}"/>
-                <Button Classes="Tab" Classes.Open="{Binding IsNewRewardOpen}" Content="New redeem"
-                        Command="{Binding NewRewardTabPressedCommand}"/>
-            </StackPanel>
-            <!-- test: the made-up values the Test buttons use -->
-            <Grid IsVisible="{Binding IsTestOpen}" Margin="{StaticResource ContentInset}"
-                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
-                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="User" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Text="{Binding TestUser}"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Amount" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding TestAmount}"/>
-                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Tier" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding TestTier}"/>
-                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label" Text="Text" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="3" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding TestText}"/>
-            </Grid>
-            <!-- new reward: created on twitch as the streamer, then a redeem row appears for it -->
-            <Grid IsVisible="{Binding IsNewRewardOpen}" Margin="{StaticResource ContentInset}"
-                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="5" ColumnSpacing="10">
-                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="Title" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardTitle}"
-                         PlaceholderText="Unique on your channel" MaxLength="45"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Cost" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding NewRewardCost}"/>
-                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Prompt" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardPrompt}"
-                         PlaceholderText="What viewers see (optional)"/>
-                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label" Text="Viewer types text" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding NewRewardNeedsInput}" VerticalAlignment="Center"/>
-                <Button Grid.Row="4" Grid.Column="1" Content="Create on Twitch" HorizontalAlignment="Left"
-                        Command="{Binding CreateRewardPressedCommand}"/>
-            </Grid>
-        </StackPanel>
 
-        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
 
-    <Grid>
-
-        <ScrollViewer Grid.Row="0" Classes="Gapped" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <ScrollViewer Classes="Gapped Lined" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
             <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="{s:Gap ContentPadding}" Margin="{s:Gap ScrollInset}">
 
-                    <!-- stream events: one bind box each -->
+                    <!-- app -->
 
-                    <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
-                        <TextBlock Classes="Title" Text="Alerts"/>
+                    <!-- the title font has ~5px of space above its letters, pulled back so the text itself is 10 from the line (the
+                         space under it is kept: a big title has more room below) -->
+                    <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                        <TextBlock Classes="Title" Text="App" Margin="{s:Gap BigTitleMargin}"/>
 
-                        <ItemsControl ItemsSource="{Binding Events}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="5"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="ui:ChatEventSlotViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <ContentControl Content="{Binding Target}"/>
-
-                                        <Button Content="Test" VerticalAlignment="Top"
-                                                Command="{Binding TestPressedCommand}"
-                                                IsVisible="{Binding ShowTest}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
+                            <ItemsControl ItemsSource="{Binding AppEvents}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </StackPanel>
                     </StackPanel>
 
                     <Border Classes="Divider"/>
 
-                    <!-- channel point redeems: one row per reward title, like Match Text rows -->
+                    <!-- twitch: alerts (one bind box per stream event), then redeems (one row per reward title, like Match
+                         Text rows; dropping a row's binding on another row moves it before that one) -->
 
-                    <StackPanel Spacing="10" Margin="{StaticResource ContentInset}">
-                        <TextBlock Classes="Title" Text="Redeems"/>
+                    <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                        <TextBlock Classes="Title" Text="Twitch" Margin="{s:Gap BigTitleMargin}"/>
 
-                        <ItemsControl ItemsSource="{Binding Redeems}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="5"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
+                        <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
+                            <TextBlock Classes="Label Subheading" Text="Alerts"/>
+                            <ItemsControl ItemsSource="{Binding TwitchEvents}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
 
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="ui:RedeemRowViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <!-- the empty row at the end has a dim border until a title is typed -->
-                                        <TextBox Width="200" VerticalAlignment="Top"
-                                                 Classes.New="{Binding Title, Converter={x:Static StringConverters.IsNullOrEmpty}}"
-                                                 Text="{Binding Title}" PlaceholderText="New redeem…"/>
+                            <TextBlock Classes="Label Subheading" Text="Redeems"/>
+                            <ItemsControl ItemsSource="{Binding Redeems}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
 
-                                        <!-- bind box (a ChatTargetView through the ViewLocator), once the row has a title -->
-                                        <ContentControl Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="ui:RedeemRowViewModel">
+                                        <Border Classes="Droppable InsertBefore"
+                                                DragDrop.DragOver="OnRedeemDragOver"
+                                                DragDrop.DragLeave="OnRedeemDragLeave"
+                                                DragDrop.Drop="OnRedeemDrop">
+                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                                                <!-- the empty row at the end has a dim border until a title is typed -->
+                                                <TextBox Width="200" VerticalAlignment="Top"
+                                                         Classes.New="{Binding Title, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                                         Text="{Binding Title}" PlaceholderText="New redeem…"/>
 
-                                        <Button Content="Test" VerticalAlignment="Top"
-                                                Command="{Binding TestPressedCommand}">
-                                            <Button.IsVisible>
-                                                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                                    <Binding Path="ShowTest"/>
-                                                    <Binding Path="ShowTarget"/>
-                                                </MultiBinding>
-                                            </Button.IsVisible>
-                                        </Button>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                                <!-- bind box (a ChatTargetView through the ViewLocator), once the row has a title -->
+                                                <ContentControl Content="{Binding Target}" IsVisible="{Binding ShowTarget}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- new reward: created on twitch as the streamer, then a redeem row appears for it -->
+                            <Button Classes="Tab" Classes.Open="{Binding IsNewRewardOpen}" Content="New redeem" HorizontalAlignment="Left"
+                                    Command="{Binding NewRewardTabPressedCommand}"/>
+                            <Grid IsVisible="{Binding IsNewRewardOpen}"
+                                  ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="Title" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardTitle}"
+                                         PlaceholderText="Unique on your channel" MaxLength="45"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Cost" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding NewRewardCost}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Prompt" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardPrompt}"
+                                         PlaceholderText="What viewers see (optional)"/>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label" Text="Viewer types text" VerticalAlignment="Center"/>
+                                <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding NewRewardNeedsInput}" VerticalAlignment="Center"/>
+                                <Button Grid.Row="4" Grid.Column="1" Content="Create on Twitch" HorizontalAlignment="Left"
+                                        Command="{Binding CreateRewardPressedCommand}"/>
+                            </Grid>
+                        </StackPanel>
                     </StackPanel>
+
+                    <Border Classes="Divider"/>
 
                 </StackPanel>
             </Border>
         </ScrollViewer>
-
-    </Grid>
 
     </DockPanel>
 

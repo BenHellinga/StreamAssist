@@ -1,0 +1,31 @@
+using StreamAssist.Components.Dashboard.Model;
+using StreamAssist.Core.Dragging;
+using StreamAssist.Core.Mvvm;
+
+namespace StreamAssist.Components.Dashboard.UI;
+
+
+
+// a kind of dock in the dock list, dragging it onto the dashboard adds one (like a block card)
+public sealed class DockCardViewModel(DockKind kind) : ViewModelBase, IDraggable
+{
+    public string Name => DockModel.KindTitle(kind);
+
+    public string Description => kind switch
+    {
+        DockKind.Console => "Shows the messages of Dock Message blocks that name it",
+        DockKind.Timer => "Its own timers (Start Timer blocks that name it), soonest first, to pause or stop them",
+        DockKind.Button => "Buttons you name, each running its own binding when pressed",
+        DockKind.Variable => "Variables by name, to read or type their values ({var.name} and Set Variable use the same ones)",
+        DockKind.Indicator => "Names you type, green or red as Set Indicator blocks naming this dock turn them on or off (e.g. muted)",
+        _ => "",
+    };
+
+
+
+    public object? GetDragPayload() => new NewDockPayload(kind);
+
+
+
+    public override void Dispose() { }
+}

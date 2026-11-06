@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using System.Text.Json.Serialization;
@@ -15,7 +16,7 @@ public class PlaySoundAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Play Sound";
-    [JsonIgnore] public override string Description => "Plays an .mp3 or .wav file. A folder (e.g. Sounds/hype) plays one of its sounds at random.";
+    [JsonIgnore] public override string Description => "Plays an .mp3 or .wav file. A folder (e.g. Sounds/hype) plays one of its sounds at random. Volume is 0 to 1 (kept to that range), typed or from a block.";
     [JsonIgnore] public override BlockGroup Group => BlockGroup.App;
 
 
@@ -25,8 +26,9 @@ public class PlaySoundAction : ActionBlock
 
 
     private string _filepath;
-    private float _volume;
+    private readonly ValueSlot<double> _volume;
     private string _outputDevice;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -41,18 +43,26 @@ public class PlaySoundAction : ActionBlock
         set => SetParameter(ref _filepath, value);
     }
 
-    [ConfigurableParameter("Volume", ConfiguratorType.Slider)] [JsonPropertyName("volume")]
-    public float Volume
-    {
-        get => _volume;
-        set => SetParameter(ref _volume, value);
-    }
-
     [ConfigurableParameter("Output Device", ConfiguratorType.Menu)] [JsonPropertyName("outputDevice")]
     public string OutputDevice
     {
         get => _outputDevice;
         set => SetParameter(ref _outputDevice, value);
+    }
+
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("volume")]
+    private ValueSlotData JsonVolume
+    {
+        get => _volume.GetData();
+        set => _volume.LoadData(value);
     }
 
 
@@ -64,17 +74,18 @@ public class PlaySoundAction : ActionBlock
     public PlaySoundAction()
     {
         _filepath = "";
-        _volume = 1f;
+        _volume = new("Volume");
         _outputDevice = "Default";
+        _slots = [_volume];
+
+        _volume.SetText("1");
+
+        TrackSlots();
     }
 
 
 
     // public
-
-
-
-    public static (double, double) GetVolumeBounds() => (0, 1);
 
 
 
@@ -91,9 +102,11 @@ public class PlaySoundAction : ActionBlock
 
 
 
-    protected override Task ExecuteAsync(TriggerContext context)
+    protected override async Task ExecuteAsync(TriggerContext context)
     {
-        AudioHelper.TryPlaySound(_filepath, _volume, _outputDevice);
-        return Task.CompletedTask;
+        var volume = await _volume.EvaluateAsync(context);
+        if (double.IsNaN(volume)) throw Fail("volume isn't a number");
+
+        AudioHelper.TryPlaySound(_filepath, (float)Math.Clamp(volume, 0, 1), _outputDevice);
     }
 }

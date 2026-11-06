@@ -8,14 +8,14 @@
     <!-- list slot: dropping on a block puts the new one before it (a line above it lights up), the zone at the end adds
          it last, so reordering is dragging a block onto the one it should go before -->
 
-    <StackPanel Spacing="5">
+    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
 
         <TextBlock Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
 
         <ItemsControl ItemsSource="{Binding Blocks}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <StackPanel Spacing="5"/>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 

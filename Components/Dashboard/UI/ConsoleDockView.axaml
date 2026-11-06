@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.ConsoleDockView"
+             x:DataType="ui:ConsoleDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+             xmlns:console="using:StreamAssist.Components.OutputConsole.UI">
+
+    <!-- the dock's messages, drawn exactly like the app console's -->
+
+    <console:LogView Text="{Binding Text}"/>
+
+</UserControl>

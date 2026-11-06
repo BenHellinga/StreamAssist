@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
@@ -94,8 +95,14 @@ public partial class ConfigBarViewModel : ViewModelBase
     {
         _isRefreshing = true;
 
-        Names.Clear();
-        foreach (var name in _configs.Names) Names.Add(name);
+        // only rebuilt when the names changed: a switch picked in the dropdown also comes back here, and clearing the
+        // list in the middle of the dropdown's own change would blank its selection (it ignores being set back then)
+        if (!Names.SequenceEqual(_configs.Names))
+        {
+            Names.Clear();
+            foreach (var name in _configs.Names) Names.Add(name);
+        }
+
         SelectedName = _configs.SelectedName;
         HasConfig = _configs.SelectedName != null;
         IsDeleteArmed = false;

@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.Data.UI.TableGridView"
              x:DataType="ui:TableGridViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Data.UI">
+             xmlns:ui="using:StreamAssist.Components.Data.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- header: the table (rename / delete, and Delete columns mode, green while on, for custom tables), then search rows |
          a line | the grid: the id column, a line, then a column per table column (its header: name with the sort button
@@ -34,12 +35,7 @@
         <Style Selector="ComboBox.Kind TextBlock">
             <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
         </Style>
-        <Style Selector="Border.VerticalDivider">
-            <Setter Property="Width" Value="1"/>
-            <Setter Property="Background" Value="{DynamicResource Border}"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-        </Style>
-        <!-- every row is this tall (a cell and DenseGap), so the id column and the cells beside it always line up -->
+        <!-- every row is this tall (a cell and SmallVerticalGap), so the id column and the cells beside it always line up -->
         <Style Selector="Grid.Row">
             <Setter Property="Height" Value="30"/>
         </Style>
@@ -49,8 +45,8 @@
 
         <!-- the table -->
 
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10"
-                    Margin="{StaticResource HeaderMargin}" Height="{StaticResource ControlHeight}">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
+                    Margin="{s:Gap PadAll}" Height="{StaticResource ControlHeight}">
             <TextBlock Classes="Label" Text="{Binding TableName}" VerticalAlignment="Center" IsVisible="{Binding !IsCustom}"/>
             <TextBox Text="{Binding TableNameInput}" Width="200" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                      IsVisible="{Binding IsCustom}"/>
@@ -63,7 +59,7 @@
 
         <!-- search rows (as you type) | a query (Run query or Enter applies it, see RowQuery) -->
 
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="5,0,5,10">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Margin="{s:Gap SearchRowMargin}">
             <TextBox Text="{Binding SearchText}" Width="200" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Search rows…"/>
             <TextBox Classes="Query" Text="{Binding QueryText}" Width="400" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Query, e.g. user:bud points>100">
                 <TextBox.KeyBindings>
@@ -73,16 +69,18 @@
             <Button Content="Run query" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RunQueryPressedCommand}"/>
         </StackPanel>
 
-        <Border DockPanel.Dock="Top" Margin="{StaticResource DividerMargin}" Classes="Divider"/>
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
 
         <!-- the grid: id | line | columns, a line under the headers -->
 
         <ScrollViewer Classes="Gapped" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <Grid ColumnDefinitions="50,11,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="5,0,10,0" HorizontalAlignment="Left">
+                <!-- id | the vertical line (an Auto column: its style keeps LineGap either side) | the columns; what's beside the line
+                     adds ContentPadding (PadRight / PadLeft), so it's ContentGap from it -->
+                <Grid ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="{s:Gap ScrollInset}" HorizontalAlignment="Left">
 
                     <!-- the id header: its sort button -->
-                    <Grid Grid.Row="0" Grid.Column="0" VerticalAlignment="Top" Height="{StaticResource ControlHeight}">
+                    <Grid Grid.Row="0" Grid.Column="0" Width="50" VerticalAlignment="Top" Height="{StaticResource ControlHeight}" Margin="{s:Gap PadRight}">
                         <TextBlock Classes="Label" Text="id" VerticalAlignment="Center"/>
                         <Button Classes="Square Small" Content="{Binding IdSortText}" Command="{Binding SortByIdPressedCommand}"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -92,25 +90,25 @@
                     <Border Grid.Row="0" Grid.RowSpan="4" Grid.Column="1" Classes="VerticalDivider"/>
 
                     <!-- column headers, then the box that makes a new column -->
-                    <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Spacing="5">
+                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="{s:Gap PadLeft}" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
                         <ItemsControl ItemsSource="{Binding Columns}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="5"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="ui:ColumnHeaderViewModel">
-                                    <StackPanel Width="160" Spacing="3">
+                                    <StackPanel Width="160" Spacing="{DynamicResource SmallVerticalGap}">
                                         <Grid Height="{StaticResource ControlHeight}">
                                             <TextBox Classes="Cell Name Commit" Classes.Plain="{Binding !IsEditable}" Text="{Binding NameInput}" IsReadOnly="{Binding !IsEditable}"/>
-                                            <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="{s:Gap SortButtonsMargin}">
                                                 <Button Classes="Square Small" Content="－" Command="{Binding DeletePressedCommand}" IsVisible="{Binding IsDeleteMode}"/>
                                                 <Button Classes="Square Small" Content="{Binding SortText}" Command="{Binding SortPressedCommand}"/>
                                             </StackPanel>
                                         </Grid>
                                         <ComboBox Classes="Kind" ItemsSource="{Binding Kinds}" SelectedItem="{Binding KindName}" IsVisible="{Binding IsEditable}"/>
-                                        <TextBlock Classes="Description" Text="{Binding KindName}" IsVisible="{Binding !IsEditable}" Margin="6,0,0,0"/>
+                                        <TextBlock Classes="Description" Text="{Binding KindName}" IsVisible="{Binding !IsEditable}" Margin="{s:Gap BoxTextMargin}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -119,11 +117,12 @@
                                  VerticalAlignment="Top" IsVisible="{Binding IsCustom}"/>
                     </StackPanel>
 
-                    <!-- the line under the headers -->
-                    <Border Grid.Row="1" Grid.ColumnSpan="3" Classes="Divider" Margin="0,10,0,3"/>
+                    <!-- the line under the headers, 10 from them and 10 from the first row's boxes (7.5 + the 2.5 a 25 tall box sits
+                         down in its 30 tall row) -->
+                    <Border Grid.Row="1" Grid.ColumnSpan="3" Classes="Divider" Margin="{s:Gap TableHeaderLineMargin}"/>
 
                     <!-- the ids -->
-                    <ItemsControl Grid.Row="2" Grid.Column="0" ItemsSource="{Binding Rows}">
+                    <ItemsControl Grid.Row="2" Grid.Column="0" Width="50" Margin="{s:Gap PadRight}" ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="ui:RowViewModel">
                                 <Grid Classes="Row">
@@ -134,14 +133,14 @@
                     </ItemsControl>
 
                     <!-- the cells, a − at the end of each row deletes it -->
-                    <ItemsControl Grid.Row="2" Grid.Column="2" ItemsSource="{Binding Rows}">
+                    <ItemsControl Grid.Row="2" Grid.Column="2" Margin="{s:Gap PadLeft}" ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="ui:RowViewModel">
                                 <Grid Classes="Row" ColumnDefinitions="Auto,Auto">
                                     <ItemsControl ItemsSource="{Binding Cells}" VerticalAlignment="Center">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="5"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
@@ -151,7 +150,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                     <Button Grid.Column="1" Classes="Square Small" Content="－" Command="{Binding DeletePressedCommand}"
-                                            VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                            VerticalAlignment="Center" Margin="{s:Gap SmallGapBefore}"/>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -159,10 +158,10 @@
 
                     <!-- the empty row: a value typed in any of its cells makes a new row (no id until then) -->
                     <Grid Grid.Row="3" Grid.Column="0" Classes="Row"/>
-                    <ItemsControl Grid.Row="3" Grid.Column="2" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Center" Height="30">
+                    <ItemsControl Grid.Row="3" Grid.Column="2" Margin="{s:Gap PadLeft}" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Center" Height="30">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" VerticalAlignment="Center"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>

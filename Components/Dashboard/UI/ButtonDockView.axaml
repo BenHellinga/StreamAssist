@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.ButtonDockView"
+             x:DataType="ui:ButtonDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a bind box's edit buttons show only while the pointer is on a bound one (hidden by opacity, so nothing moves) -->
+
+    <UserControl.Styles>
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.Bound:pointerover > Grid > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- one row per button: name | bind box (once it has a name) | ▶ press (dimmed while it can't run: unbound or disabled) | × delete. The last row is the empty one.
+         Dropping a row's binding on another row moves it before that one (the line above it lights up) -->
+
+    <ScrollViewer Classes="Gapped">
+        <ItemsControl ItemsSource="{Binding Rows}" Margin="{s:Gap ScrollInset}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ui:DockButtonRowViewModel">
+                    <Border Classes="Droppable InsertBefore"
+                            DragDrop.DragOver="OnRowDragOver"
+                            DragDrop.DragLeave="OnRowDragLeave"
+                            DragDrop.Drop="OnRowDrop">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+
+                            <!-- the empty row at the end is a ghost box until a name is typed -->
+                            <TextBox Width="150" VerticalAlignment="Top"
+                                     Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                     Text="{Binding Name}" PlaceholderText="New button…"/>
+
+                            <!-- bind box: the button's name (grey until bound), click to edit its binding below, green =
+                                 bound, red = disabled, flashes when it runs. A labelled binding adds its label as a line -->
+                            <Border Classes="Panel Droppable Clickable"
+                                    Classes.Bound="{Binding IsBound}"
+                                    Classes.Disabled="{Binding IsDisabled}"
+                                    Classes.Triggered="{Binding IsTriggered}"
+                                    MinWidth="100" MinHeight="25" VerticalAlignment="Top"
+                                    IsVisible="{Binding ShowBindBox}"
+
+                                    DragDrop.AllowDrop="True"
+                                    DragDrop.DragOver="OnDragOver"
+                                    DragDrop.DragLeave="OnDragLeave"
+                                    DragDrop.Drop="OnDrop"
+                                    PointerPressed="OnBindBoxPointerPressed">
+
+                                <!-- an invisible copy of the buttons keeps their room, so the text doesn't move -->
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" Classes.Placeholder="{Binding !IsBound}"
+                                               Margin="{s:Gap BoxTextMargin}" MaxWidth="200" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
+                                               Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Margin="{s:Gap BindLabelMargin}"/>
+
+                                    <Panel Grid.Row="0" Grid.Column="1">
+                                        <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
+                                        <blocks:EditButtons Classes="HoverOnly"/>
+                                    </Panel>
+                                </Grid>
+                            </Border>
+
+                            <Button Classes="Square Medium" VerticalAlignment="Top"
+                                    Command="{Binding PressPressedCommand}" IsVisible="{Binding ShowBindBox}"
+                                    Opacity="{Binding !CanPress, Converter={x:Static ui:DockView.DimWhenTrue}}">
+                                <Path Classes="Icon" Data="{StaticResource PlayIcon}"/>
+                            </Button>
+
+                            <Button Classes="Square Medium" VerticalAlignment="Top"
+                                    Command="{Binding DeletePressedCommand}" IsVisible="{Binding ShowBindBox}">
+                                <Path Classes="Icon Line" Data="{StaticResource CrossIcon}"/>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+
+</UserControl>

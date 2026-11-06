@@ -2,6 +2,7 @@ using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Chatbot.Model;
+using StreamAssist.Core.Dragging;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Chatbot.UI;
@@ -17,11 +18,9 @@ public partial class RedeemRowViewModel : ViewModelBase
 
     private readonly RedeemRow _row;
     private readonly ChatTargetViewModel _target;
-    private readonly Action<RedeemRow> _test;
 
     [ObservableProperty] private string _title;
     [ObservableProperty] private bool _showTarget;
-    [ObservableProperty] private bool _showTest; // the test panel is open
 
 
 
@@ -37,15 +36,13 @@ public partial class RedeemRowViewModel : ViewModelBase
 
 
 
-    public RedeemRowViewModel(RedeemRow row, ChatbotComponentModel model, Action<RedeemRow> test, bool showTest)
+    public RedeemRowViewModel(RedeemRow row, ChatbotComponentModel model, IDroppable list)
     {
         _row = row;
-        _target = new(_row.Target, model);
-        _test = test;
+        _target = new(_row.Target, model, list);
 
         _title = _row.Title;
         _showTarget = !_row.IsEmpty;
-        _showTest = showTest;
 
         _row.TitleChanged += OnRowTitleChanged;
         _row.Target.ContentsChanged += OnRowTargetContentsChanged;
@@ -67,10 +64,6 @@ public partial class RedeemRowViewModel : ViewModelBase
 
     // typing in the box goes straight to the model
     partial void OnTitleChanged(string value) => _row.SetTitle(value ?? "");
-
-
-
-    [RelayCommand] private void OnTestPressed() => _test(_row);
 
 
 

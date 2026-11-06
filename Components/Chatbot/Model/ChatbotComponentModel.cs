@@ -32,6 +32,7 @@ public class ChatbotComponentModel : ModelBase
     private bool _isBotEnabled;
     private readonly ConfigSet<ChatConfigModel> _chatConfigs;
     private readonly ConfigSet<EventsConfigModel> _eventsConfigs;
+    private readonly ChatHistoryModel _chatHistory; // the last chat messages, not saved
 
 
 
@@ -60,6 +61,7 @@ public class ChatbotComponentModel : ModelBase
     [JsonIgnore] public BlockSlot? EditableRoot => _chatConfigs.Selected?.EditableRoot; // the commands chat can change (a Match Text, see TryAddCommand)
     [JsonIgnore] public RedeemList? Redeems => _eventsConfigs.Selected?.Redeems;
     [JsonIgnore] public IReadOnlyList<ChatEventSlot> Events => _eventsConfigs.Selected?.Events ?? []; // in ChatEvents.All order
+    [JsonIgnore] public ChatHistoryModel ChatHistory => _chatHistory;
 
 
 
@@ -145,6 +147,7 @@ public class ChatbotComponentModel : ModelBase
         _isBotEnabled = false;
         _chatConfigs = new("chat config", () => new ChatConfigModel());
         _eventsConfigs = new("events config", () => new EventsConfigModel());
+        _chatHistory = new();
 
         _chatConfigs.Changed += OnContentsChanged;
         _eventsConfigs.Changed += OnContentsChanged;
@@ -338,7 +341,7 @@ public class ChatbotComponentModel : ModelBase
         var send = new SendChatMessageAction { Reply = "Yes" }; // commands answer the message that asked
         send.Message.SetText(text);
         var bindable = new BindableModel();
-        bindable.Root.TrySetBlock(send);
+        bindable.TryAddBlock(send);
 
         // a row with just the command typed in gets the binding, otherwise a new row goes where the walk stopped
         (place.Row ?? place.Block.Rows.AddRow(place.Remaining)).Target.TryBind(bindable);
@@ -357,7 +360,7 @@ public class ChatbotComponentModel : ModelBase
 
         if (!TryFindBoundRow(block, name, "edit", logErrors, out failure, out _, out var row)) return false;
 
-        if (row.Target.Bindable!.Root.Block is not SendChatMessageAction send || send.Message.BlockSlot.Block != null)
+        if (row.Target.Bindable!.Root.Blocks is not [SendChatMessageAction send] || send.Message.BlockSlot.Block != null)
             return Refuse(logErrors, out failure, CommandFailure.NotSimple, $"can't edit {name}, not just a message");
 
         send.Message.SetText(text);

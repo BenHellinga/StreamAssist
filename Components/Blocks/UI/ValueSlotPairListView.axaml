@@ -6,21 +6,27 @@
              xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
     <!-- one row per name / value (like Match Text's rows): the name's slot | the value's slot, the last row always empty.
-         The name column is as wide as Match Text's pattern boxes, so the values line up (a block placed there can be wider) -->
+         The name column is as wide as Match Text's pattern boxes, so the values line up (a block placed there can be wider).
+         Dropping a row's block on another row moves it before that one (the line above it lights up) -->
 
     <ItemsControl ItemsSource="{Binding Items}">
         <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-                <StackPanel Spacing="5"/>
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
             </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
 
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="ui:ValueSlotPairViewModel">
-                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="5">
-                    <ContentControl Grid.Column="0" Content="{Binding Key}" MinWidth="160" VerticalAlignment="Top"/>
-                    <ContentControl Grid.Column="1" Content="{Binding Value}" VerticalAlignment="Top"/>
-                </Grid>
+                <Border Classes="Droppable InsertBefore"
+                        DragDrop.DragOver="OnZoneDragOver"
+                        DragDrop.DragLeave="OnZoneDragLeave"
+                        DragDrop.Drop="OnZoneDrop">
+                    <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                        <ContentControl Grid.Column="0" Content="{Binding Key}" MinWidth="160" VerticalAlignment="Top"/>
+                        <ContentControl Grid.Column="1" Content="{Binding Value}" VerticalAlignment="Top"/>
+                    </Grid>
+                </Border>
             </DataTemplate>
         </ItemsControl.ItemTemplate>
     </ItemsControl>

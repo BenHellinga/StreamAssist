@@ -5,7 +5,8 @@ namespace StreamAssist.Components.Chatbot.Background;
 
 
 
-// runs every chat message through the chat command trees (built-in, then custom), the first path that reaches a binding runs it
+// keeps every chat message in the chat history (ChatHistoryModel), then runs it through the chat command trees
+// (built-in, then custom), the first path that reaches a binding runs it
 public class ChatCommandManager : IDisposable
 {
     // private
@@ -42,8 +43,11 @@ public class ChatCommandManager : IDisposable
         // the bot's own messages never trigger commands (so it can't set itself off)
         if (_manager.BotUserId != null && e.GetString("chatter_user_id") == _manager.BotUserId) return;
 
+        var parameters = e.ChatParameters();
+        _model.ChatHistory.Add(parameters);
+
         var text = e.GetString("message", "text") ?? "";
-        _model.TryMatchMessage(new ChatMatchState(text, 0, e.ChatParameters()));
+        _model.TryMatchMessage(new ChatMatchState(text, 0, parameters));
     }
 
 

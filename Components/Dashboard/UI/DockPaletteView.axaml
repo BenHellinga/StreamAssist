@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.DockPaletteView"
+             x:DataType="ui:DockPaletteViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- Docks heading | a card per kind of dock (a DockCardView through the ViewLocator), dragged onto the dashboard -->
+
+    <DockPanel>
+
+        <TextBox DockPanel.Dock="Top"
+                 Margin="{s:Gap PadAll}"
+                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="Search docks…"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <ScrollViewer Classes="Gapped">
+            <ItemsControl ItemsSource="{Binding Shown}" Margin="{s:Gap ScrollInset}" IsVisible="{Binding HasConfig}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

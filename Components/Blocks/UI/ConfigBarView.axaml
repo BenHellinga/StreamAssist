@@ -7,7 +7,7 @@
 
     <!-- Config [configs] [name box] ＋ －: a header row, so it's ControlHeight tall like the other headers -->
 
-    <StackPanel Orientation="Horizontal" Spacing="10" Height="{StaticResource ControlHeight}">
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Height="{StaticResource ControlHeight}">
 
         <TextBlock Classes="Label" Text="Config" VerticalAlignment="Center"/>
 

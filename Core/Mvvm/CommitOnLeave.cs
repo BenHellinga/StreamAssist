@@ -15,8 +15,8 @@ public interface ICommitOnLeave
 
 
 
-// makes the text boxes with the "Commit" class under a view apply their text when they're left: Enter moves the focus
-// away, losing focus calls the box's DataContext's Commit(). Doing it here rather than in the box's own Text binding
+// makes the text boxes with the "Commit" class under a view apply their text when they're left: Enter (except in a
+// multi-line box) moves the focus away, losing focus calls the box's DataContext's Commit(). Doing it here rather than in the box's own Text binding
 // lets the view model change the text afterwards (empty a "new ..." box, put back a refused value) and the box shows
 // it, since a text box ignores changes to the property while it's writing it
 public static class CommitOnLeave
@@ -27,7 +27,8 @@ public static class CommitOnLeave
 
         root.AddHandler(InputElement.KeyDownEvent, (_, e) =>
         {
-            if (e.Key != Key.Enter || e.Source is not TextBox box || !box.Classes.Contains("Commit")) return;
+            // a multi-line box keeps Enter for new lines, it's applied when clicked away from
+            if (e.Key != Key.Enter || e.Source is not TextBox box || !box.Classes.Contains("Commit") || box.AcceptsReturn) return;
 
             root.Focus();
             e.Handled = true;

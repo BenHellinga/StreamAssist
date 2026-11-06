@@ -95,7 +95,7 @@ internal static class EngineChecks
         {
             int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
             string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
-            BindableModel Bind(BlockModel root) { var b = new BindableModel(); b.Root.TrySetBlock(root); return b; }
+            BindableModel Bind(BlockModel root) { var b = new BindableModel(); b.TryAddBlock(root); return b; }
             Dictionary<string, string> Chat(bool mod = false, bool vip = false, bool sub = false, bool broadcaster = false)
             {
                 var p = ChatEvents.SampleChatParameters("viewer", "", mod, vip, sub);
@@ -153,7 +153,7 @@ internal static class EngineChecks
 
             // add
             var e1 = Errors();
-            Check("add: whole command", model.TryAddCommand("!hello", "  hi there ") && Cmd("!hello")?.Target.Bindable?.Root.Block is SendChatMessageAction { Message.Text: "hi there" });
+            Check("add: whole command", model.TryAddCommand("!hello", "  hi there ") && Cmd("!hello")?.Target.Bindable?.Root.Blocks.FirstOrDefault() is SendChatMessageAction { Message.Text: "hi there" });
             Check("add: no errors so far", Errors() == e1);
             Check("add: a symbol at the end is fine", model.TryAddCommand("!hi?", "x") && Cmd("!hi?") != null && model.TryDeleteCommand("!HI?"));
             Check("add: duplicate refused (any case)", !model.TryAddCommand("!HELLO", "x") && LastError().Contains("error - can't add !HELLO, already exists"));
@@ -166,7 +166,7 @@ internal static class EngineChecks
             Check("add: bind box shows !hello", model.Describe(Cmd("!hello")!.Target)?.Text == "!hello");
 
             // edit
-            Check("edit: send-only command", model.TryEditCommand("!hello", "new text") && ((SendChatMessageAction)Cmd("!hello")!.Target.Bindable!.Root.Block!).Message.Text == "new text");
+            Check("edit: send-only command", model.TryEditCommand("!hello", "new text") && ((SendChatMessageAction)Cmd("!hello")!.Target.Bindable!.Root.Blocks.FirstOrDefault()!).Message.Text == "new text");
             Check("edit: a command that does more is refused", !model.TryEditCommand("!rec", "x") && LastError().Contains("not just a message"));
             Check("edit: a row leading into blocks is refused", !model.TryEditCommand("!sub", "x") && LastError().Contains("not a single command"));
             Check("edit: missing refused", !model.TryEditCommand("!nope", "x") && LastError().Contains("can't edit !nope, not found"));
@@ -257,7 +257,7 @@ internal static class EngineChecks
             var bangMenu = new MatchTextChatBlock();
             editable.Rows.AddRow("!").Target.Child.TrySetBlock(bangMenu);
             var lurk = new SendChatMessageAction(); lurk.Message.SetText("LURK LURK LURK!!!");
-            var lb = new BindableModel(); lb.Root.TrySetBlock(lurk); bangMenu.Rows.AddRow("lurk").Target.TryBind(lb);
+            var lb = new BindableModel(); lb.TryAddBlock(lurk); bangMenu.Rows.AddRow("lurk").Target.TryBind(lb);
             string Patterns(MatchTextChatBlock b) => string.Join(" | ", b.Rows.Rows.Where(r => r.Pattern != "").Select(r => r.Pattern));
 
             Check("nested: !editcom !lurk edits the message", m.TryEditCommand("!lurk", "bruh") && lurk.Message.Text == "bruh");
@@ -274,7 +274,7 @@ internal static class EngineChecks
             Check("failure: edit missing is NotFound", F(() => { m.TryEditCommand("!nope", "z", out var f, logErrors: false); return f; }) == CommandFailure.NotFound);
             Check("failure: delete a prefix is NotFound", F(() => { m.TryDeleteCommand("!", out var f, logErrors: false); return f; }) == CommandFailure.NotFound);
             Check("failure: add existing is AlreadyExists", F(() => { m.TryAddCommand("!lurk", "z", out var f, logErrors: false); return f; }) == CommandFailure.AlreadyExists);
-            var fancy = new BindableModel(); fancy.Root.TrySetBlock(new ListBlock()); bangMenu.Rows.AddRow("fancy").Target.TryBind(fancy);
+            var fancy = new BindableModel(); fancy.TryAddBlock(new ListBlock()); bangMenu.Rows.AddRow("fancy").Target.TryBind(fancy);
             Check("failure: edit a command that does more is NotSimple", F(() => { m.TryEditCommand("!fancy", "z", out var f, logErrors: false); return f; }) == CommandFailure.NotSimple);
             Check("failure: no name is Invalid", F(() => { m.TryAddCommand(" ", "z", out var f, logErrors: false); return f; }) == CommandFailure.Invalid);
             Check("failure: success is None", F(() => { m.TryEditCommand("!lurk", "ok", out var f); return f; }) == CommandFailure.None);
@@ -289,8 +289,8 @@ internal static class EngineChecks
             var top = (MatchTextChatBlock)m.Root.Block!;
             var bang = new MatchTextChatBlock();
             top.Rows.AddRow("!").Target.Child.TrySetBlock(bang);
-            BindableModel Rec(string tag) { var b = new BindableModel(); b.Root.TrySetBlock(new RecordBlock { Tag = tag }); return b; }
-            BindableModel Seen(string key) { var b = new BindableModel(); b.Root.TrySetBlock(new ParamRecordBlock { Key = key }); return b; }
+            BindableModel Rec(string tag) { var b = new BindableModel(); b.TryAddBlock(new RecordBlock { Tag = tag }); return b; }
+            BindableModel Seen(string key) { var b = new BindableModel(); b.TryAddBlock(new ParamRecordBlock { Key = key }); return b; }
             bang.Rows.AddRow("lurk").Target.TryBind(Rec("L"));
             var payMenu = new MatchTextChatBlock();
             var allTarget = payMenu.Rows.AddRow("all").Target; allTarget.TryBind(Rec("ALL"));
@@ -478,6 +478,259 @@ internal static class EngineChecks
             var wordFailed = false;
             try { EvalIn(Check2("{user}==Bob"), chat); } catch (BlockFailedException) { wordFailed = true; }
             Check("expression: unquoted text fails showing the values", wordFailed && Errors() == e2 + 1 && LastError().Contains("Expression: 'Bob==Bob' unknown identifier 'Bob'"));
+        }
+
+        // ---- Dashboard: docks, their layout, Dock Message (main thread, errors are counted) ----
+        {
+            int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
+            string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
+            var dash = new StreamAssist.Components.Dashboard.Model.DashboardComponentModel();
+            dash.Configs.TryCreate("Default");
+
+            // the config bar: picking another config doesn't rebuild the dropdown's list (that blanked its selection)
+            dash.Configs.TryCreate("Second");
+            var bar = new StreamAssist.Components.Blocks.UI.ConfigBarViewModel(dash.Configs);
+            var listChanges = 0;
+            bar.Names.CollectionChanged += (_, _) => listChanges++;
+            bar.SelectedName = "Default";
+            Check("config bar: picking a config switches it and keeps the list as it is", dash.Configs.SelectedName == "Default" && bar.SelectedName == "Default" && listChanges == 0);
+            dash.Configs.TryDelete("Second");
+            Check("config bar: a deleted config leaves the list", bar.Names.SequenceEqual(["Default"]) && listChanges > 0);
+            bar.Dispose();
+            var cfg = dash.Config!;
+            // the layout as text: a dock's name, or H(...) side by side / V(...) stacked
+            string Shape(StreamAssist.Components.Dashboard.Model.DockLayoutNode? n) => n == null ? "-"
+                : n.IsDock ? cfg.Docks.First(d => d.Id == n.DockId).Name
+                : (n.Direction == StreamAssist.Components.Dashboard.Model.SplitDirection.Horizontal ? "H(" : "V(") + string.Join(",", n.Children.Select(Shape)) + ")";
+            StreamAssist.Components.Dashboard.Model.DockModel D(string name) => cfg.FindDock(name)!;
+            const StreamAssist.Components.Dashboard.Model.DockKind Console = StreamAssist.Components.Dashboard.Model.DockKind.Console;
+
+            Check("dashboard: starts with no docks", Shape(cfg.Layout) == "-");
+            Check("dashboard: new docks go on the right", cfg.TryAddDock("A", Console) && Shape(cfg.Layout) == "A" && cfg.TryAddDock("B", Console) && Shape(cfg.Layout) == "H(A,B)");
+            var d0 = Errors();
+            Check("dashboard: names are needed and unique (case ignored), one error each", !cfg.TryAddDock(" ", Console) && !cfg.TryAddDock("a", Console) && Errors() == d0 + 2
+                && LastError().Contains("dock 'a' already exists") && !cfg.TryRenameDock(D("B"), "A") && D("B").Name == "B" && cfg.TryRenameDock(D("B"), "b") && D("b").Name == "b");
+            cfg.TryRenameDock(D("b"), "B");
+            Check("dashboard: dropped below a dock, that region splits", cfg.TryMoveDock(D("B"), D("A"), StreamAssist.Components.Dashboard.Model.DockEdge.Bottom) && Shape(cfg.Layout) == "V(A,B)");
+            cfg.TryAddDock("C", Console);
+            Check("dashboard: a new one goes right of everything", Shape(cfg.Layout) == "H(V(A,B),C)");
+            Check("dashboard: dropped above a dock in a column, it joins the column taking half the target's share",
+                cfg.TryMoveDock(D("C"), D("A"), StreamAssist.Components.Dashboard.Model.DockEdge.Top) && Shape(cfg.Layout) == "V(C,A,B)" && cfg.Layout!.Sizes.SequenceEqual([0.5, 0.5, 1.0]));
+            Check("dashboard: onto itself changes nothing", cfg.TryMoveDock(D("A"), D("A"), StreamAssist.Components.Dashboard.Model.DockEdge.Left) && Shape(cfg.Layout) == "V(C,A,B)");
+            Check("dashboard: removing one closes the gap", cfg.TryRemoveDock(D("A")) && Shape(cfg.Layout) == "V(C,B)" && cfg.Docks.Count == 2);
+            Check("dashboard: a split left with one region becomes it", cfg.TryMoveDock(D("B"), D("C"), StreamAssist.Components.Dashboard.Model.DockEdge.Left) && Shape(cfg.Layout) == "H(B,C)");
+            Check("dashboard: a card dropped on a dock's side adds one there, named after its kind",
+                cfg.TryAddDock(Console, D("B"), StreamAssist.Components.Dashboard.Model.DockEdge.Bottom) && Shape(cfg.Layout) == "H(V(B,Console),C)");
+            Check("dashboard: the next one of that kind gets a number", cfg.TryAddDock(Console) && Shape(cfg.Layout) == "H(V(B,Console),C,Console 2)");
+            cfg.TryRemoveDock(D("Console"));
+            cfg.TryRemoveDock(D("Console 2"));
+            cfg.SetSizes(cfg.Layout!, [300, 100]);
+            Check("dashboard: splitter sizes are kept as shares, bad ones ignored", cfg.Layout!.Sizes.SequenceEqual([300.0, 100.0]) && SetSizesIgnored(cfg));
+            static bool SetSizesIgnored(StreamAssist.Components.Dashboard.Model.DashboardConfigModel c) { c.SetSizes(c.Layout!, [1, 0]); c.SetSizes(c.Layout!, [1]); return c.Layout!.Sizes.SequenceEqual([300.0, 100.0]); }
+
+            // saved and loaded (a config copy goes through the same json)
+            var reloaded = System.Text.Json.JsonSerializer.Deserialize<StreamAssist.Components.Dashboard.Model.DashboardComponentModel>(System.Text.Json.JsonSerializer.Serialize(dash))!;
+            var reCfg = reloaded.Config!;
+            Check("dashboard: saved and loaded keeps docks, layout and sizes", reCfg.Docks.Select(d => d.Name).SequenceEqual(["B", "C"])
+                && reCfg.Layout!.Children.Select(c => c.DockId).SequenceEqual(cfg.Docks.Select(d => d.Id)) && reCfg.Layout.Sizes.SequenceEqual([300.0, 100.0]));
+            var broken = System.Text.Json.JsonSerializer.Deserialize<StreamAssist.Components.Dashboard.Model.DashboardConfigModel>(
+                "{\"name\":\"x\",\"docks\":[{\"id\":\"1\",\"name\":\"One\",\"kind\":\"Console\"},{\"id\":\"2\",\"name\":\"Two\",\"kind\":\"Console\"}],"
+                + "\"layout\":{\"direction\":\"Vertical\",\"children\":[{\"dock\":\"1\"},{\"dock\":\"gone\"}],\"sizes\":[1,1]}}")!;
+            Check("dashboard: a loaded layout is mended (unknown region dropped, a missing dock added on the right)",
+                broken.Layout!.Direction == StreamAssist.Components.Dashboard.Model.SplitDirection.Horizontal && broken.Layout.Children.Select(c => c.DockId).SequenceEqual(["1", "2"]));
+            Check("dashboard: a new config copies the docks", dash.Configs.TryCreate("Copy") && dash.Config!.Docks.Select(d => d.Name).SequenceEqual(["B", "C"]) && dash.Configs.TrySelect("Default"));
+
+            // the blocks write to the config in use, found by name
+            var oldDash = StreamAssist.Shell.GlobalContext.DashboardComponentModel;
+            StreamAssist.Shell.GlobalContext.DashboardComponentModel = dash;
+            var dockCtx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "Bob" });
+            StreamAssist.Components.Dashboard.Actions.DockMessageAction Msg(string dock, string text)
+            {
+                var b = new StreamAssist.Components.Dashboard.Actions.DockMessageAction();
+                ((ValueSlot)b.Slots[0]).SetText(dock);
+                ((ValueSlot)b.Slots[1]).SetText(text);
+                return b;
+            }
+            Msg("c", "{user} redeemed").SafeRunAsync(dockCtx).GetAwaiter().GetResult();
+            Check("dock message: written to that dock only, not the app console", D("C").Lines.Count == 1 && D("C").Lines[0].EndsWith("] Bob redeemed") && D("B").Lines.Count == 0
+                && !AppLog.Lines.Any(l => l.Contains("Bob redeemed")));
+            var d1 = Errors();
+            Msg("Nope", "hi").SafeRunAsync(dockCtx).GetAwaiter().GetResult();
+            Check("dock message: an unknown dock fails with one error naming it", Errors() == d1 + 1 && LastError().Contains("error - Dock Message: no dock 'Nope'"));
+            var clear = new StreamAssist.Components.Dashboard.Actions.ClearDockAction();
+            ((ValueSlot)clear.Slots[0]).SetText("C");
+            clear.SafeRunAsync(dockCtx).GetAwaiter().GetResult();
+            Check("clear dock: empties it", D("C").Lines.Count == 0);
+
+            // button docks: rows like redeem rows, each pressing its own binding
+            var btnDock = (cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Button) ? D("Buttons") : null)!;
+            var rows = btnDock.Buttons;
+            Check("button dock: starts with one empty row, naming it adds the next", rows.Rows.Count == 1 && NameRow(rows.Rows[0], "Reset Bruce") && rows.Rows.Count == 2);
+            static bool NameRow(StreamAssist.Components.Dashboard.Model.DockButton row, string name) { row.SetName(name); return true; }
+            var bruce = rows.Rows[0];
+            var bruceBind = new BindableModel();
+            bruceBind.TryAddBlock(new RecordBlock { Tag = "bruce" });
+            RecordBlock.Log.Clear();
+            Check("button dock: pressing runs its binding", bruce.TryBind(bruceBind) && btnDock.TryPressButton(bruce) && RecordBlock.Log.SequenceEqual(["bruce"]));
+            var btnJson = System.Text.Json.JsonSerializer.Serialize(cfg);
+            var btnCopy = System.Text.Json.JsonSerializer.Deserialize<StreamAssist.Components.Dashboard.Model.DashboardConfigModel>(btnJson)!;
+            Check("button dock: rows and bindings are saved (consoles save no buttons)", btnCopy.FindDock("Buttons")!.Buttons.Rows.Count == 2
+                && btnCopy.FindDock("Buttons")!.Buttons.Rows[0].Bindable?.HasBlock == true && !System.Text.RegularExpressions.Regex.IsMatch(btnJson, "\"name\":\"B\"[^}]*\"buttons\""));
+            btnCopy.Dispose();
+
+            // reordering (dragging a row onto another): the row goes before the one it lands on, the empty one stays last
+            string Order() => string.Join(",", rows.Rows.Select(r => r.Name == "" ? "_" : r.Name));
+            NameRow(rows.Rows[^1], "Hydrate");
+            NameRow(rows.Rows[^1], "Lurk");
+            Check("button dock: a row moves before the one it's dropped on", rows.TryMoveRow(rows.Rows[2], 0) && Order() == "Lurk,Reset Bruce,Hydrate,_");
+            Check("button dock: dropped on the empty row it goes last, binding and all", rows.TryMoveRow(bruce, 3) && Order() == "Lurk,Hydrate,Reset Bruce,_"
+                && bruce.Bindable == bruceBind);
+            var lurkBind = new BindableModel();
+            lurkBind.TryAddBlock(new RecordBlock { Tag = "lurk" });
+            rows.Rows[0].TryBind(lurkBind);
+            RecordBlock.Log.Clear();
+            btnDock.PressAllButtons();
+            Check("button dock: press all runs every bound button, top to bottom", RecordBlock.Log.SequenceEqual(["lurk", "bruce"]));
+            rows.Rows[0].Unbind();
+            var m0 = Errors();
+            Check("button dock: the empty row can't move (one error)", !rows.TryMoveRow(rows.Rows[^1], 0) && Order() == "Lurk,Hydrate,Reset Bruce,_" && Errors() == m0 + 1);
+            NameRow(rows.Rows[0], "");
+            NameRow(rows.Rows[0], "");
+            rows.Remove(bruce);
+            Check("button dock: deleting a row drops it and its binding", rows.Rows.Count == 1 && rows.Rows[0].IsEmpty && bruce.Bindable == null);
+            cfg.TryRemoveDock(btnDock);
+
+            // timers, with a clock the checks move by hand
+            var clock = new DateTime(2026, 1, 1);
+            var tm = new StreamAssist.Components.Dashboard.Model.TimersModel(() => clock);
+            var ended = new List<string>();
+            bool Start(string name, double s, StreamAssist.Components.Dashboard.Model.TimerRepeat r, string tag) =>
+                tm.TryStart(name, TimeSpan.FromSeconds(s), r, () => ended.Add(tag), null, out _);
+            const StreamAssist.Components.Dashboard.Model.TimerRepeat Restart = StreamAssist.Components.Dashboard.Model.TimerRepeat.Restart;
+            Check("timers: a name and a positive length are needed", !tm.TryStart(" ", TimeSpan.FromSeconds(5), Restart, null, null, out var tErr1) && tErr1 == "timer needs a name"
+                && !tm.TryStart("x", TimeSpan.Zero, Restart, null, null, out _) && tm.Timers.Count == 0);
+            Start("egg", 10, Restart, "egg1");
+            clock = clock.AddSeconds(4);
+            Start("egg", 10, Restart, "egg2");
+            Check("timers: Restart starts the one running again (its new end replaces the old)", tm.Timers.Count == 1 && tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(10));
+            Start("egg", 5, StreamAssist.Components.Dashboard.Model.TimerRepeat.AddTime, "egg3");
+            Start("egg", 99, StreamAssist.Components.Dashboard.Model.TimerRepeat.Ignore, "egg4");
+            Check("timers: Add Time adds to it, Ignore leaves it", tm.Timers.Count == 1 && tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(15) && tm.Timers[0].Total == TimeSpan.FromSeconds(15));
+            Start("egg", 3, StreamAssist.Components.Dashboard.Model.TimerRepeat.RunAnother, "other");
+            Check("timers: Run Another runs one more with the same name", tm.Find("EGG").Count() == 2);
+            tm.SetIsPaused(tm.Timers[0], true);
+            clock = clock.AddSeconds(5);
+            tm.FinishDue();
+            Check("timers: due ones finish and run their end, a paused one keeps its time", ended.SequenceEqual(["other"]) && tm.Timers.Count == 1 && tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(15));
+            tm.SetIsPaused(tm.Timers[0], false);
+            clock = clock.AddSeconds(15);
+            tm.FinishDue();
+            Check("timers: resumed, it ends after what it had left (with the end of the latest restart)", ended.SequenceEqual(["other", "egg2"]) && tm.Timers.Count == 0);
+            Start("a", 5, Restart, "a");
+            Start("b", 5, Restart, "b");
+            tm.Kill(tm.Find("a").First());
+            tm.Finish(tm.Find("b").First());
+            Check("timers: cancel doesn't run its end, finish now does", ended.SequenceEqual(["other", "egg2", "b"]) && tm.Timers.Count == 0);
+            ended.Clear();
+            Start("late", 9, Restart, "late");
+            Start("soon", 2, Restart, "soon");
+            tm.SetAllPaused(true);
+            Check("timers: pause all", tm.Timers.All(t => t.IsPaused));
+            tm.SetAllPaused(false);
+            tm.FinishAll();
+            Check("timers: finish all runs every end, soonest first", tm.Timers.Count == 0 && ended.SequenceEqual(["soon", "late"]));
+            Start("x", 5, Restart, "x");
+            tm.KillAll();
+            Check("timers: cancel all runs no end", tm.Timers.Count == 0 && ended.Count == 2);
+            ended.Clear();
+            tm.TryStart("lap", TimeSpan.FromSeconds(5), Restart, () => ended.Add("lap"), null, out _, repeats: true);
+            clock = clock.AddSeconds(5);
+            tm.FinishDue();
+            Check("timers: a repeating one runs its end and starts its next lap", ended.SequenceEqual(["lap"]) && tm.Timers.Count == 1 && tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(5));
+            clock = clock.AddSeconds(12);
+            tm.FinishDue();
+            Check("timers: one that fell behind starts its next lap from now", ended.Count == 2 && tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(5));
+            tm.AddTime(tm.Timers[0], TimeSpan.FromSeconds(10));
+            Check("timers: add time", tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(15));
+            tm.AddTimeAll(TimeSpan.FromSeconds(-20));
+            tm.FinishDue();
+            Check("timers: taking more than is left ends this lap now", ended.Count == 3 && tm.Timers.Count == 1);
+            tm.Finish(tm.Timers[0]);
+            Check("timers: finishing a repeating one ends it for good", ended.Count == 4 && tm.Timers.Count == 0);
+
+            // the timer blocks, on a timer dock named in their Dock slot
+            var timerDock = (cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Timer) ? D("Timers") : null)!;
+            var startTimer = new StreamAssist.Components.Dashboard.Containers.StartTimerBlock();
+            ((ValueSlot)startTimer.Slots[0]).SetText("Timers");
+            ((ValueSlot)startTimer.Slots[1]).SetText("Hydrate");
+            ((ValueSlot)startTimer.Slots[2]).SetText("90");
+            ((BlockSlot)startTimer.Slots[3]).TrySetBlock(new FormatRecordBlock { Template = "{user} drinks" });
+            var timerCtx = new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "Bob" });
+            startTimer.SafeRunAsync(timerCtx).GetAwaiter().GetResult();
+            timerCtx.SetParameter("user", "Changed");
+            var leftBlock = new StreamAssist.Components.Dashboard.Values.TimerLeftBlock();
+            ((ValueSlot)leftBlock.Slots[0]).SetText("timers");
+            ((ValueSlot)leftBlock.Slots[1]).SetText("hydrate");
+            Check("start timer: starts it on its dock, Timer Left gives the seconds left", timerDock.Timers.Find("Hydrate").Count() == 1 && leftBlock.EvaluateAsync(timerCtx).GetAwaiter().GetResult() == 90);
+            var pauseTimer = new StreamAssist.Components.Dashboard.Actions.PauseTimerAction();
+            ((ValueSlot)pauseTimer.Slots[0]).SetText("Timers");
+            ((ValueSlot)pauseTimer.Slots[1]).SetText("Hydrate");
+            pauseTimer.SafeRunAsync(timerCtx).GetAwaiter().GetResult();
+            Check("pause timer: Toggle pauses it", timerDock.Timers.Find("Hydrate").Single().IsPaused);
+            var stopTimer = new StreamAssist.Components.Dashboard.Actions.StopTimerAction();
+            ((ValueSlot)stopTimer.Slots[0]).SetText("Timers");
+            ((ValueSlot)stopTimer.Slots[1]).SetText("Hydrate");
+            FormatRecordBlock.Log.Clear();
+            stopTimer.SafeRunAsync(timerCtx).GetAwaiter().GetResult();
+            Check("stop timer: Finish Now runs When Done with the parameters from the start", FormatRecordBlock.Log.SequenceEqual(["Bob drinks"]) && !timerDock.Timers.Find("Hydrate").Any()
+                && leftBlock.EvaluateAsync(timerCtx).GetAwaiter().GetResult() == 0);
+            var t0 = Errors();
+            ((ValueSlot)stopTimer.Slots[0]).SetText("Timerz");
+            Check("timer blocks: an unknown dock fails with one error", !stopTimer.SafeRunAsync(timerCtx).GetAwaiter().GetResult() && Errors() == t0 + 1
+                && LastError().Contains("error - Stop Timer: no dock 'Timerz'"));
+            ((ValueSlot)stopTimer.Slots[0]).SetText("C");
+            Check("timer blocks: a dock of another kind fails too", !stopTimer.SafeRunAsync(timerCtx).GetAwaiter().GetResult() && Errors() == t0 + 2
+                && LastError().Contains("dock 'C' isn't a timer dock"));
+            startTimer.SafeRunAsync(timerCtx).GetAwaiter().GetResult();
+            startTimer.Dispose();
+            Check("start timer: removing the block drops its timers", !timerDock.Timers.Find("Hydrate").Any());
+            timerDock.Timers.TryStart("left", TimeSpan.FromSeconds(5), StreamAssist.Components.Dashboard.Model.TimerRepeat.Restart, () => RecordBlock.Log.Add("ran"), null, out _);
+            RecordBlock.Log.Clear();
+            cfg.TryRemoveDock(timerDock);
+            Check("timer dock: removing it drops its timers without running their end", timerDock.Timers.Timers.Count == 0 && RecordBlock.Log.Count == 0);
+
+            // indicators: an indicator dock's rows, on / off / toggle by dock and row name (case ignored), unknown until set
+            var indDock = (cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Indicator) ? D("Indicators") : null)!;
+            indDock.Indicators.Rows[^1].SetName("Mic");
+            indDock.Indicators.Rows[^1].SetName("Cam");
+            var indView = new StreamAssist.Components.Dashboard.UI.IndicatorDockViewModel(indDock);
+            Check("indicators: unknown until set", indDock.IndicatorState("Mic") == null && !indView.Rows[0].IsOn && !indView.Rows[0].IsOff);
+            var setInd = new StreamAssist.Components.Dashboard.Actions.SetIndicatorAction { Set = "Toggle" };
+            ((ValueSlot)setInd.Slots[0]).SetText("indicators");
+            ((ValueSlot)setInd.Slots[1]).SetText("Mic");
+            setInd.SafeRunAsync(dockCtx).GetAwaiter().GetResult();
+            Check("set indicator: Toggle turns a new one on, and its row shows it", indDock.IndicatorState(" mic ") == true && indView.Rows[0].IsOn && !indView.Rows[1].IsOn);
+            setInd.Set = "Off";
+            setInd.SafeRunAsync(dockCtx).GetAwaiter().GetResult();
+            var isOn = new StreamAssist.Components.Dashboard.Conditions.IndicatorIsOnCondition();
+            ((ValueSlot)isOn.Slots[0]).SetText("Indicators");
+            ((ValueSlot)isOn.Slots[1]).SetText("MIC");
+            Check("set indicator: Off, and Indicator Is On reads it", indDock.IndicatorState("Mic") == false && indView.Rows[0].IsOff && !isOn.EvaluateAsync(dockCtx).GetAwaiter().GetResult());
+            setInd.Set = "On";
+            setInd.SafeRunAsync(dockCtx).GetAwaiter().GetResult();
+            Check("indicator is on: true once on", isOn.EvaluateAsync(dockCtx).GetAwaiter().GetResult());
+            var i0 = Errors();
+            ((ValueSlot)setInd.Slots[1]).SetText("Mik");
+            Check("set indicator: a name with no row fails with one error (no new indicator)", !setInd.SafeRunAsync(dockCtx).GetAwaiter().GetResult() && Errors() == i0 + 1
+                && LastError().Contains("error - Set Indicator: no indicator 'Mik' on dock 'Indicators'") && indDock.IndicatorState("Mik") == null);
+            ((ValueSlot)isOn.Slots[1]).SetText("Mik");
+            Check("indicator is on: a name with no row fails too", !isOn.EvaluateAsync(dockCtx).ContinueWith(t => t.IsFaulted ? false : t.Result).GetAwaiter().GetResult() && Errors() == i0 + 2);
+            indView.Dispose();
+            var indCopy = System.Text.Json.JsonSerializer.Deserialize<StreamAssist.Components.Dashboard.Model.DashboardConfigModel>(System.Text.Json.JsonSerializer.Serialize(cfg))!;
+            Check("indicator dock: row names are saved", indCopy.FindDock("Indicators")!.Indicators.Rows.Select(r => r.Name).SequenceEqual(["Mic", "Cam", ""]));
+            indCopy.Dispose();
+            cfg.TryRemoveDock(indDock);
+            StreamAssist.Shell.GlobalContext.DashboardComponentModel = oldDash;
         }
 
         // ---- Set Parameter (main thread, errors are counted) ----
@@ -811,7 +1064,7 @@ internal static class EngineChecks
             bind.SetLabel("");
             Check("label: cleared is not saved again", !JsonSerializer.Serialize(bind).Contains("label"));
             bind.SetLabel("Again");
-            bind.Root.RemoveBlock(bind.Root.Block!);
+            bind.Root.RemoveBlock(bind.Root.Blocks.FirstOrDefault()!);
             Check("label: removing the last block clears it", bind.Label == "" && !bind.HasBlock);
             bind.SetLabel("Nothing bound");
             Check("label: no blocks, no label", bind.Label == "");
@@ -821,29 +1074,56 @@ internal static class EngineChecks
             BindableModel? saved = null;
             editor.ShowDraft("Key: X", draft => { saved = draft; return true; });
             Check("editor label: a draft can't be labelled yet", !editor.CanEditBindLabel);
-            ((BlockSlot)editor.Bindable!.Root.Block!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
+            ((BlockSlot)editor.Bindable!.Root.Blocks.FirstOrDefault()!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
             Check("editor label: once the draft is saved it can", saved != null && editor.CanEditBindLabel);
             editor.BindLabel = "My bind";
             Check("editor label: typing sets the binding's label", saved!.Label == "My bind");
-            saved.Root.RemoveBlock(saved.Root.Block!);
+            saved.Root.RemoveBlock(saved.Root.Blocks.FirstOrDefault()!);
             Check("editor label: removing the last block clears it and locks the box", saved.Label == "" && editor.BindLabel == "" && !editor.CanEditBindLabel);
             editor.Dispose();
+
+            // the editor's Test: runs the binding with the Parameters list's values (samples first), plus extra rows
+            var testEditor = new StreamAssist.Components.Blocks.UI.BindableEditorViewModel(new StreamAssist.Shell.WindowLayoutModel(), "nothing");
+            var tested = new BindableModel();
+            tested.TryAddBlock(new ParamRecordBlock { Key = "user" });
+            testEditor.ShowBindable(tested, "x", [new ParameterInfo("user", ValueKind.Text, "who", "TestUser"), new ParameterInfo("bits", ValueKind.Int, "how many")]);
+            Check("editor test: listed parameters start with their sample or a default", testEditor.TestParameters[0].Value == "TestUser" && testEditor.TestParameters[1].Value == "1"
+                && testEditor.ExtraParameters.Count == 1 && testEditor.ExtraParameters[0].IsEmpty);
+            ParamRecordBlock.Seen = null;
+            testEditor.TestPressedCommand.Execute(null);
+            await Task.Delay(50);
+            Check("editor test: runs it with those values", ParamRecordBlock.Seen == "TestUser");
+            testEditor.TestParameters[0].Value = "Bob";
+            testEditor.ExtraParameters[0].Name = "extra";
+            Check("editor test: typing in the extra row adds the next", testEditor.ExtraParameters.Count == 2);
+            ((ParamRecordBlock)tested.Root.Blocks[0]).Key = "extra";
+            testEditor.ExtraParameters[0].Value = "5";
+            testEditor.TestPressedCommand.Execute(null);
+            await Task.Delay(50);
+            Check("editor test: extra rows are passed too", ParamRecordBlock.Seen == "5");
+            testEditor.ExtraParameters[0].Name = "";
+            testEditor.ExtraParameters[0].Value = "";
+            Check("editor test: an emptied extra row goes", testEditor.ExtraParameters.Count == 1);
+            testEditor.ShowBindable(tested, "y", [new ParameterInfo("user", ValueKind.Text, "who", "TestUser")]);
+            Check("editor test: typed values are kept by name across bindings", testEditor.TestParameters[0].Value == "Bob");
+            testEditor.Dispose();
+            tested.Dispose();
 
             // the key editor: the default On Pressed only comes with selecting an unbound key
             var keyEditor = new StreamAssist.Components.Keyboard.UI.KeybindViewModel(new StreamAssist.Shell.WindowLayoutModel());
             var keyConfig = new KeybindConfigModel("Test", null);
             var key7 = new StreamAssist.Components.Keyboard.UI.KeyViewModel("7", 103, 0, 0, 1, 1, keyEditor);
             keyEditor.SetSelectedKey(key7, null, keyConfig);
-            Check("key editor: selecting an unbound key starts with On Pressed", keyEditor.Bindable?.Root.Block is OnPressedBlock);
-            ((BlockSlot)keyEditor.Bindable!.Root.Block!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
+            Check("key editor: selecting an unbound key starts with On Pressed", keyEditor.Bindable?.Root.Blocks.FirstOrDefault() is OnPressedBlock);
+            ((BlockSlot)keyEditor.Bindable!.Root.Blocks.FirstOrDefault()!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
             var boundKey = keyConfig.Keybinds[103];
             Check("key editor: its first change binds it", keyEditor.Bindable == boundKey);
-            boundKey.Root.RemoveBlock(boundKey.Root.Block!);
-            Check("key editor: removing every block unbinds it and nothing comes back", !keyConfig.Keybinds.ContainsKey(103) && keyEditor.Bindable != null && keyEditor.Bindable.Root.Block == null);
-            keyEditor.Bindable!.Root.TrySetBlock(new RecordBlock { Tag = "y" });
+            boundKey.Root.RemoveBlock(boundKey.Root.Blocks.FirstOrDefault()!);
+            Check("key editor: removing every block unbinds it and nothing comes back", !keyConfig.Keybinds.ContainsKey(103) && keyEditor.Bindable != null && keyEditor.Bindable.Root.Blocks.FirstOrDefault() == null);
+            keyEditor.Bindable!.TryAddBlock(new RecordBlock { Tag = "y" });
             Check("key editor: dropping a block in binds it again", keyConfig.Keybinds.ContainsKey(103));
             keyEditor.SetSelectedKey(new StreamAssist.Components.Keyboard.UI.KeyViewModel("8", 104, 0, 0, 1, 1, keyEditor), null, keyConfig);
-            Check("key editor: selecting another unbound key starts with On Pressed again", keyEditor.Bindable?.Root.Block is OnPressedBlock);
+            Check("key editor: selecting another unbound key starts with On Pressed again", keyEditor.Bindable?.Root.Blocks.FirstOrDefault() is OnPressedBlock);
             keyEditor.Dispose();
         }
 
@@ -852,6 +1132,13 @@ internal static class EngineChecks
             int Errors() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Count(l => l.Contains("] error - ")); }
             string LastError() { Avalonia.Threading.Dispatcher.UIThread.RunJobs(); return AppLog.Lines.Last(l => l.Contains("] error - ")); }
             string Names(int edition) => string.Join(", ", StreamAssist.Components.Audio.Background.VoicemeeterChannels.For(edition).Select(c => $"{c.Name}={c.Prefix}"));
+
+            // volumes are value slots (typed or a block), saved like any other
+            var sound = new StreamAssist.Components.Audio.Actions.PlaySoundAction();
+            ((ValueSlot)sound.Slots[0]).SetText("0.25");
+            var soundJson = JsonSerializer.Serialize(sound);
+            var muteJson = JsonSerializer.Serialize(new StreamAssist.Components.Audio.Actions.MuteVoicemeeterAction());
+            Check("volumes: saved as value slots, 1 by default", soundJson.Contains("\"volume\":{\"text\":\"0.25\"") && muteJson.Contains("\"soundVolume\":{\"text\":\"1\""));
 
             // voicemeeter's channels, as each edition's window names them
             Check("voicemeeter: banana's channels", Names(2) == "Stereo Input 1=Strip[0], Stereo Input 2=Strip[1], Stereo Input 3=Strip[2], Voicemeeter Input=Strip[3], Voicemeeter AUX=Strip[4], A1=Bus[0], A2=Bus[1], A3=Bus[2], B1=Bus[3], B2=Bus[4]");
@@ -941,11 +1228,11 @@ internal static class EngineChecks
             var m = Chatbot();
             var top = (MatchTextChatBlock)m.Root.Block!;
             var so = new ParameterChatBlock { ParameterName = "target" };
-            var soBind = new BindableModel(); soBind.Root.TrySetBlock(new ParamRecordBlock { Key = "target" }); so.Target.TryBind(soBind);
+            var soBind = new BindableModel(); soBind.TryAddBlock(new ParamRecordBlock { Key = "target" }); so.Target.TryBind(soBind);
             top.Rows.AddRow("!so").Target.Child.TrySetBlock(so);
             var add = new ParameterChatBlock { ParameterName = "command" };
             var content = new ParameterChatBlock { ParameterName = "content", Reads = ParameterChatBlock.RestOfMessage };
-            var cb = new BindableModel(); cb.Root.TrySetBlock(new ParamRecordBlock { Key = "content" }); content.Target.TryBind(cb);
+            var cb = new BindableModel(); cb.TryAddBlock(new ParamRecordBlock { Key = "content" }); content.Target.TryBind(cb);
             add.Target.Child.TrySetBlock(content);
             top.Rows.AddRow("#addcom ").Target.Child.TrySetBlock(add);
             string Seen(string text) { ParamRecordBlock.Seen = null; m.TryMatchMessage(new ChatMatchState(text, 0, new Dictionary<string, string>())); return ParamRecordBlock.Seen ?? "(none)"; }
@@ -971,7 +1258,7 @@ internal static class EngineChecks
         {
             var b = new BindableModel();
             var list = new ListBlock();
-            b.Root.TrySetBlock(list);
+            b.TryAddBlock(list);
             var listSlot = (BlockSlotList)list.Slots[0];
             var p = new OnPressedBlock(); ((BlockSlot)p.Slots[0]).TrySetBlock(new RecordBlock { Tag = "A" });
             var r = new OnReleasedBlock(); ((BlockSlot)r.Slots[0]).TrySetBlock(new RecordBlock { Tag = "B" });
@@ -995,7 +1282,7 @@ internal static class EngineChecks
         Check("once runs both", await Run(b, x => x.TriggerOnce()) == "ABC");
 
         // disable OnPressed: A skipped, but A itself not disabled
-        var listSlot0 = (BlockSlotList)b.Root.Block!.Slots[0];
+        var listSlot0 = (BlockSlotList)b.Root.Blocks.FirstOrDefault()!.Slots[0];
         listSlot0.Blocks[0].SetIsDisabled(true);
         Check("disabled parent skips child", await Run(b, x => x.TriggerOnce()) == "BC");
         listSlot0.Blocks[0].SetIsDisabled(false);
@@ -1010,7 +1297,7 @@ internal static class EngineChecks
         boomSlot.TryInsertBlock(new RecordBlock { Tag = "1" }, 0);
         boomSlot.TryInsertBlock(new RecordBlock { Tag = "X", Throw = true }, 1);
         boomSlot.TryInsertBlock(new RecordBlock { Tag = "2" }, 2);
-        var bb = new BindableModel(); bb.Root.TrySetBlock(boom);
+        var bb = new BindableModel(); bb.TryAddBlock(boom);
         Check("error stops list and is caught", await Run(bb, x => x.TriggerOnce()) == "1X");
 
         // Changed bubbles from deep inside
@@ -1027,7 +1314,7 @@ internal static class EngineChecks
         log(json);
 
         var d = BindableModel.CreateDefault();
-        Check("default has On Pressed", d.Root.Block is OnPressedBlock);
+        Check("default has On Pressed", d.Root.Blocks.FirstOrDefault() is OnPressedBlock);
 
         // ContainsSlot
         var outer = new ListBlock(); var inner = new OnPressedBlock();
@@ -1036,7 +1323,7 @@ internal static class EngineChecks
         Check("block doesn't contain unrelated slot", !inner.ContainsSlot(outer.Slots[0]));
 
         // cancellation on dispose: a slow block
-        var slow = new BindableModel(); slow.Root.TrySetBlock(new RecordBlock { Tag = "S", DelayMs = 500 });
+        var slow = new BindableModel(); slow.TryAddBlock(new RecordBlock { Tag = "S", DelayMs = 500 });
         RecordBlock.Log.Clear(); slow.TriggerOnce(); slow.Dispose(); await Task.Delay(700);
         Check("dispose cancels running tree quietly", string.Join("", RecordBlock.Log) == "S");
 
@@ -1056,7 +1343,7 @@ internal static class EngineChecks
             ((BlockSlot)ifb.Slots[1]).TrySetBlock(new RecordBlock { Tag = "E" });
             return ifb;
         }
-        async Task<string> RunIf(IfBlock ifb) { var bb2 = new BindableModel(); bb2.Root.TrySetBlock(ifb); return await Run(bb2, x => x.TriggerOnce()); }
+        async Task<string> RunIf(IfBlock ifb) { var bb2 = new BindableModel(); bb2.TryAddBlock(ifb); return await Run(bb2, x => x.TriggerOnce()); }
 
         Check("if: first true wins", await RunIf(MakeIf((false, "1"), (true, "2"), (true, "3"))) == "2");
         Check("if: none true runs else", await RunIf(MakeIf((false, "1"), (false, "2"))) == "E");
@@ -1076,7 +1363,7 @@ internal static class EngineChecks
         Check("if: then removed too -> branch gone", bl4.Branches.Count == 0);
 
         var ifb5 = MakeIf((false, "1"), (true, "2"));
-        var bif = new BindableModel(); bif.Root.TrySetBlock(ifb5);
+        var bif = new BindableModel(); bif.TryAddBlock(ifb5);
         var ifJson = JsonSerializer.Serialize(bif);
         var bifCopy = JsonSerializer.Deserialize<BindableModel>(ifJson)!;
         Check("if: round trip keeps behavior", await Run(bifCopy, x => x.TriggerOnce()) == "2" && JsonSerializer.Serialize(bifCopy) == ifJson);
@@ -1102,21 +1389,43 @@ internal static class EngineChecks
             var unbound = new List<ushort>(); cfg.KeyUnbound += (vk, _) => unbound.Add(vk);
             var kb = BindableModel.CreateDefault();
             cfg.TryBindKey(65, kb);
-            kb.Root.RemoveBlock(kb.Root.Block!);
+            kb.Root.RemoveBlock(kb.Root.Blocks.FirstOrDefault()!);
             Check("removing root unbinds the key", !cfg.Keybinds.ContainsKey(65) && unbound.SequenceEqual(new ushort[] { 65 }));
 
             var kb2 = BindableModel.CreateDefault(); cfg.TryBindKey(66, kb2);
-            var kbInner = (BlockSlot)kb2.Root.Block!.Slots[0]; kbInner.TrySetBlock(new RecordBlock()); kbInner.RemoveBlock(kbInner.Block!);
+            var kbInner = (BlockSlot)kb2.Root.Blocks.FirstOrDefault()!.Slots[0]; kbInner.TrySetBlock(new RecordBlock()); kbInner.RemoveBlock(kbInner.Block!);
             Check("removing a nested block keeps the binding", cfg.Keybinds.ContainsKey(66));
             kb2.Clear();
             Check("Clear() unbinds the key", !cfg.Keybinds.ContainsKey(66));
 
-            var oldJson = "{\"name\":\"x\",\"bindables\":{\"55\":{\"isDisabled\":false,\"root\":null},\"70\":{\"isDisabled\":false,\"root\":{\"type\":\"OnPressedBlock\",\"parameters\":{\"child\":null,\"isDisabled\":false}}}}}";
+            // the root is a list: blocks run top to bottom, a binding stays while any are left
+            var kb3 = new BindableModel();
+            kb3.TryAddBlock(new RecordBlock { Tag = "1" });
+            kb3.TryAddBlock(new RecordBlock { Tag = "2" });
+            cfg.TryBindKey(67, kb3);
+            RecordBlock.Log.Clear();
+            kb3.TriggerOnce();
+            await Task.Delay(50);
+            Check("root list: every root block runs, top to bottom", RecordBlock.Log.SequenceEqual(["1", "2"]));
+            kb3.Root.RemoveBlock(kb3.Root.Blocks[0]);
+            Check("root list: removing one of two keeps the binding", cfg.Keybinds.ContainsKey(67) && kb3.Root.Blocks.Count == 1);
+            var stopped = new BindableModel();
+            stopped.TryAddBlock(new RecordBlock { Tag = "a", Throw = true });
+            stopped.TryAddBlock(new RecordBlock { Tag = "b" });
+            RecordBlock.Log.Clear();
+            stopped.TriggerOnce();
+            await Task.Delay(50);
+            Check("root list: a failing block ends the run, like in a List", !RecordBlock.Log.Contains("b"));
+            Check("root list: saved as an array", JsonSerializer.Serialize(kb3).Contains("\"root\":[{"));
+            kb3.Clear();
+            stopped.Dispose();
+
+            var oldJson = "{\"name\":\"x\",\"bindables\":{\"55\":{\"isDisabled\":false,\"root\":[]},\"70\":{\"isDisabled\":false,\"root\":[{\"type\":\"OnPressedBlock\",\"parameters\":{\"child\":null,\"isDisabled\":false}}]}}}";
             var loaded = JsonSerializer.Deserialize<StreamAssist.Components.Keyboard.Model.KeybindConfigModel>(oldJson)!;
             Check("empty bindables dropped on load", !loaded.Keybinds.ContainsKey(55) && loaded.Keybinds.ContainsKey(70));
             loaded.Keybinds[70].Clear();
             Check("loaded bindable can still unbind itself", loaded.Keybinds.Count == 0);
-            Check("saved json has no empty bindings", !JsonSerializer.Serialize(loaded).Contains("\"root\":null"));
+            Check("saved json has no empty bindings", !JsonSerializer.Serialize(loaded).Contains("\"root\":[]"));
 
             var copyCfg = new StreamAssist.Components.Keyboard.Model.KeybindConfigModel("c", new() { [80] = BindableModel.CreateDefault(), [81] = new BindableModel() });
             Check("copied config drops empties", copyCfg.Keybinds.ContainsKey(80) && !copyCfg.Keybinds.ContainsKey(81));
@@ -1155,7 +1464,7 @@ internal static class EngineChecks
             var nested = WithList(new AndCondition(), true);
             ((BlockSlotList)nested.Slots[0]).TryInsertBlock(not, 1);
             var holder = new IfBlock(); ((BlockBranchList)holder.Slots[0]).TryInsertBranch(nested, 0);
-            var hb = new BindableModel(); hb.Root.TrySetBlock(holder);
+            var hb = new BindableModel(); hb.TryAddBlock(holder);
             var hj = JsonSerializer.Serialize(hb);
             Check("nested logic round trip", JsonSerializer.Serialize(JsonSerializer.Deserialize<BindableModel>(hj)!) == hj);
         }
@@ -1185,7 +1494,7 @@ internal static class EngineChecks
 
             // T: if shift held -> "S" else "T"; on release -> "R"
             var tBind = new BindableModel();
-            var tList = new ListBlock(); tBind.Root.TrySetBlock(tList);
+            var tList = new ListBlock(); tBind.TryAddBlock(tList);
             var press = new OnPressedBlock(); var ifb = new IfBlock();
             var kp = new KeyPressedCondition { Key = "shift" };
             ((BlockBranchList)ifb.Slots[0]).TryInsertBranch(kp, 0);
@@ -1199,6 +1508,16 @@ internal static class EngineChecks
             async Task<string> Do(Action a) { RecordBlock.Log.Clear(); a(); await Task.Delay(50); return string.Join("", RecordBlock.Log); }
             Check("T alone -> else", await Do(() => Down("dev1", 0x54)) == "T");
             Check("release -> on released", await Do(() => Up("dev1", 0x54)) == "R");
+            slot.SetIsDisabled(true);
+            Check("a switched-off input device box runs nothing", await Do(() => Down("dev1", 0x54)) == "");
+            Up("dev1", 0x54);
+            slot.SetIsDisabled(false);
+
+            // input device boxes: made where they're dropped (Keyboard or Generic), moved by dragging
+            list.TryCreateSlot(KeyboardSlotModel.AllKeysLayout, 0, out var generic);
+            Check("input devices: a Generic box goes where it's dropped", list.Slots[0] == generic && generic.Layout == KeyboardSlotModel.AllKeysLayout && list.Slots[1] == slot);
+            Check("input devices: moving one puts it before the one it's dropped on", list.TryMoveSlot(generic, 2) && list.Slots[1] == generic && list.Slots[0] == slot);
+            list.TryDeleteSlot(generic);
             Check("shift+T -> then", await Do(() => { Down("dev1", KeyboardDevices.LeftShift); Down("dev1", 0x54); }) == "S");
             Check("repeat key down ignored", await Do(() => Down("dev1", 0x54)) == "");
             await Do(() => { Up("dev1", 0x54); Up("dev1", KeyboardDevices.LeftShift); });
@@ -1216,7 +1535,7 @@ internal static class EngineChecks
             list.Configs.TryCreate("c2"); // a copy of Default, switched to
             var cfg2 = slot.SelectedConfig!;
             cfg2.UnbindKey(0x54);
-            var b2 = BindableModel.CreateDefault(); ((BlockSlot)b2.Root.Block!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "2" }); cfg2.TryBindKey(0x54, b2);
+            var b2 = BindableModel.CreateDefault(); ((BlockSlot)b2.Root.Blocks.FirstOrDefault()!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "2" }); cfg2.TryBindKey(0x54, b2);
             Check("config switch used right away", await Do(() => Down("dev1", 0x54)) == "2");
             Up("dev1", 0x54);
             slot.TrySetSelectedDevice(dev2);
@@ -1224,7 +1543,7 @@ internal static class EngineChecks
             Up("dev2", 0x54);
 
             // a bind that changes config while the trigger loop runs doesn't crash
-            var swap = new BindableModel(); swap.Root.TrySetBlock(new SwapConfigBlock { List = list, To = "Default" });
+            var swap = new BindableModel(); swap.TryAddBlock(new SwapConfigBlock { List = list, To = "Default" });
             cfg2.TryBindKey(0x55, swap);
             Check("bind can switch config mid-trigger", await Do(() => Down("dev2", 0x55)) == "" && slot.SelectedConfig == cfg);
             Up("dev2", 0x55);
@@ -1289,14 +1608,15 @@ internal static class EngineChecks
                 && allKeys.Select(k => k.VK).Distinct().Count() == allKeys.Count && allKeys.Any(k => k.VK == KeyboardDevices.RightShift));
             var layoutConfig = plugSlot.SelectedConfig!;
             layoutConfig.TryBindKey(0x7C, BindableModel.CreateDefault());
-            var layoutView = new KeyboardSlotViewModel(plugSlot, input, []);
-            Check("layouts: the slot shows every key code", layoutView.Keys.Count == allKeys.Count && layoutView.MenuLayout == KeyboardSlotModel.AllKeysLayout
-                && layoutView.Keys.Single(k => k.VK == 0x7C).IsBound);
+            var layoutView = new KeyboardSlotViewModel(plugSlot, plug, input, []);
+            Check("layouts: the slot shows every key code", layoutView.Keys.Count == allKeys.Count && layoutView.Keys.Single(k => k.VK == 0x7C).IsBound);
             Check("layouts: only bound keys make edit buttons", layoutView.Keys.Single(k => k.VK == 0x7C).EditButtonsContext != null
                 && layoutView.Keys.Where(k => k.VK != 0x7C).All(k => k.EditButtonsContext == null));
-            layoutView.MenuLayout = KeyboardSlotModel.KeyboardLayout;
-            Check("layouts: the dropdown switches the slot back, the keys are remade", plugSlot.Layout == KeyboardSlotModel.KeyboardLayout && layoutView.Keys.All(k => k.VK != 0x7C)
-                && layoutView.Keys.Any(k => k.VK == KeyboardDevices.LeftShift));
+            plugSlot.TrySetLayout(KeyboardSlotModel.KeyboardLayout);
+            Check("layouts: another layout remakes the keys", layoutView.Keys.All(k => k.VK != 0x7C) && layoutView.Keys.Any(k => k.VK == KeyboardDevices.LeftShift));
+            layoutView.CollapseButtonPressedCommand.Execute(null);
+            layoutView.ToggleButtonPressedCommand.Execute(null);
+            Check("input device box: collapse and on / off go to the slot", plugSlot.IsCollapsed && layoutView.IsCollapsed && plugSlot.IsDisabled && layoutView.IsDisabled);
             layoutView.Dispose();
 
             // the keyboards on this PC (read only, logged for a look, how many depends on the PC)
@@ -1386,6 +1706,36 @@ internal static class EngineChecks
             Check("raid", raid.GetString("viewers") == "9001");
         }
 
+        // ---- chat history: the last messages, stepped through by id ----
+        {
+            var history = new StreamAssist.Components.Chatbot.Model.ChatHistoryModel();
+            Dictionary<string, string> Msg(int n) => new() { ["messageId"] = $"m{n}", ["message"] = $"hi {n}", ["userLogin"] = $"user{n}" };
+            Check("chat history: nothing yet is an error", !history.TryFind(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Newest, "", out _, out var hErr) && hErr == "no chat messages yet");
+            for (var n = 1; n <= 3; n++) history.Add(Msg(n));
+            string Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep step, string id) => history.TryFind(step, id, out var m, out _) ? m["messageId"] : "error";
+            Check("chat history: newest, and an empty id counts as newest", Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Newest, "m1") == "m3"
+                && Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Older, "") == "m3");
+            Check("chat history: older / newer / this by id, staying put at the ends", Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Older, "m3") == "m2"
+                && Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Older, "m1") == "m1" && Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Newer, "m3") == "m3"
+                && Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.This, "m2") == "m2");
+            history.Add(Msg(4));
+            Check("chat history: a new message doesn't move what you're on", Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.Older, "m2") == "m1");
+            for (var n = 5; n <= 104; n++) history.Add(Msg(n));
+            Check("chat history: only the last 100 are kept, a dropped id is an error", history.Messages.Count == 100 && history.Messages[0]["messageId"] == "m5"
+                && Step(StreamAssist.Components.Chatbot.Model.ChatHistoryStep.This, "m2") == "error");
+
+            var chat = Chatbot();
+            var oldChat = StreamAssist.Shell.GlobalContext.ChatbotComponentModel;
+            StreamAssist.Shell.GlobalContext.ChatbotComponentModel = chat;
+            chat.ChatHistory.Add(Msg(1));
+            chat.ChatHistory.Add(Msg(2));
+            var histBlock = new StreamAssist.Components.Chatbot.Values.ChatHistoryBlock { Find = "Older", Give = "userLogin" };
+            ((ValueSlot)histBlock.Slots[0]).SetText("m2");
+            Check("chat history block: gives what it's asked for", await histBlock.EvaluateAsync(new TriggerContext(TriggerPhase.Once, default)) == "user1");
+            StreamAssist.Shell.GlobalContext.ChatbotComponentModel = oldChat;
+            chat.Dispose();
+        }
+
         // ---- chatbot model + match text rows ----
         // a target is filled with either a binding or a chat block
         void Fill(ChatTarget target, object then)
@@ -1405,7 +1755,7 @@ internal static class EngineChecks
             return block;
         }
         ParameterChatBlock P(string name, string reads, object then) { var b = new ParameterChatBlock { ParameterName = name, Reads = reads }; Fill(b.Target, then); return b; }
-        BindableModel B(string tag) { var b = new BindableModel(); b.Root.TrySetBlock(new ChatLogBlock { Tag = tag }); return b; }
+        BindableModel B(string tag) { var b = new BindableModel(); b.TryAddBlock(new ChatLogBlock { Tag = tag }); return b; }
 
         {
             var rows = new MatchTextChatBlock();
@@ -1429,7 +1779,7 @@ internal static class EngineChecks
             Check("a bound row refuses a block", !row0.Target.Child.TrySetBlock(new MatchTextChatBlock()) && row0.Target.Child.Block == null);
             Check("a bound row refuses a second binding", !row0.Target.TryBind(B("K2")));
             var rowBinding = row0.Target.Bindable!;
-            rowBinding.Root.RemoveBlock(rowBinding.Root.Block!);
+            rowBinding.Root.RemoveBlock(rowBinding.Root.Blocks.FirstOrDefault()!);
             Check("removing the binding's blocks unbinds it (and the empty row goes)", row0.Target.Bindable == null && rows.Rows.Rows.Count == 1);
             var row1 = rows.Rows.Rows[0];
             row1.SetPattern("y");
@@ -1441,7 +1791,7 @@ internal static class EngineChecks
             Check("unbind clears it", row1.Target.Bindable == null && row1.Target.IsEmpty);
 
             // a file with both: binding kept, block dropped, warned (load only)
-            var both = "{\"rows\":[{\"pattern\":\"z\",\"bindable\":{\"root\":{\"type\":\"ChatLogBlock\",\"parameters\":{\"tag\":\"Z\"}}},\"child\":{\"type\":\"MatchTextChatBlock\",\"parameters\":{\"rows\":[]}}}]}";
+            var both = "{\"rows\":[{\"pattern\":\"z\",\"bindable\":{\"root\":[{\"type\":\"ChatLogBlock\",\"parameters\":{\"tag\":\"Z\"}}]},\"child\":{\"type\":\"MatchTextChatBlock\",\"parameters\":{\"rows\":[]}}}]}";
             var bothBlock = JsonSerializer.Deserialize<MatchTextChatBlock>(both)!;
             var bothTarget = bothBlock.Rows.Rows[0].Target;
             Check("a saved row with both keeps the binding and drops the block", bothTarget.Bindable != null && bothTarget.Child.Block == null);
@@ -1540,7 +1890,7 @@ internal static class EngineChecks
             Check("credentials never saved in chatbot.json", !matchJson.Contains("clientId") && !matchJson.Contains("clientSecret"));
 
             // parameters reach the blocks
-            var pb = new BindableModel(); pb.Root.TrySetBlock(new ParamRecordBlock { Key = "user" });
+            var pb = new BindableModel(); pb.TryAddBlock(new ParamRecordBlock { Key = "user" });
             ParamRecordBlock.Seen = null;
             pb.TriggerOnce(new Dictionary<string, string> { ["user"] = "joe" });
             await Task.Delay(50);
@@ -1562,7 +1912,7 @@ internal static class EngineChecks
             TwitchEvent Ev(string type, string evJson) => EventSubMessage.Parse(
                 "{\"metadata\":{\"message_id\":\"x\",\"message_type\":\"notification\",\"message_timestamp\":\"t\",\"subscription_type\":\"" + type + "\",\"subscription_version\":\"1\"},"
                 + "\"payload\":{\"subscription\":{\"id\":\"s\",\"type\":\"" + type + "\"},\"event\":" + evJson + "}}").Event!;
-            BindableModel Rec(string key) { var b = new BindableModel(); b.Root.TrySetBlock(new ParamRecordBlock { Key = key }); return b; }
+            BindableModel Rec(string key) { var b = new BindableModel(); b.TryAddBlock(new ParamRecordBlock { Key = key }); return b; }
             async Task<string?> Seen(Action run) { ParamRecordBlock.Seen = null; run(); await Task.Delay(50); return ParamRecordBlock.Seen; }
 
             var model = Chatbot();
@@ -1584,7 +1934,7 @@ internal static class EngineChecks
             Check("a bound redeem with no title is kept", model.Redeems.Rows.Count == 2 && model.Redeems.Rows[0] == hydrate);
             hydrate.SetTitle("Hydrate!");
 
-            Check("all event slots exist", model.Events.Select(e => e.Name).SequenceEqual(new[] { "Follow", "Sub", "Gift Subs", "Cheer", "Raid", "Stream Online", "Stream Offline" }));
+            Check("all event slots exist", model.Events.Select(e => e.Name).SequenceEqual(new[] { "Follow", "Sub", "Gift Subs", "Cheer", "Raid", "Stream Online", "Stream Offline", "App Started" }));
             var raidSlot = model.Events.First(e => e.Key == ChatEvents.Raid);
             Check("event slots only run bindings", !raidSlot.Target.Child.TrySetBlock(new MatchTextChatBlock()));
             Check("unbound event does nothing", !model.TryRunEvent(ChatEvents.Raid, new Dictionary<string, string>()));
@@ -1616,7 +1966,7 @@ internal static class EngineChecks
             Check("redeems + events round trip", JsonSerializer.Serialize(loadedEvents) == eventsJson);
             Check("unbound events aren't saved", eventsJson.Contains("\"raid\"") && !eventsJson.Contains("\"follow\""));
             Check("loaded redeem still runs", await Seen(() => loadedEvents.Redeems.TryRun("hydrate!", new Dictionary<string, string> { ["input"] = "tea" })) == "tea");
-            var unknown = JsonSerializer.Deserialize<ChatbotComponentModel>("{\"events\":{\"nope\":{\"root\":{\"type\":\"ParamRecordBlock\",\"parameters\":{\"key\":\"x\"}}}}}")!;
+            var unknown = JsonSerializer.Deserialize<ChatbotComponentModel>("{\"events\":{\"nope\":{\"root\":[{\"type\":\"ParamRecordBlock\",\"parameters\":{\"key\":\"x\"}}]}}}")!;
             Check("unknown saved event is skipped", unknown.Events.All(e => e.Target.Bindable == null));
 
             int eventChanges = 0; model.Changed += () => eventChanges++;
@@ -1864,6 +2214,22 @@ internal static class EngineChecks
             holder.BlockSlot.RemoveBlock(slotJoin);
             Check("...and forgets it when removed", slotJoin.ParentSlot == null);
 
+            // growing lists reorder (an item dragged onto another goes before it, typed text and blocks alike)
+            var parts = new ValueSlotList("Parts");
+            foreach (var part in new[] { "a", "b", "c" }) parts.Items[^1].SetText(part);
+            var movedBlock = new StringBuilderBlock();
+            parts.Items[1].BlockSlot.TrySetBlock(movedBlock);
+            string Parts() => string.Join(",", parts.Items.Select(i => i.Text == "" ? "_" : i.Text));
+            Check("value list: an item moves before the one it's dropped on", parts.TryMoveItem(parts.Items[2], 0) && Parts() == "c,a,b,_");
+            Check("value list: moved to the end it stays above the empty one, block and all", parts.TryMoveItem(parts.Items[2], 99) && Parts() == "c,a,b,_"
+                && parts.TryMoveItem(parts.Items[1], 4) && Parts() == "c,b,a,_" && parts.Items[1].BlockSlot.Block == movedBlock);
+            var pairs = new ValueSlotPairList("Rows", "Name…");
+            pairs.Items[^1].Key.SetText("x");
+            pairs.Items[^1].Key.SetText("y");
+            Check("pair list: rows reorder too", pairs.TryMoveItem(pairs.Items[1], 0) && pairs.Items[0].Key.Text == "y" && pairs.Items[1].Key.Text == "x" && pairs.Items[2].IsEmpty);
+            parts.Dispose();
+            pairs.Dispose();
+
             // saving keeps the chosen kind (and loading doesn't re-adapt it)
             var savedConvert = new ConsoleMessageAction();
             var innerConvert = new ConvertBlock { To = "Double" };
@@ -1892,7 +2258,7 @@ internal static class EngineChecks
             foreach (var (key, _) in ChatEvents.All)
             {
                 var slot = model.Events.First(e => e.Key == key);
-                var keysBinding = new BindableModel(); keysBinding.Root.TrySetBlock(new KeysRecordBlock()); slot.Target.TryBind(keysBinding);
+                var keysBinding = new BindableModel(); keysBinding.TryAddBlock(new KeysRecordBlock()); slot.Target.TryBind(keysBinding);
             }
             TwitchEvent Ev(string type, string evJson) => EventSubMessage.Parse(
                 "{\"metadata\":{\"message_id\":\"x\",\"message_type\":\"notification\",\"message_timestamp\":\"t\",\"subscription_type\":\"" + type + "\",\"subscription_version\":\"1\"},"
@@ -2188,6 +2554,28 @@ internal static class EngineChecks
                 && !data.TryChangeVariable("greeting", 1, out _) && !data.TryChangeVariable("deaths", 0.5, out _));
             Check("data: set converts to the variable's type", data.TrySetVariable("deaths", 10.0, ValueKind.Double) && data.TryGetVariable("deaths", out _, out var ten) && ten is 10
                 && !data.TrySetVariable("deaths", "lots"));
+
+            // a variable dock: rows name variables and edit their values, and follow scripts' changes
+            var varDock = StreamAssist.Components.Dashboard.Model.DockModel.Create("Vars", StreamAssist.Components.Dashboard.Model.DockKind.Variable);
+            varDock.Variables.Rows[^1].SetName("deaths");
+            varDock.Variables.Rows[^1].SetName("streamWord");
+            var varView = new StreamAssist.Components.Dashboard.UI.VariableDockViewModel(varDock, data);
+            var deathsRow = varView.Rows[0];
+            var wordRow = varView.Rows[1];
+            Check("variable dock: shows a variable's value, a missing one grey and empty", deathsRow.ValueInput == "10" && !deathsRow.IsMissing && wordRow.IsMissing && wordRow.ValueInput == ""
+                && !varView.Rows[2].ShowValue);
+            wordRow.ValueInput = "goose\nparty";
+            wordRow.Commit();
+            Check("variable dock: typing a value makes a Text variable (several lines too)", data.GetVariableText("streamWord") == "goose\nparty" && !wordRow.IsMissing);
+            data.TrySetVariable("deaths", 11);
+            Check("variable dock: a script's change shows", deathsRow.ValueInput == "11");
+            deathsRow.ValueInput = "lots";
+            deathsRow.Commit();
+            Check("variable dock: a value that doesn't fit is refused and put back", deathsRow.ValueInput == "11" && data.GetVariableText("deaths") == "11");
+            varView.Dispose();
+            varDock.Dispose();
+            data.TrySetVariable("deaths", 10); // back as the checks below expect them
+            data.TryDeleteRow("variables", data.FindTable("variables")!.Rows.First(r => r.Get("name") is "streamWord").Id);
             data.TryAddRow("variables", out var flag);
             data.TrySetValue("variables", flag.Id, "name", "live");
             data.TrySetValue("variables", flag.Id, "type", "Bool");
@@ -2516,6 +2904,49 @@ internal static class EngineChecks
                 && await new GetTimeBlock { Setting = "Time" }.EvaluateObjectAsync(tctx) is string time && time.Length == 8 && time[2] == ':');
             Check("get time: saved and loaded keeps its setting and type", BlockResolver.DeepCopy(new GetTimeBlock { Setting = "Minute" }) is GetTimeBlock { Setting: "Minute", Kind: ValueKind.Int }
                 && new GetTimeBlock().Group == BlockGroup.Text);
+        }
+
+        // ---- theme: only changes are kept, refused values change nothing ----
+        {
+            // the repository (from this file's path: the tests may be built into another folder)
+            static string RepoDir([System.Runtime.CompilerServices.CallerFilePath] string file = "") =>
+                System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(file))!;
+
+            var theme = new StreamAssist.Components.Theme.Model.ThemeComponentModel();
+            theme.SetDefaults(new Dictionary<string, string> { ["ColorEnabled"] = "#3d9963" }, new Dictionary<string, double> { ["LineGap"] = 5 });
+            var colorEvents = 0;
+            var saves = 0;
+            theme.ColorChanged += _ => colorEvents++;
+            theme.Changed += () => saves++;
+
+            Check("theme: unchanged values are the defaults", theme.GetColor("ColorEnabled") == "#3d9963" && theme.GetSpacing("LineGap") == 5
+                && !theme.IsColorChanged("ColorEnabled") && !theme.IsSpacingChanged("LineGap"));
+            Check("theme: a color is kept as #rrggbb, any way it's typed", theme.TrySetColor("ColorEnabled", " #C08A2E ") && theme.GetColor("ColorEnabled") == "#c08a2e"
+                && theme.IsColorChanged("ColorEnabled") && theme.TrySetColor("ColorEnabled", "red") && theme.GetColor("ColorEnabled") == "#ff0000");
+            Check("theme: not a color, an unknown key or a spacing out of range is refused",
+                !theme.TrySetColor("ColorEnabled", "greenish") && theme.GetColor("ColorEnabled") == "#ff0000" && !theme.TrySetColor("ColorNope", "#000000")
+                && !theme.TrySetSpacing("LineGap", "-1") && !theme.TrySetSpacing("LineGap", "abc") && !theme.TrySetSpacing("LineGapz", "5")
+                && !theme.TrySetSpacing("LineGap", "101") && theme.GetSpacing("LineGap") == 5);
+            Check("theme: typing the default again counts as unchanged", theme.TrySetSpacing("LineGap", "7.5") && theme.IsSpacingChanged("LineGap")
+                && theme.TrySetSpacing("LineGap", "5") && !theme.IsSpacingChanged("LineGap"));
+            theme.ResetAllColors();
+            Check("theme: reset goes back to the default, each change is one event and one save",
+                theme.GetColor("ColorEnabled") == "#3d9963" && !theme.IsColorChanged("ColorEnabled") && colorEvents == 3 && saves == 5);
+
+            var loaded = System.Text.Json.JsonSerializer.Deserialize<StreamAssist.Components.Theme.Model.ThemeComponentModel>(
+                """{"colors": {"ColorLine": "#555555", "ColorGone": "#000000", "ColorText": "nope"}, "spacing": {"ContentGap": 12, "LineGap": -3, "Old": 1}}""")!;
+            Check("theme: loading drops unknown keys and unusable values", loaded.IsColorChanged("ColorLine") && loaded.GetColor("ColorLine") == "#555555"
+                && !loaded.IsColorChanged("ColorText") && !loaded.IsColorChanged("ColorGone") && loaded.IsSpacingChanged("ContentGap")
+                && loaded.GetSpacing("ContentGap") == 12 && !loaded.IsSpacingChanged("LineGap"));
+            Check("theme: every palette color and base value is in the app's resource files", StreamAssist.Styles.ThemePalette.Colors.All(c =>
+                    System.IO.File.ReadAllText(System.IO.Path.Combine(RepoDir(), "Styles", "Resources", "Brushes.axaml")).Contains($"x:Key=\"{c.Key}\""))
+                && StreamAssist.Styles.SpacingRecipes.BaseValues.All(b =>
+                    System.IO.File.ReadAllText(System.IO.Path.Combine(RepoDir(), "Styles", "Resources", "Spacing.axaml")).Contains($"x:Key=\"{b.Key}\"")));
+            Check("theme: every spacing recipe only uses known letters", StreamAssist.Styles.SpacingRecipes.Recipes.Keys.All(name =>
+            {
+                try { return StreamAssist.Styles.SpacingRecipes.Compute(name) != null; }
+                catch (InvalidOperationException) { return false; }
+            }));
         }
 
         return failed;

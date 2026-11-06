@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.OutputConsole.UI.OutputConsoleView"
              x:DataType="ui:OutputConsoleViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.OutputConsole.UI">
+             xmlns:ui="using:StreamAssist.Components.OutputConsole.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- console panel -->
 
@@ -11,35 +12,25 @@
 
         <!-- header -->
 
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="{StaticResource HeaderMargin}" Height="{StaticResource ControlHeight}">
+        <!-- title, Clear beside it (as on a console dock) -->
 
-            <TextBlock Grid.Column="0"
-                       Classes="Label"
-                       Text="Output"/>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
+                    Margin="{s:Gap PadAll}" Height="{StaticResource ControlHeight}">
 
-            <!-- as tall as the tab strip's tabs (the whole header row) -->
+            <TextBlock Classes="Label" Text="Output" VerticalAlignment="Center"/>
 
-            <Button Grid.Column="1"
-                    Content="Clear"
+            <Button Content="Clear"
                     Command="{Binding ClearCommand}"
                     Height="{StaticResource ControlHeight}"
                     VerticalContentAlignment="Center"/>
 
-        </Grid>
+        </StackPanel>
 
-        <Border DockPanel.Dock="Top" Classes="Divider" Margin="{StaticResource DividerMargin}"/>
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
 
-        <!-- log messages -->
+        <!-- log messages (selectable, [time]s muted, scrolls to new lines) -->
 
-        <!-- one selectable text for the whole log: drag to select across lines, Ctrl+A / Ctrl+C or right click to copy
-             its text is built in code-behind from the view model's Text, so each line's [time] can be muted -->
-
-        <ScrollViewer x:Name="LogScrollViewer" Classes="Gapped">
-            <!-- fills the whole console (transparent background) so clicking empty space still focuses it for Ctrl+A
-                 (inset with Padding, not Margin, so filling the console doesn't make it scrollable) -->
-            <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent" Padding="5,0"
-                                 MinHeight="{Binding #LogScrollViewer.Viewport.Height}"/>
-        </ScrollViewer>
+        <ui:LogView Text="{Binding Text}"/>
 
     </DockPanel>
 </UserControl>

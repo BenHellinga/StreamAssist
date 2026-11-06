@@ -3,13 +3,14 @@
              x:Class="StreamAssist.Components.Chatbot.UI.ChatbotComponentView"
              x:DataType="ui:ChatbotComponentViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Chatbot.UI">
+             xmlns:ui="using:StreamAssist.Components.Chatbot.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- the config bar (the whole page switches with it), a divider, then the page (ChatCommandsView or ChatEventsView
          through the ViewLocator) -->
 
     <DockPanel>
-        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{StaticResource HeaderMargin}"/>
+        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{s:Gap PadAll}"/>
         <ContentControl Content="{Binding Page}"/>
     </DockPanel>
 

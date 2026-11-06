@@ -12,7 +12,7 @@ namespace StreamAssist.Components.Blocks.Model;
 // value blocks are listed by the type they return: Condition (bool), Text, Int, Double, Char, or Any (they can return any)
 // the heading a block is listed under in the block list (in this order): the general blocks by what they do, then one
 // per integration. Chat is the chatbot tab's own list (Match Text, ...)
-public enum BlockGroup { Control, Logic, Math, Text, Parameters, Variables, Tables, App, Twitch, Obs, Voicemeeter, Spotify, Chat }
+public enum BlockGroup { Control, Logic, Math, Text, Parameters, Variables, Tables, App, Dashboard, Twitch, Obs, Voicemeeter, Spotify, Chat }
 
 
 
@@ -196,6 +196,7 @@ public abstract class BlockModel : ModelBase
         _ when ns.Contains(".Spotify.") => BlockGroup.Spotify,
         _ when ns.Contains(".Audio.") => BlockGroup.Voicemeeter,
         _ when ns.Contains(".Keyboard.") || ns.Contains(".OutputConsole.") => BlockGroup.App,
+        _ when ns.Contains(".Dashboard.") => BlockGroup.Dashboard,
         _ => null,
     };
 }

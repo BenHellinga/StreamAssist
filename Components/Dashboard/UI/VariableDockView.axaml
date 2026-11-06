@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.VariableDockView"
+             x:DataType="ui:VariableDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- one row per variable: its name | its value (several lines, applied when the box is left, see the view model).
+         A name no variable has is grey. The empty last row is a ghost box until a name is typed; emptying a name
+         removes its row (the variable itself stays, it's the Data tab's) -->
+
+    <UserControl.Styles>
+        <Style Selector="TextBox.Missing, TextBox.Missing:pointerover, TextBox.Missing:focus">
+            <Setter Property="Foreground" Value="{DynamicResource TextMuted}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer Classes="Gapped">
+        <ItemsControl ItemsSource="{Binding Rows}" Margin="{s:Gap ScrollInset}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ui:VariableRowViewModel">
+                    <Grid ColumnDefinitions="150,*" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+
+                        <TextBox Grid.Column="0" VerticalAlignment="Top"
+                                 Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                 Classes.Missing="{Binding IsMissing}"
+                                 Text="{Binding Name}" PlaceholderText="New variable…"/>
+
+                        <TextBox Grid.Column="1" Classes="Commit" Text="{Binding ValueInput}" PlaceholderText="Value…"
+                                 AcceptsReturn="True" TextWrapping="Wrap" IsVisible="{Binding ShowValue}"/>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+
+</UserControl>

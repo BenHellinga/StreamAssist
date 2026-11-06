@@ -17,7 +17,7 @@ public partial class PanelViewModel : ViewModelBase
     [ObservableProperty] private GridLength _length;
     [ObservableProperty] private double _minLength;
     [ObservableProperty] private GridLength _splitterLength;
-    [ObservableProperty] private double _splitterMinLength;
+    [ObservableProperty] private bool _isShown; // its splitter only shows with it (the splitter's style gives it a fixed width)
 
     [ObservableProperty] private ViewModelBase? _content;
 
@@ -39,7 +39,7 @@ public partial class PanelViewModel : ViewModelBase
         _length = new(0);
         _minLength = 0;
         _splitterLength = new(0);
-        _splitterMinLength = 0;
+        _isShown = false;
 
         _content = null;
 
@@ -72,8 +72,8 @@ public partial class PanelViewModel : ViewModelBase
         {
             Length = _oldLength;
             MinLength = 100;
-            SplitterLength = new(15); // gap, 5px splitter, gap (Spacing.axaml SplitterLength)
-            SplitterMinLength = 5;
+            SplitterLength = GridLength.Auto; // the splitter's style: LineGap, the line, LineGap
+            IsShown = true;
         }
         else
         {
@@ -82,7 +82,7 @@ public partial class PanelViewModel : ViewModelBase
             Length = new(0);
             MinLength = 0;
             SplitterLength = new(0);
-            SplitterMinLength = 0;
+            IsShown = false;
         }
     }
 

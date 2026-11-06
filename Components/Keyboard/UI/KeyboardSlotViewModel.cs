@@ -12,25 +12,29 @@ using StreamAssist.Components.Keyboard.Background;
 using StreamAssist.Components.Keyboard.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.Blocks.UI;
 
 namespace StreamAssist.Components.Keyboard.UI;
 
 
 
-// view model to modify a KeyboardSlotModel object
-public partial class KeyboardSlotViewModel : ViewModelBase
+// one input device box on the Keyboard tab: its device dropdown, its keys, and its corner buttons (collapse, on / off,
+// drag to reorder, delete), which go through the slot and the list
+public partial class KeyboardSlotViewModel : ViewModelBase, IEditButtons
 {
     // private
 
 
 
     private readonly KeyboardSlotModel _slot;
+    private readonly KeyboardListModel _list;
     private readonly KeyboardInputManager _inputManager;
     private readonly KeybindViewModel? _keyConfigurator;
 
     private readonly ObservableCollection<DeviceMenuItem> _deviceMenuItems;
     [ObservableProperty] private DeviceMenuItem _menuDevice;
-    [ObservableProperty] private string _menuLayout;
+    [ObservableProperty] private bool _isDisabled;
+    [ObservableProperty] private bool _isCollapsed;
 
     private double _baseWidth;
     private double _baseHeight;
@@ -51,7 +55,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
     public ObservableCollection<DeviceMenuItem> DeviceMenuItems => _deviceMenuItems;
     public ObservableCollection<KeyViewModel> Keys => _keys;
-    public IReadOnlyList<string> Layouts => KeyboardSlotModel.Layouts;
+    public bool CanCollapse => true;
+    public bool CanToggle => true;
 
 
 
@@ -59,17 +64,19 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    public KeyboardSlotViewModel(KeyboardSlotModel slot, KeyboardInputManager inputManager,
+    public KeyboardSlotViewModel(KeyboardSlotModel slot, KeyboardListModel list, KeyboardInputManager inputManager,
                                  ObservableCollection<DeviceMenuItem> deviceMenuItems,
                                  KeybindViewModel? keyConfigurator = null)
     {
         _slot = slot;
+        _list = list;
         _inputManager = inputManager;
         _keyConfigurator = keyConfigurator;
         _deviceMenuItems = deviceMenuItems;
 
         _menuDevice = new("null", null);
-        _menuLayout = _slot.Layout;
+        _isDisabled = _slot.IsDisabled;
+        _isCollapsed = _slot.IsCollapsed;
 
         _baseWidth = -1;
         _baseHeight = -1;
@@ -101,11 +108,19 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
-    partial void OnMenuLayoutChanged(string value)
-    {
-        if (_callbackBlocker.IsBlocked() || value == null) return;
-        if (!_slot.TrySetLayout(value)) MenuLayout = _slot.Layout;
-    }
+    [RelayCommand] private void OnToggleButtonPressed() => _slot.SetIsDisabled(!_slot.IsDisabled);
+
+
+
+    [RelayCommand] private void OnCollapseButtonPressed() => _slot.SetIsCollapsed(!_slot.IsCollapsed);
+
+
+
+    [RelayCommand] private void OnRemoveButtonPressed() => _list.TryDeleteSlot(_slot);
+
+
+
+    public object? GetDragPayload() => new KeyboardSlotDragPayload(_slot);
 
 
 
@@ -125,13 +140,17 @@ public partial class KeyboardSlotViewModel : ViewModelBase
 
 
 
+    private void OnSlotIsDisabledChanged(bool isDisabled) => IsDisabled = isDisabled;
+
+
+
+    private void OnSlotIsCollapsedChanged(bool isCollapsed) => IsCollapsed = isCollapsed;
+
+
+
     // another picture: the keys are made again (a selected key is let go, binds show on whichever keys have them)
     private void OnLayoutChanged(string layout)
     {
-        _callbackBlocker.Block();
-        MenuLayout = layout;
-        _callbackBlocker.Unblock();
-
         _keyConfigurator?.DeselectKeys(_keys);
         foreach (var key in _keys) key.Dispose();
         _keys.Clear();
@@ -204,6 +223,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
         slot.SelectedConfigChanged += OnSelectedConfigChanged;
         slot.LayoutChanged += OnLayoutChanged;
+        slot.IsDisabledChanged += OnSlotIsDisabledChanged;
+        slot.IsCollapsedChanged += OnSlotIsCollapsedChanged;
     }
 
 
@@ -213,6 +234,8 @@ public partial class KeyboardSlotViewModel : ViewModelBase
         slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         slot.SelectedConfigChanged -= OnSelectedConfigChanged;
         slot.LayoutChanged -= OnLayoutChanged;
+        slot.IsDisabledChanged -= OnSlotIsDisabledChanged;
+        slot.IsCollapsedChanged -= OnSlotIsCollapsedChanged;
     }
 
 
