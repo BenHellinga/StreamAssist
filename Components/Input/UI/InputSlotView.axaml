@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Input.UI.InputSlotView"
+             x:DataType="keyboard:InputSlotViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Input.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a bound key's edit buttons show only while the pointer is on it (hidden by opacity, so nothing moves). Here once
+         for every key of the slot, rather than in each KeyView -->
+
+    <UserControl.Styles>
+        <Style Selector="keyboard|KeyView blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="keyboard|KeyView Border.Bound:pointerover blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+
+        <!-- the box's own corner buttons: hidden the same way, shown while the pointer is on the box (its own only, not
+             the keys') -->
+        <Style Selector="Border#Card > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border#Card:pointerover > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- an input device box, like a block: a green outline (red while off), a LineGap ring inside it. The device dropdown
+         as its header, a divider at the ring, then the keys ContentGap from the border (hidden while collapsed). The
+         corner buttons (collapse, on / off, drag, remove) show on hover, CornerGap from the border, out of the ring -->
+
+    <Border x:Name="Card" Classes="Panel Bound" Classes.Disabled="{Binding IsDisabled}" Padding="{s:Gap LineZoneAll}">
+        <Panel>
+            <DockPanel>
+
+                <ComboBox DockPanel.Dock="Top" Margin="{s:Gap PadAll}" HorizontalAlignment="Left"
+                          ItemsSource="{Binding DeviceMenuItems}"
+                          SelectedItem="{Binding MenuDevice}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="keyboard:DeviceMenuItem">
+                            <TextBlock Text="{Binding Label}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Border DockPanel.Dock="Top" Classes="Divider" IsVisible="{Binding !IsCollapsed}"/>
+
+                <!-- a microphone box: its level (the bar), the threshold talking starts at (the slider, dB) and how long it
+                     keeps talking through a pause (hold, ms) -->
+
+                <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap BoxBottomRowMargin}"
+                            HorizontalAlignment="Center" IsVisible="{Binding ShowMicControls}">
+                    <ProgressBar Minimum="-60" Maximum="0" Value="{Binding MicLevel}" Width="{DynamicResource ControlMaxWidth}"
+                                 Height="{DynamicResource ControlHeight}" MinHeight="0"/>
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource LargeHorizontalGap}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label Colon" Text="Threshold:" VerticalAlignment="Center"/>
+                            <Slider Minimum="-60" Maximum="0" Value="{Binding MicThreshold}" Width="{DynamicResource ControlMinWidth}" VerticalAlignment="Center"/>
+                            <TextBlock Classes="Label" Text="{Binding MicThreshold, StringFormat={}{0:0} dB}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label Colon" Text="Hold (ms):" VerticalAlignment="Center"/>
+                            <TextBox Classes="Commit" Text="{Binding MicHoldInput}" MinWidth="{DynamicResource ControlMinWidth}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- the picture (each KeyViewModel becomes a KeyView through the ViewLocator), as wide as the box (a mouse or
+                     controller stops growing, DeviceDisplayHelper.MaxScale), centred. A mouse's or controller's
+                     buttons sit on its body outline (DeviceDisplayHelper.BodyPath, a line like a box's border) -->
+
+                <keyboard:DevicePictureHost x:Name="DevicePictureHost" Margin="{s:Gap PadAll}" IsVisible="{Binding !IsCollapsed}">
+                    <Panel HorizontalAlignment="Center" Width="{Binding CurrentWidth}" Height="{Binding CurrentHeight}">
+                    <Path IsVisible="{Binding HasBody}" Data="{Binding BodyGeometry}"
+                          Stroke="{DynamicResource Border}" StrokeThickness="{DynamicResource BoxBorderWidth}"/>
+                    <ItemsControl ItemsSource="{Binding Keys}">
+
+                        <!-- canvas -->
+
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <!-- position each key -->
+
+                        <ItemsControl.ItemContainerTheme>
+                            <ControlTheme TargetType="ContentPresenter"
+                                          x:DataType="keyboard:KeyViewModel">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </ControlTheme>
+                        </ItemsControl.ItemContainerTheme>
+
+                    </ItemsControl>
+                    </Panel>
+                </keyboard:DevicePictureHost>
+
+            </DockPanel>
+
+            <blocks:EditButtons Classes="HoverOnly" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap RingCornerMargin}"/>
+        </Panel>
+    </Border>
+
+</UserControl>

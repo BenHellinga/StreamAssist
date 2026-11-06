@@ -14,8 +14,9 @@ namespace StreamAssist.Components.Audio.Actions;
 
 
 
-// text-to-speech with the voices Windows has installed (free, offline): the speech is made in memory on a worker
-// thread, then played like a sound, so it can go to any output device at any volume
+// text-to-speech with the voices Windows has installed or Kokoro's (KokoroVoices: free, offline neural voices, in
+// Assets/Voices): the speech is made in memory on a worker thread, then played like a sound, so it can go to any
+// output device at any volume
 [SupportedOSPlatform("windows")] // Windows' own speech (the app is Windows-only anyway)
 public class SpeakTextAction : ActionBlock
 {
@@ -32,7 +33,7 @@ public class SpeakTextAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Speak Text";
-    [JsonIgnore] public override string Description => "Reads text out loud with a Windows voice (more voices come with Windows' language packs). Speed is -10 (slowest) to 10, Volume 0 to 1. Wait Until Done holds the run until it has finished speaking.";
+    [JsonIgnore] public override string Description => "Reads text out loud with a Windows voice or a Kokoro voice (natural sounding, free, works offline). Speed is -10 (slowest) to 10, Volume 0 to 1. Wait Until Done holds the run until it has finished speaking.";
     [JsonIgnore] public override BlockGroup Group => BlockGroup.App;
 
 
@@ -138,11 +139,11 @@ public class SpeakTextAction : ActionBlock
         try
         {
             using var synth = new SpeechSynthesizer();
-            return [DefaultVoice, .. synth.GetInstalledVoices().Where(v => v.Enabled).Select(v => v.VoiceInfo.Name)];
+            return [DefaultVoice, .. synth.GetInstalledVoices().Where(v => v.Enabled).Select(v => v.VoiceInfo.Name), .. KokoroVoices.VoiceNames];
         }
         catch (Exception)
         {
-            return [DefaultVoice]; // no speech on this PC
+            return [DefaultVoice, .. KokoroVoices.VoiceNames]; // no Windows speech on this PC
         }
     }
 
@@ -169,8 +170,11 @@ public class SpeakTextAction : ActionBlock
         var voice = _voice;
         var rate = (int)Math.Round(Math.Clamp(speed, -10, 10));
 
-        // making the speech takes a moment (as long as a short sound), so off the UI thread
-        var (wave, error) = await Task.Run(() => Synthesize(text, voice, rate));
+        // making the speech takes a moment (as long as a short sound), so off the UI thread. A Kokoro voice's speed is
+        // a factor: -10 half, 0 normal, 10 twice as fast
+        var (wave, error) = KokoroVoices.TryFind(voice, out var speaker)
+            ? await Task.Run(() => KokoroVoices.Synthesize(text, speaker, Math.Pow(2, rate / 10.0)))
+            : await Task.Run(() => Synthesize(text, voice, rate));
         if (wave == null) throw Fail(error);
 
         var played = AudioHelper.PlayWaveAsync(wave, (float)Math.Clamp(volume, 0, 1), _outputDevice);

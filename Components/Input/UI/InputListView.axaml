@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Input.UI.InputListView"
+             x:DataType="keyboard:InputListViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Input.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the input device boxes, top to bottom: dropping a card or a box on a box puts it before that one (the line above
+         it lights up), dropping it on the ghost slot at the end adds it last (the slot lights up). With no config, a
+         page that says to make one -->
+
+    <Panel>
+
+        <ContentControl Content="{Binding NoConfig}" IsVisible="{Binding !HasConfig}"/>
+
+        <ScrollViewer IsVisible="{Binding HasConfig}"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Classes="Gapped">
+            <!-- the padding is room to scroll the last box up (Spacing.axaml ScrollEndPadding) -->
+            <Border Padding="{StaticResource ScrollEndPadding}">
+                <!-- never narrower than KeyboardMinWidth: a narrow window scrolls sideways, the keyboard pictures stay
+                     usable (they don't ask for width themselves, DevicePictureHost, so wider windows still widen them) -->
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}" MinWidth="{DynamicResource KeyboardMinWidth}">
+                    <ItemsControl ItemsSource="{Binding Slots}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="keyboard:InputSlotViewModel">
+                                <Border Classes="Droppable InsertBefore"
+                                        DragDrop.DragOver="OnZoneDragOver"
+                                        DragDrop.DragLeave="OnZoneDragLeave"
+                                        DragDrop.Drop="OnZoneDrop">
+                                    <keyboard:InputSlotView/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- the ghost slot at the end: dropped on it, it goes last (it lights up itself, like any empty slot) -->
+
+                    <blocks:DropZone DragDrop.DragOver="OnZoneDragOver"
+                                     DragDrop.DragLeave="OnZoneDragLeave"
+                                     DragDrop.Drop="OnZoneDrop"/>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+    </Panel>
+
+</UserControl>

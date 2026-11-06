@@ -124,6 +124,8 @@ public static class SpacingRecipes
         ["PasteBoxPadding"] = "8,1,CG+SB+SH,1",
         // a blank dock's paste button: in its corner buttons' row (out of the ring like them), left of drag and remove
         ["BlankPasteMargin"] = "0,CG-L,CG+SB+CG+SB+CG-L,0",
+        // a row under a box's picture (a microphone box's meter and settings): its sides and below like the picture's
+        ["BoxBottomRowMargin"] = "P,0,P,P",
         // a label ending in a colon: the monospace font draws the colon in the middle of its ~0.59em cell, leaving ~0.22em
         // empty after it, taken back so the colon itself is the gap from what follows
         ["ColonTrim"] = "0,0,-FM*0.22,0",

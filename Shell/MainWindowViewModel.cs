@@ -5,11 +5,11 @@ using Avalonia.Threading;
 using StreamAssist.Components.OutputConsole.Model;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StreamAssist.Components.Keyboard.UI;
+using StreamAssist.Components.Input.UI;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Core.Persistence;
-using StreamAssist.Components.Keyboard.Background;
-using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Input.Background;
+using StreamAssist.Components.Input.Model;
 using StreamAssist.Components.OutputConsole.UI;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Audio.Model;
@@ -41,7 +41,7 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     // models
     private WindowLayoutModel _windowLayoutModel;
-    private KeyboardComponentModel _keyboardComponentModel;
+    private InputComponentModel _inputComponentModel;
     private ChatbotComponentModel _chatbotComponentModel;
     private AudioComponentModel _audioComponentModel;
     private ObsComponentModel _obsComponentModel;
@@ -52,7 +52,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // managers
     private WindowLayoutSaveManager _windowLayoutSaveManager;
-    private KeyboardComponentManager _keyboardComponentManager;
+    private InputComponentManager _inputComponentManager;
     private ChatbotSaveManager _chatbotSaveManager;
     private ChatbotManager _chatbotManager;
     private ChatCommandManager _chatCommandManager;
@@ -83,7 +83,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // public getter properties
     public WindowLayoutModel WindowLayout => _windowLayoutModel;
-    public KeyboardComponentManager KeyboardComponentManager => _keyboardComponentManager;
+    public InputComponentManager InputComponentManager => _inputComponentManager;
 
     public PanelViewModel OutputConsolePanel => _outputConsolePanelViewModel;
     public PanelViewModel SidePanel => _sidePanelViewModel;
@@ -122,19 +122,19 @@ public partial class MainWindowViewModel : ViewModelBase
         // models (a tab whose file doesn't exist yet, the first time, starts with a config named Default so it can be used
         // right away; deleting every config later leaves it with none, and that's what's saved)
 
-        var freshKeyboard = !JsonFileStore.Exists("keyboard");
+        var freshInput = !JsonFileStore.Exists(InputSaveManager.FileName);
         var freshChatbot = !JsonFileStore.Exists(ChatbotSaveManager.FileName);
         var freshDashboard = !JsonFileStore.Exists(DashboardSaveManager.FileName);
 
         _windowLayoutModel = WindowLayoutSaveManager.Load();
-        _keyboardComponentModel = JsonFileStore.Load<KeyboardComponentModel>("keyboard");
+        _inputComponentModel = JsonFileStore.Load<InputComponentModel>(InputSaveManager.FileName);
         _chatbotComponentModel = ChatbotSaveManager.Load();
         _audioComponentModel = AudioSaveManager.Load();
         _obsComponentModel = ObsSaveManager.Load();
         _spotifyComponentModel = SpotifySaveManager.Load();
         _dashboardComponentModel = DashboardSaveManager.Load();
 
-        if (freshKeyboard) _keyboardComponentModel.ListModel.Configs.TryCreate(ConfigSet<KeyboardConfigModel>.DefaultName);
+        if (freshInput) _inputComponentModel.ListModel.Configs.TryCreate(ConfigSet<InputConfigModel>.DefaultName);
         if (freshChatbot)
         {
             _chatbotComponentModel.ChatConfigs.TryCreate(ConfigSet<ChatConfigModel>.DefaultName);
@@ -145,7 +145,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // managers
 
         _windowLayoutSaveManager = new(_windowLayoutModel);
-        _keyboardComponentManager = new(_keyboardComponentModel);
+        _inputComponentManager = new(_inputComponentModel);
         _chatbotSaveManager = new(_chatbotComponentModel);
         _chatbotManager = new(_chatbotComponentModel);
         _chatCommandManager = new(_chatbotComponentModel, _chatbotManager);
@@ -165,8 +165,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // global context
 
-        GlobalContext.KeyboardComponentModel = _keyboardComponentModel;
-        GlobalContext.KeyboardInputManager = _keyboardComponentManager.GetInputManager();
+        GlobalContext.InputComponentModel = _inputComponentModel;
+        GlobalContext.DeviceInputManager = _inputComponentManager.GetInputManager();
         GlobalContext.VoicemeeterManager = _voicemeeterManager;
         GlobalContext.AudioComponentModel = _audioComponentModel;
         GlobalContext.WindowLayoutModel = _windowLayoutModel;
@@ -196,14 +196,14 @@ public partial class MainWindowViewModel : ViewModelBase
         _tabFiles = new()
         {
             ["Dashboard"] = DashboardSaveManager.FileName,
-            ["Keyboard"] = "keyboard",
+            ["Input"] = InputSaveManager.FileName,
             ["Chat"] = "chatbot",
             ["Events"] = "chatbot",
             ["Connections"] = CredentialStore.FileName,
         };
         _tabs = [
             new("Dashboard", () => Guarded("Dashboard", () => DashboardComponentViewModel.ActivateTab(_dashboardComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
-            new("Keyboard", () => Guarded("Keyboard", () => KeyboardComponentViewModel.ActivateTab(_keyboardComponentModel, _keyboardComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
+            new("Input", () => Guarded("Input", () => InputComponentViewModel.ActivateTab(_inputComponentModel, _inputComponentManager, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Chat", () => Guarded("Chat", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Events", () => Guarded("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Data", () => DataComponentViewModel.ActivateTab(_dataModel, _sidePanelViewModel, _bottomPanelViewModel)),
@@ -312,7 +312,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _chatEventManager.Dispose();
         _chatbotManager.Dispose();
         _chatbotSaveManager.Dispose();
-        _keyboardComponentManager.Dispose();
+        _inputComponentManager.Dispose();
         _windowLayoutSaveManager.Dispose();
         _themeManager.Dispose();
     }

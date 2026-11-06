@@ -14,7 +14,7 @@ using StreamAssist.Components.OBS.Conditions;
 using StreamAssist.Components.OBS.Values;
 using StreamAssist.Components.OBS.Actions;
 using StreamAssist.Components.OutputConsole.Actions;
-using StreamAssist.Components.Keyboard.Conditions;
+using StreamAssist.Components.Input.Conditions;
 using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Core.Connections;
 using StreamAssist.Components.Chatbot.Values;
@@ -26,9 +26,9 @@ using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.ChatBlocks;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Blocks.Conditions;
-using StreamAssist.Components.Keyboard.Background;
-using StreamAssist.Components.Keyboard.Model;
-using StreamAssist.Components.Keyboard.UI;
+using StreamAssist.Components.Input.Background;
+using StreamAssist.Components.Input.Model;
+using StreamAssist.Components.Input.UI;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;
@@ -50,7 +50,7 @@ internal static class EngineChecks
         int fails = 0;
         void Check(string name, bool ok) { log($"{(ok ? "PASS" : "FAIL")}  {name}"); if (!ok) { fails++; failed.Add(name); } }
         ChatbotComponentModel Chatbot() { var c = new ChatbotComponentModel(); c.ChatConfigs.TryCreate("Default"); c.EventsConfigs.TryCreate("Default"); return c; }
-        KeyboardListModel Keyboards() { var k = new KeyboardListModel(); k.Configs.TryCreate("Default"); return k; }
+        InputListModel Keyboards() { var k = new InputListModel(); k.Configs.TryCreate("Default"); return k; }
         ConvertBlock IntParam(string name) { var c = new ConvertBlock { To = "Int" }; ((ValueSlot)c.Slots[0]).SetText($"{{{name}}}"); return c; }
         ConvertBlock DoubleParam(string name) { var c = new ConvertBlock { To = "Double" }; ((ValueSlot)c.Slots[0]).SetText($"{{{name}}}"); return c; }
         ConvertBlock MakeConvert(string to, string text) { var c = new ConvertBlock { To = to }; ((ValueSlot)c.Slots[0]).SetText(text); return c; }
@@ -1155,9 +1155,9 @@ internal static class EngineChecks
             tested.Dispose();
 
             // the key editor: the default On Pressed only comes with selecting an unbound key
-            var keyEditor = new StreamAssist.Components.Keyboard.UI.KeybindViewModel(new StreamAssist.Shell.WindowLayoutModel());
+            var keyEditor = new StreamAssist.Components.Input.UI.KeybindViewModel(new StreamAssist.Shell.WindowLayoutModel());
             var keyConfig = new KeybindConfigModel("Test", null);
-            var key7 = new StreamAssist.Components.Keyboard.UI.KeyViewModel("7", 103, 0, 0, 1, 1, keyEditor);
+            var key7 = new StreamAssist.Components.Input.UI.KeyViewModel("7", 103, 0, 0, 1, 1, keyEditor);
             keyEditor.SetSelectedKey(key7, null, keyConfig);
             Check("key editor: selecting an unbound key starts with On Pressed", keyEditor.Bindable?.Root.Blocks.FirstOrDefault() is OnPressedBlock);
             ((BlockSlot)keyEditor.Bindable!.Root.Blocks.FirstOrDefault()!.Slots[0]).TrySetBlock(new RecordBlock { Tag = "x" });
@@ -1167,7 +1167,7 @@ internal static class EngineChecks
             Check("key editor: removing every block unbinds it and nothing comes back", !keyConfig.Keybinds.ContainsKey(103) && keyEditor.Bindable != null && keyEditor.Bindable.Root.Blocks.FirstOrDefault() == null);
             keyEditor.Bindable!.TryAddBlock(new RecordBlock { Tag = "y" });
             Check("key editor: dropping a block in binds it again", keyConfig.Keybinds.ContainsKey(103));
-            keyEditor.SetSelectedKey(new StreamAssist.Components.Keyboard.UI.KeyViewModel("8", 104, 0, 0, 1, 1, keyEditor), null, keyConfig);
+            keyEditor.SetSelectedKey(new StreamAssist.Components.Input.UI.KeyViewModel("8", 104, 0, 0, 1, 1, keyEditor), null, keyConfig);
             Check("key editor: selecting another unbound key starts with On Pressed again", keyEditor.Bindable?.Root.Blocks.FirstOrDefault() is OnPressedBlock);
             keyEditor.Dispose();
         }
@@ -1430,7 +1430,7 @@ internal static class EngineChecks
 
         // ---- empty bindables remove themselves ----
         {
-            var cfg = new StreamAssist.Components.Keyboard.Model.KeybindConfigModel("t", null);
+            var cfg = new StreamAssist.Components.Input.Model.KeybindConfigModel("t", null);
             var unbound = new List<ushort>(); cfg.KeyUnbound += (vk, _) => unbound.Add(vk);
             var kb = BindableModel.CreateDefault();
             cfg.TryBindKey(65, kb);
@@ -1466,13 +1466,13 @@ internal static class EngineChecks
             stopped.Dispose();
 
             var oldJson = "{\"name\":\"x\",\"bindables\":{\"55\":{\"isDisabled\":false,\"root\":[]},\"70\":{\"isDisabled\":false,\"root\":[{\"type\":\"OnPressedBlock\",\"parameters\":{\"child\":null,\"isDisabled\":false}}]}}}";
-            var loaded = JsonSerializer.Deserialize<StreamAssist.Components.Keyboard.Model.KeybindConfigModel>(oldJson)!;
+            var loaded = JsonSerializer.Deserialize<StreamAssist.Components.Input.Model.KeybindConfigModel>(oldJson)!;
             Check("empty bindables dropped on load", !loaded.Keybinds.ContainsKey(55) && loaded.Keybinds.ContainsKey(70));
             loaded.Keybinds[70].Clear();
             Check("loaded bindable can still unbind itself", loaded.Keybinds.Count == 0);
             Check("saved json has no empty bindings", !JsonSerializer.Serialize(loaded).Contains("\"root\":[]"));
 
-            var copyCfg = new StreamAssist.Components.Keyboard.Model.KeybindConfigModel("c", new() { [80] = BindableModel.CreateDefault(), [81] = new BindableModel() });
+            var copyCfg = new StreamAssist.Components.Input.Model.KeybindConfigModel("c", new() { [80] = BindableModel.CreateDefault(), [81] = new BindableModel() });
             Check("copied config drops empties", copyCfg.Keybinds.ContainsKey(80) && !copyCfg.Keybinds.ContainsKey(81));
             copyCfg.Keybinds[80].Clear();
             Check("copied config bindable unbinds itself", copyCfg.Keybinds.Count == 0);
@@ -1481,7 +1481,7 @@ internal static class EngineChecks
 
         // ---- key names ----
         {
-            ushort V(string n) => StreamAssist.Components.Keyboard.UI.DeviceDisplayHelper.TryParseKeyName(n, out var v) ? v : (ushort)0xFFFF;
+            ushort V(string n) => StreamAssist.Components.Input.UI.DeviceDisplayHelper.TryParseKeyName(n, out var v) ? v : (ushort)0xFFFF;
             Check("key names", V("shift") == 0x10 && V("Ctrl") == 0x11 && V("alt") == 0x12 && V("t") == 0x54 && V("F5") == 0x74
                 && V(";") == 0xBA && V("[") == 0xDB && V("/") == 0xBF && V("numpad1") == 0x61 && V("esc") == 0x1B && V(" Space ") == 0x20 && V("5") == 0x35);
             foreach (var n in new[]{"/","-","+","*",".","divide"}) log($"  {n} -> {V(n):X}");
@@ -1517,16 +1517,16 @@ internal static class EngineChecks
         // ---- key state + keybind manager + key pressed ----
         {
             var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-            var input = new KeyboardInputManager();
-            var held = (HashSet<(string, ushort)>)typeof(KeyboardInputManager).GetField("_keysDown", flags)!.GetValue(input)!;
+            var input = new DeviceInputManager();
+            var held = (HashSet<(string, ushort)>)typeof(DeviceInputManager).GetField("_keysDown", flags)!.GetValue(input)!;
             void Raise(string name, string dev, ushort vk)
             {
-                var d = (Action<string, ushort>?)typeof(KeyboardInputManager).GetField(name, flags)!.GetValue(input);
+                var d = (Action<string, ushort>?)typeof(DeviceInputManager).GetField(name, flags)!.GetValue(input);
                 d?.Invoke(dev, vk);
             }
             void Down(string dev, ushort vk) { if (held.Add((dev, vk))) Raise("KeyDown", dev, vk); }
             void Up(string dev, ushort vk) { held.Remove((dev, vk)); Raise("KeyUp", dev, vk); }
-            StreamAssist.Shell.GlobalContext.KeyboardInputManager = input;
+            StreamAssist.Shell.GlobalContext.DeviceInputManager = input;
 
             var list = Keyboards();
             var dev1 = new InputDeviceModel("dev1", "p", "m", 1, 2);
@@ -1559,17 +1559,17 @@ internal static class EngineChecks
             slot.SetIsDisabled(false);
 
             // input device boxes: made where they're dropped (Keyboard or Generic), moved by dragging
-            list.TryCreateSlot(KeyboardSlotModel.AllKeysLayout, 0, out var generic);
-            Check("input devices: a Generic box goes where it's dropped", list.Slots[0] == generic && generic.Layout == KeyboardSlotModel.AllKeysLayout && list.Slots[1] == slot);
+            list.TryCreateSlot(InputSlotModel.AllKeysLayout, 0, out var generic);
+            Check("input devices: a Generic box goes where it's dropped", list.Slots[0] == generic && generic.Layout == InputSlotModel.AllKeysLayout && list.Slots[1] == slot);
             Check("input devices: moving one puts it before the one it's dropped on", list.TryMoveSlot(generic, 2) && list.Slots[1] == generic && list.Slots[0] == slot);
             list.TryDeleteSlot(generic);
-            Check("shift+T -> then", await Do(() => { Down("dev1", KeyboardDevices.LeftShift); Down("dev1", 0x54); }) == "S");
+            Check("shift+T -> then", await Do(() => { Down("dev1", InputDevices.LeftShift); Down("dev1", 0x54); }) == "S");
             Check("repeat key down ignored", await Do(() => Down("dev1", 0x54)) == "");
-            await Do(() => { Up("dev1", 0x54); Up("dev1", KeyboardDevices.LeftShift); });
+            await Do(() => { Up("dev1", 0x54); Up("dev1", InputDevices.LeftShift); });
             Check("other keyboard doesn't trigger", await Do(() => Down("dev2", 0x54)) == "");
             Up("dev2", 0x54);
-            Check("right shift on other keyboard counts for Any keyboard", await Do(() => { Down("dev2", KeyboardDevices.RightShift); Down("dev1", 0x54); }) == "S");
-            Up("dev1", 0x54); Up("dev2", KeyboardDevices.RightShift);
+            Check("right shift on other keyboard counts for Any keyboard", await Do(() => { Down("dev2", InputDevices.RightShift); Down("dev1", 0x54); }) == "S");
+            Up("dev1", 0x54); Up("dev2", InputDevices.RightShift);
 
             Down("dev2", 0x41);
             var heldOk = input.IsKeyDown(0x41) && input.IsKeyDown("dev2", 0x41) && !input.IsKeyDown("dev1", 0x41);
@@ -1603,7 +1603,7 @@ internal static class EngineChecks
             list.Configs.TrySelect("Default");
             Check("configs: and back", slot.SelectedConfig == cfg && slotB.SelectedConfig!.Keybinds.ContainsKey(0x41));
             var listJson = JsonSerializer.Serialize(list);
-            var listLoaded = JsonSerializer.Deserialize<KeyboardListModel>(listJson)!;
+            var listLoaded = JsonSerializer.Deserialize<InputListModel>(listJson)!;
             Check("configs: saved and loaded with the one in use, each slot finds its keys by id", listLoaded.Configs.SelectedName == "Default"
                 && listLoaded.Configs.Names.SequenceEqual(new[] { "Default", "c2" }) && listLoaded.Slots[1].SelectedConfig!.Keybinds.ContainsKey(0x41)
                 && listLoaded.Slots[0].SelectedConfig!.Keybinds.ContainsKey(0x54) && JsonSerializer.Serialize(listLoaded) == listJson);
@@ -1616,10 +1616,10 @@ internal static class EngineChecks
                 && list.Configs.TryCreate("Fresh") && slotC.SelectedConfig != null && slotC.SelectedConfig.Keybinds.Count == 0 && slot.SelectedConfig!.Keybinds.Count == 0);
 
             // either side: Shift / Ctrl / Alt typed by name mean either, a side's own code only that side
-            Down("dev1", KeyboardDevices.RightCtrl);
-            Check("held keys: ctrl means either side", input.IsKeyDown(0x11) && input.IsKeyDown("dev1", 0x11) && input.IsKeyDown(KeyboardDevices.RightCtrl)
-                && !input.IsKeyDown(KeyboardDevices.LeftCtrl) && !input.IsKeyDown("dev2", 0x11));
-            Up("dev1", KeyboardDevices.RightCtrl);
+            Down("dev1", InputDevices.RightCtrl);
+            Check("held keys: ctrl means either side", input.IsKeyDown(0x11) && input.IsKeyDown("dev1", 0x11) && input.IsKeyDown(InputDevices.RightCtrl)
+                && !input.IsKeyDown(InputDevices.LeftCtrl) && !input.IsKeyDown("dev2", 0x11));
+            Up("dev1", InputDevices.RightCtrl);
 
             // keyboards plugged in and removed: slots let go of a removed one (keeping it saved) and find it again
             var plug = Keyboards();
@@ -1640,54 +1640,56 @@ internal static class EngineChecks
             Check("keyboards: picking none forgets the one that was waiting", plugSlot.SelectedDevice == null && !JsonSerializer.Serialize(plugSlot).Contains("pathA"));
 
             // layouts: the keyboard picture or every key code, saved per slot; switching remakes the keys, binds stay
-            Check("layouts: a slot starts on the keyboard picture", plugSlot.Layout == KeyboardSlotModel.KeyboardLayout && KeyboardSlotModel.Layouts.Count == 2);
+            Check("layouts: a slot starts on the keyboard picture", plugSlot.Layout == InputSlotModel.KeyboardLayout && InputSlotModel.Layouts.Count == 5);
             int layoutChanges = 0;
             plugSlot.LayoutChanged += _ => layoutChanges++;
-            Check("layouts: an unknown one is refused", !plugSlot.TrySetLayout("Piano") && plugSlot.Layout == KeyboardSlotModel.KeyboardLayout && layoutChanges == 0);
-            Check("layouts: switching says so and is saved", plugSlot.TrySetLayout(KeyboardSlotModel.AllKeysLayout) && layoutChanges == 1
-                && JsonSerializer.Deserialize<KeyboardSlotModel>(JsonSerializer.Serialize(plugSlot))!.Layout == KeyboardSlotModel.AllKeysLayout
-                && JsonSerializer.Deserialize<KeyboardSlotModel>("{\"layout\":\"Piano\"}")!.Layout == KeyboardSlotModel.KeyboardLayout);
+            Check("layouts: an unknown one is refused", !plugSlot.TrySetLayout("Piano") && plugSlot.Layout == InputSlotModel.KeyboardLayout && layoutChanges == 0);
+            Check("layouts: switching says so and is saved", plugSlot.TrySetLayout(InputSlotModel.AllKeysLayout) && layoutChanges == 1
+                && JsonSerializer.Deserialize<InputSlotModel>(JsonSerializer.Serialize(plugSlot))!.Layout == InputSlotModel.AllKeysLayout
+                && JsonSerializer.Deserialize<InputSlotModel>("{\"layout\":\"Piano\"}")!.Layout == InputSlotModel.KeyboardLayout);
             var (allKeys, _, _) = DeviceDisplayHelper.InitGenericDisplayKeys(25, 3);
-            Check("layouts: all keys has F13-F24 and media keys, no mouse buttons or either-side codes", allKeys.Any(k => k.VK == 0x7C && k.Label == "F13") && allKeys.Any(k => k.VK == 0x87)
-                && allKeys.Any(k => k.Label == "MEDIA\nPLAY\nPAUSE" && k.VK == 0xB3 && k.X == 19 * 28 && k.Y == 5 * 28 && k.W == k.H) && allKeys.All(k => k.VK > 0x06 && k.VK is < 0x10 or > 0x12)
-                && allKeys.Select(k => k.VK).Distinct().Count() == allKeys.Count && allKeys.Any(k => k.VK == KeyboardDevices.RightShift));
+            Check("layouts: all keys has F13-F24, media keys, mouse buttons, wheel steps and controller buttons, no either-side codes", allKeys.Any(k => k.VK == 0x7C && k.Label == "F13") && allKeys.Any(k => k.VK == 0x87)
+                && allKeys.Any(k => k.Label == "MEDIA\nPLAY\nPAUSE" && k.VK == 0xB3 && k.X == 19 * 28 && k.Y == 5 * 28 && k.W == k.H) && allKeys.All(k => k.VK is < 0x10 or > 0x12)
+                && new[] { InputDevices.MouseLeft, InputDevices.MouseBack, InputDevices.WheelUp, InputDevices.WheelRight, InputDevices.PadA, InputDevices.PadUp, InputDevices.RightStickLeft }.All(code => allKeys.Any(k => k.VK == code))
+                && allKeys.Count == 0xFE - 3 && allKeys.Any(k => k.VK == 0x07 && k.Label == "0x07")
+                && allKeys.Select(k => k.VK).Distinct().Count() == allKeys.Count && allKeys.Any(k => k.VK == InputDevices.RightShift));
             var layoutConfig = plugSlot.SelectedConfig!;
             layoutConfig.TryBindKey(0x7C, BindableModel.CreateDefault());
-            var layoutView = new KeyboardSlotViewModel(plugSlot, plug, input, []);
+            var layoutView = new InputSlotViewModel(plugSlot, plug, input, new DeviceMenus([]));
             Check("layouts: the slot shows every key code", layoutView.Keys.Count == allKeys.Count && layoutView.Keys.Single(k => k.VK == 0x7C).IsBound);
             Check("layouts: only bound keys make edit buttons", layoutView.Keys.Single(k => k.VK == 0x7C).EditButtonsContext != null
                 && layoutView.Keys.Where(k => k.VK != 0x7C).All(k => k.EditButtonsContext == null));
-            plugSlot.TrySetLayout(KeyboardSlotModel.KeyboardLayout);
-            Check("layouts: another layout remakes the keys", layoutView.Keys.All(k => k.VK != 0x7C) && layoutView.Keys.Any(k => k.VK == KeyboardDevices.LeftShift));
+            plugSlot.TrySetLayout(InputSlotModel.KeyboardLayout);
+            Check("layouts: another layout remakes the keys", layoutView.Keys.All(k => k.VK != 0x7C) && layoutView.Keys.Any(k => k.VK == InputDevices.LeftShift));
             layoutView.CollapseButtonPressedCommand.Execute(null);
             layoutView.ToggleButtonPressedCommand.Execute(null);
             Check("input device box: collapse and on / off go to the slot", plugSlot.IsCollapsed && layoutView.IsCollapsed && plugSlot.IsDisabled && layoutView.IsDisabled);
             layoutView.Dispose();
 
             // the keyboards on this PC (read only, logged for a look, how many depends on the PC)
-            foreach (var device in KeyboardInputManager.Devices) log($"  keyboard here: {device.GetDisplayLabel()}  [{device.DevicePath}]");
+            foreach (var device in DeviceInputManager.Devices) log($"  keyboard here: {device.GetDisplayLabel()}  [{device.DevicePath}]");
         }
 
         // ---- raw keys and keyboard connections ----
         {
-            Check("raw keys: the two shifts, ctrls and alts are told apart", KeyboardDevices.KeyCode(0x10, 0x2A, false) == KeyboardDevices.LeftShift
-                && KeyboardDevices.KeyCode(0x10, 0x36, false) == KeyboardDevices.RightShift && KeyboardDevices.KeyCode(0x11, 0x1D, false) == KeyboardDevices.LeftCtrl
-                && KeyboardDevices.KeyCode(0x11, 0x1D, true) == KeyboardDevices.RightCtrl && KeyboardDevices.KeyCode(0x12, 0x38, false) == KeyboardDevices.LeftAlt
-                && KeyboardDevices.KeyCode(0x12, 0x38, true) == KeyboardDevices.RightAlt);
-            Check("raw keys: numpad Enter is its own key", KeyboardDevices.KeyCode(0x0D, 0x1C, true) == KeyboardDevices.NumpadEnter && KeyboardDevices.KeyCode(0x0D, 0x1C, false) == 0x0D);
-            Check("raw keys: numpad keys with Num Lock off are still numpad keys", KeyboardDevices.KeyCode(0x24, 0x47, false) == 0x67 && KeyboardDevices.KeyCode(0x2E, 0x53, false) == 0x6E
-                && KeyboardDevices.KeyCode(0x24, 0x47, true) == 0x24 && KeyboardDevices.KeyCode(0x25, 0x4B, true) == 0x25);
-            Check("raw keys: windows' fake shifts and 'no key' are ignored, other keys pass", KeyboardDevices.KeyCode(0x10, 0x2A, true) == null && KeyboardDevices.KeyCode(0xFF, 0, false) == null
-                && KeyboardDevices.KeyCode(0x41, 0x1E, false) == 0x41);
-            Check("raw keys: the layout and names know the new keys", DeviceDisplayHelper.VKToKeyboardLabel(KeyboardDevices.RightShift) == "Shift" && DeviceDisplayHelper.VKToKeyboardLabel(KeyboardDevices.NumpadEnter) == "Enter"
-                && DeviceDisplayHelper.TryParseKeyName("shift", out var shiftCode) && KeyboardDevices.CodesFor(shiftCode).SequenceEqual(new[] { KeyboardDevices.LeftShift, KeyboardDevices.RightShift })
-                && DeviceDisplayHelper.TryParseKeyName("rshift", out var rshift) && rshift == KeyboardDevices.RightShift
-                && DeviceDisplayHelper.TryParseKeyName("numpadenter", out var npEnter) && npEnter == KeyboardDevices.NumpadEnter);
+            Check("raw keys: the two shifts, ctrls and alts are told apart", InputDevices.KeyCode(0x10, 0x2A, false) == InputDevices.LeftShift
+                && InputDevices.KeyCode(0x10, 0x36, false) == InputDevices.RightShift && InputDevices.KeyCode(0x11, 0x1D, false) == InputDevices.LeftCtrl
+                && InputDevices.KeyCode(0x11, 0x1D, true) == InputDevices.RightCtrl && InputDevices.KeyCode(0x12, 0x38, false) == InputDevices.LeftAlt
+                && InputDevices.KeyCode(0x12, 0x38, true) == InputDevices.RightAlt);
+            Check("raw keys: numpad Enter is its own key", InputDevices.KeyCode(0x0D, 0x1C, true) == InputDevices.NumpadEnter && InputDevices.KeyCode(0x0D, 0x1C, false) == 0x0D);
+            Check("raw keys: numpad keys with Num Lock off are still numpad keys", InputDevices.KeyCode(0x24, 0x47, false) == 0x67 && InputDevices.KeyCode(0x2E, 0x53, false) == 0x6E
+                && InputDevices.KeyCode(0x24, 0x47, true) == 0x24 && InputDevices.KeyCode(0x25, 0x4B, true) == 0x25);
+            Check("raw keys: windows' fake shifts and 'no key' are ignored, other keys pass", InputDevices.KeyCode(0x10, 0x2A, true) == null && InputDevices.KeyCode(0xFF, 0, false) == null
+                && InputDevices.KeyCode(0x41, 0x1E, false) == 0x41);
+            Check("raw keys: the layout and names know the new keys", DeviceDisplayHelper.VKToKeyboardLabel(InputDevices.RightShift) == "Shift" && DeviceDisplayHelper.VKToKeyboardLabel(InputDevices.NumpadEnter) == "Enter"
+                && DeviceDisplayHelper.TryParseKeyName("shift", out var shiftCode) && InputDevices.CodesFor(shiftCode).SequenceEqual(new[] { InputDevices.LeftShift, InputDevices.RightShift })
+                && DeviceDisplayHelper.TryParseKeyName("rshift", out var rshift) && rshift == InputDevices.RightShift
+                && DeviceDisplayHelper.TryParseKeyName("numpadenter", out var npEnter) && npEnter == InputDevices.NumpadEnter);
 
             var g1 = Guid.NewGuid();
             var g2 = Guid.NewGuid();
             var none = new Guid("00000000-0000-0000-ffff-ffffffffffff");
-            var interfaces = new List<KeyboardInterface>
+            var interfaces = new List<DeviceInterface>
             {
                 new(@"\\?\HID#VID_1&PID_2&MI_00#a", 1, 2, "Maker", "Keys", g1),
                 new(@"\\?\HID#VID_1&PID_2&MI_01&Col01#b", 1, 2, "Maker", "Keys", g1),
@@ -1695,14 +1697,80 @@ internal static class EngineChecks
                 new(@"\\?\ACPI#laptop", 9, 9, "", "", none),
                 new(@"\\?\HID#other", 7, 7, "Other", "Board", null),
             };
-            var groups = KeyboardDevices.Group(interfaces);
+            var groups = InputDevices.Group(interfaces);
             Check("keyboards: one per physical keyboard, every connection of it counts", groups.Count == 4 && groups[0].Paths.Count == 2 && groups[0].Device.DevicePath.EndsWith("#a"));
             Check("keyboards: identical keyboards stay separate and are numbered", groups[1].Device.DevicePath.EndsWith("#c") && groups[1].Device.GetDisplayLabel().EndsWith("#2")
                 && !groups[0].Device.GetDisplayLabel().Contains('#'));
             Check("keyboards: no known container means a keyboard of its own", groups[2].Paths.Count == 1 && groups[3].Paths.Count == 1 && groups[2].Device.ProductName == "Unknown");
-            Check("keyboards: the main path skips sub-collections", KeyboardDevices.Group(new[] { interfaces[1], interfaces[0] })[0].Device.DevicePath.EndsWith("#a"));
-            var again = KeyboardDevices.Group(interfaces, groups.Select(g => g.Device).ToList());
+            Check("keyboards: the main path skips sub-collections", InputDevices.Group(new[] { interfaces[1], interfaces[0] })[0].Device.DevicePath.EndsWith("#a"));
+            var again = InputDevices.Group(interfaces, groups.Select(g => g.Device).ToList());
             Check("keyboards: reading them again keeps the same models", again.Select(g => g.Device).SequenceEqual(groups.Select(g => g.Device)));
+
+            // mice and controllers
+            var receiver = InputDevices.Group(new List<DeviceInterface>
+            {
+                new(@"\?\HID#VID_5&PID_6&MI_00#k", 5, 6, "Maker", "Combo", g1),
+                new(@"\?\HID#VID_5&PID_6&MI_01#m", 5, 6, "Maker", "Combo", g1, StreamAssist.Components.Input.Model.DeviceKind.Mouse),
+            });
+            Check("input: a receiver's keyboard and mouse stay two devices, each its own kind", receiver.Count == 2
+                && receiver[0].Device.Kind == StreamAssist.Components.Input.Model.DeviceKind.Keyboard && receiver[1].Device.Kind == StreamAssist.Components.Input.Model.DeviceKind.Mouse
+                && !receiver[1].Device.GetDisplayLabel().Contains('#'));
+
+            var clicks = InputDevices.MouseCodes(Linearstar.Windows.RawInput.Native.RawMouseButtonFlags.LeftButtonDown | Linearstar.Windows.RawInput.Native.RawMouseButtonFlags.Button5Up, 0);
+            Check("input: mouse buttons become their codes, pressed and let go",
+                clicks.SequenceEqual([(InputDevices.MouseLeft, true), (InputDevices.MouseForward, false)]));
+            Check("input: a wheel step is a press and a release, by its direction",
+                InputDevices.MouseCodes(Linearstar.Windows.RawInput.Native.RawMouseButtonFlags.MouseWheel, -120).SequenceEqual([(InputDevices.WheelDown, true), (InputDevices.WheelDown, false)])
+                && InputDevices.MouseCodes(Linearstar.Windows.RawInput.Native.RawMouseButtonFlags.MouseHorizontalWheel, 120).SequenceEqual([(InputDevices.WheelRight, true), (InputDevices.WheelRight, false)]));
+
+            var pad = InputDevices.ControllerCodes(0x1000 | 0x0001, 200, 10, -20000, 0, 0, 20000);
+            Check("input: a controller's buttons, triggers and sticks past their thresholds are held",
+                pad.SetEquals([InputDevices.PadA, InputDevices.PadUp, InputDevices.PadLT, InputDevices.LeftStickLeft, InputDevices.RightStickUp]));
+
+            var mouseCodes = DeviceDisplayHelper.InitMouseDisplayData(25, 3).Item1.Select(k => k.VK).ToHashSet();
+            var padCodes = DeviceDisplayHelper.InitControllerDisplayData(25, 3).Item1.Select(k => k.VK).ToHashSet();
+            Check("input: the mouse picture has every button and wheel step, the controller picture every button",
+                InputDevices.MouseButtons.All(b => mouseCodes.Contains(b.Code)) && new[] { InputDevices.WheelUp, InputDevices.WheelDown, InputDevices.WheelLeft, InputDevices.WheelRight }.All(mouseCodes.Contains)
+                && InputDevices.ControllerButtons.All(b => padCodes.Contains(b.Code)) && padCodes.Count == 24);
+
+            var keyboardDevice = new StreamAssist.Components.Input.Model.InputDeviceModel("kb", "Keys", "Maker", 1, 1);
+            var mouseDevice = new StreamAssist.Components.Input.Model.InputDeviceModel("ms", "Mouse", "Maker", 1, 1, StreamAssist.Components.Input.Model.DeviceKind.Mouse);
+            var mouseBox = new InputSlotModel([keyboardDevice, mouseDevice], 99, InputSlotModel.MouseLayout);
+            Check("input: a mouse box takes a mouse, not a keyboard", !mouseBox.TrySetSelectedDevice(keyboardDevice) && mouseBox.TrySetSelectedDevice(mouseDevice)
+                && mouseBox.SelectedDevice == mouseDevice && mouseBox.DeviceKind == StreamAssist.Components.Input.Model.DeviceKind.Mouse);
+            // microphones
+            var sine = new float[480];
+            for (var i = 0; i < sine.Length; i++) sine[i] = (float)(0.5 * Math.Sin(i * 2 * Math.PI / 48));
+            var sineBytes = new byte[sine.Length * 4];
+            Buffer.BlockCopy(sine, 0, sineBytes, 0, sineBytes.Length);
+            var pcm = new byte[960];
+            for (var i = 0; i < 480; i++) BitConverter.GetBytes((short)(sine[i] * 32767)).CopyTo(pcm, i * 2);
+            var floatLevel = StreamAssist.Components.Input.Background.MicrophoneManager.LevelDb(sineBytes, sineBytes.Length, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1));
+            var pcmLevel = StreamAssist.Components.Input.Background.MicrophoneManager.LevelDb(pcm, pcm.Length, new NAudio.Wave.WaveFormat(48000, 16, 1));
+            Check("mic: the level is how loud it is in dB (a half-volume sine about -9), float or 16 bit, silence -100",
+                Math.Abs(floatLevel + 9.03) < 0.1 && Math.Abs(pcmLevel + 9.03) < 0.1
+                && StreamAssist.Components.Input.Background.MicrophoneManager.LevelDb(new byte[64], 64, NAudio.Wave.WaveFormat.CreateIeeeFloatWaveFormat(48000, 1)) == -100);
+            static (bool, bool) Decide(bool was, double level, double ms) => StreamAssist.Components.Input.Background.MicrophoneManager.Decide(was, level, -35, TimeSpan.FromMilliseconds(ms), 300);
+            Check("mic: talking starts at the threshold, keeps on through a pause shorter than the hold, then stops",
+                Decide(false, -30, 0) == (true, true) && Decide(false, -50, 0) == (false, false)
+                && Decide(true, -50, 200) == (true, false) && Decide(true, -50, 400) == (false, false));
+            var micDevice = new StreamAssist.Components.Input.Model.InputDeviceModel("{mic}", "Voicemeeter Out B1", "Audio", 0, 0, StreamAssist.Components.Input.Model.DeviceKind.Microphone);
+            var micBox = new InputSlotModel([micDevice, keyboardDevice], 97, InputSlotModel.MicrophoneLayout);
+            Check("mic: a microphone box takes a microphone, its threshold and hold are checked",
+                micBox.TrySetSelectedDevice(micDevice) && !micBox.TrySetSelectedDevice(keyboardDevice) && micDevice.GetDisplayLabel() == "Voicemeeter Out B1"
+                && micBox.TrySetMicThreshold(-42) && !micBox.TrySetMicThreshold(5) && !micBox.TrySetMicHold(-1) && micBox.TrySetMicHold(500)
+                && micBox.MicThreshold == -42 && micBox.MicHold == 500);
+            var micJson = JsonSerializer.Serialize(micBox);
+            Check("mic: only a microphone box saves a threshold and hold", micJson.Contains("\"micThreshold\":-42") && micJson.Contains("\"micHold\":500")
+                && !JsonSerializer.Serialize(new InputSlotModel([], 96)).Contains("micThreshold"));
+
+            var genericBox = new InputSlotModel([keyboardDevice, mouseDevice], 98, InputSlotModel.AllKeysLayout);
+            var menus = new DeviceMenus([mouseDevice, keyboardDevice]);
+            Check("input: a Generic box takes any device, its dropdown lists all of them (keyboards first)",
+                genericBox.DeviceKind == null && genericBox.TrySetSelectedDevice(mouseDevice) && genericBox.TrySetSelectedDevice(keyboardDevice)
+                && !genericBox.TrySetSelectedDevice(new StreamAssist.Components.Input.Model.InputDeviceModel("m", "Mic", "Audio", 0, 0, StreamAssist.Components.Input.Model.DeviceKind.Microphone))
+                && menus.For(null).Select(i => i.Model).SequenceEqual([null, keyboardDevice, mouseDevice])
+                && menus.For(StreamAssist.Components.Input.Model.DeviceKind.Mouse).Select(i => i.Model).SequenceEqual([null, mouseDevice]));
         }
 
 
@@ -3017,6 +3085,16 @@ internal static class EngineChecks
                 try { return StreamAssist.Styles.SpacingRecipes.Compute(name) != null; }
                 catch (InvalidOperationException) { return false; }
             }));
+        }
+
+        // ---- kokoro voices (names only: the model isn't in the tests' folder) ----
+        {
+            var names = StreamAssist.Components.Audio.Background.KokoroVoices.AllVoiceNames;
+            Check("kokoro: every voice has its own name, by accent and gender", names.Count == 54 && names.Distinct().Count() == 54
+                && names[3] == "Kokoro: Heart (US, female)" && names[26] == "Kokoro: George (UK, male)" && names[53] == "Kokoro: Santa (Spanish, male)");
+            Check("kokoro: a dropdown name finds its speaker, others aren't Kokoro voices",
+                StreamAssist.Components.Audio.Background.KokoroVoices.TryFind("Kokoro: Heart (US, female)", out var heart) && heart == 3
+                && !StreamAssist.Components.Audio.Background.KokoroVoices.TryFind("Microsoft David Desktop", out _));
         }
 
         // ---- copy / paste (BlockClipboard, no system clipboard here: it's kept in the app) ----

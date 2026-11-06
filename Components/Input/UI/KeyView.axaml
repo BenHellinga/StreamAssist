@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Input.UI.KeyView"
+             x:DataType="keyboard:KeyViewModel"
+
+             xmlns:keyboard="using:StreamAssist.Components.Input.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+
+             Width="{Binding W}"
+             Height="{Binding H}"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the edit buttons only exist on a key that has a binding, and only show while the pointer is on it (their styles are
+         in InputSlotView, once for every key) -->
+
+    <!-- single key -->
+
+    <!-- a mouse's or controller's button is shaped like the device (its own rounding, scaled with the picture) -->
+    <UserControl.Styles>
+        <Style Selector="Border.Shaped" x:DataType="keyboard:KeyViewModel">
+            <Setter Property="CornerRadius" Value="{Binding Corners}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Classes="Panel Droppable"
+            Classes.Shaped="{Binding IsShaped}"
+            Classes.Triggered="{Binding IsPressed}"
+            Classes.Bound="{Binding IsBound}"
+            Classes.Disabled="{Binding IsDisabled}"
+            DragDrop.AllowDrop="True"
+            DragDrop.DragOver="OnDragOver"
+            DragDrop.DragLeave="OnDragLeave"
+            DragDrop.Drop="OnDrop"
+            PointerPressed="OnPointerPressed">
+
+        <!-- the key's name, then the binding's label (if it has one) as one more line that ends in ... when too long,
+             centred up and down as one block (so a label pushes the name up) -->
+
+        <Grid>
+            <StackPanel VerticalAlignment="Center">
+                <Viewbox StretchDirection="DownOnly" Margin="{s:Gap KeyLabelMargin}">
+                    <TextBlock Text="{Binding Label}" TextAlignment="Center"/>
+                </Viewbox>
+                <TextBlock Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
+                           Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <!-- an unbound key takes a pasted binding -->
+            <blocks:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
+
+            <ContentControl Content="{Binding EditButtonsContext}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate x:DataType="keyboard:KeyViewModel">
+                        <blocks:EditButtons Classes="HoverOnly"/>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
+        </Grid>
+    </Border>
+</UserControl>

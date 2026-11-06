@@ -195,7 +195,7 @@ public abstract class BlockModel : ModelBase
         _ when ns.Contains(".OBS.") => BlockGroup.Obs,
         _ when ns.Contains(".Spotify.") => BlockGroup.Spotify,
         _ when ns.Contains(".Audio.") => BlockGroup.Voicemeeter,
-        _ when ns.Contains(".Keyboard.") || ns.Contains(".OutputConsole.") => BlockGroup.App,
+        _ when ns.Contains(".Input.") || ns.Contains(".OutputConsole.") => BlockGroup.App,
         _ when ns.Contains(".Dashboard.") => BlockGroup.Dashboard,
         _ => null,
     };

@@ -14,7 +14,7 @@ public static class AppPaths
 
 
 
-    public static readonly string[] AssetFolders = ["Sounds", "Images", "Videos"]; // made at startup if missing
+    public static readonly string[] AssetFolders = ["Sounds", "Images", "Videos", "Voices"]; // made at startup if missing
 
 
 

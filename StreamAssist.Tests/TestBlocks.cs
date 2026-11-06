@@ -1,5 +1,5 @@
 using StreamAssist.Components.OutputConsole.Actions;
-using StreamAssist.Components.Keyboard.Conditions;
+using StreamAssist.Components.Input.Conditions;
 using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Components.Chatbot.Actions;
 using StreamAssist.Components.Blocks.Values;
@@ -9,8 +9,8 @@ using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.ChatBlocks;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Blocks.Conditions;
-using StreamAssist.Components.Keyboard.Background;
-using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Input.Background;
+using StreamAssist.Components.Input.Model;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.Blocks.Model;

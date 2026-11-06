@@ -11,8 +11,8 @@ namespace StreamAssist;
 /// replacing "ViewModel" with "View" in the fully-qualified type name.
 ///
 /// For example:
-///   StreamAssist.Components.Keyboard.UI.KeyViewModel
-///   → StreamAssist.Components.Keyboard.UI.KeyView  ✓
+///   StreamAssist.Components.Input.UI.KeyViewModel
+///   → StreamAssist.Components.Input.UI.KeyView  ✓
 ///
 /// So the convention works automatically as long as your View and ViewModel
 /// live in the same namespace (same folder).

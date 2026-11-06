@@ -3,8 +3,8 @@ using StreamAssist.Components.Audio.Model;
 using StreamAssist.Components.Chatbot.Background;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Components.Data.Model;
-using StreamAssist.Components.Keyboard.Background;
-using StreamAssist.Components.Keyboard.Model;
+using StreamAssist.Components.Input.Background;
+using StreamAssist.Components.Input.Model;
 using StreamAssist.Components.OBS.Background;
 using StreamAssist.Components.OBS.Model;
 using StreamAssist.Components.Spotify.Background;
@@ -17,9 +17,9 @@ namespace StreamAssist.Shell;
 
 public static class GlobalContext
 {
-    public static KeyboardComponentModel? KeyboardComponentModel { get; set; }
+    public static InputComponentModel? InputComponentModel { get; set; }
 
-    public static KeyboardInputManager? KeyboardInputManager { get; set; } // which keys are held right now
+    public static DeviceInputManager? DeviceInputManager { get; set; } // which keys are held right now
 
     public static VoicemeeterManager? VoicemeeterManager {get; set; }
 
