@@ -95,6 +95,8 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
     // bind boxes can't collapse (the button is hidden)
     public bool CanCollapse => false;
+    public bool CanCopy => true;
+    [RelayCommand] private void OnCopyButtonPressed() { if (_bindable != null) BlockClipboard.CopyBindable(_bindable); } // the whole binding, pastes on other keys / bind boxes
     public bool CanToggle => true;
     [RelayCommand] private void OnCollapseButtonPressed() { }
 

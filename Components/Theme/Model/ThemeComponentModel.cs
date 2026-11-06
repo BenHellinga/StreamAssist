@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json.Serialization;
 using Avalonia.Media;
+using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Styles;
@@ -12,28 +13,28 @@ namespace StreamAssist.Components.Theme.Model;
 
 
 
-// the app's look, app-wide: the palette colors (ThemePalette) and the base spacing values (SpacingRecipes.BaseValues),
-// each either changed by the user (saved to Config/theme.json) or the default the app ships with (Brushes.axaml /
-// Spacing.axaml, handed over by ThemeManager at startup). Only changes are saved, so a default changed in the app's
-// files still reaches everything the user left alone
-public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
+// the app's look, app-wide: named themes (configs, like the other tabs'), the one in use changing the palette colors
+// (ThemePalette) and the numbers (SpacingRecipes: styles, spacing, components) from the defaults the app ships with
+// (the resource files, handed over by ThemeManager at startup). With no theme the defaults are used and nothing can be
+// changed (the tab says to make one). Saved to Config/theme.json
+public class ThemeComponentModel : ModelBase
 {
-    // constants
-
-
-
-    public const double MaxSpacing = 100;
-
-
-
     // private
 
 
 
-    private Dictionary<string, string> _colors; // palette key -> "#rrggbb", only the changed ones
-    private Dictionary<string, double> _spacing; // base value key -> number, only the changed ones
+    private readonly ConfigSet<ThemeConfigModel> _configs;
     private Dictionary<string, string> _defaultColors;
-    private Dictionary<string, double> _defaultSpacing;
+    private Dictionary<string, double> _defaultValues;
+    private ThemeConfigModel? _subscribed; // the theme in use, whose changes are passed on
+
+
+
+    // public
+
+
+
+    [JsonIgnore] public ConfigSet<ThemeConfigModel> Configs => _configs;
 
 
 
@@ -41,18 +42,26 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
 
 
 
-    [JsonInclude] [JsonPropertyName("colors")]
-    private Dictionary<string, string> JsonColors
+    [JsonInclude] [JsonPropertyName("configs")]
+    private List<ThemeConfigModel> JsonConfigs
     {
-        get => _colors;
-        set => _colors = value ?? [];
+        get => _configs.Items.ToList();
+        set
+        {
+            _configs.LoadItems(value);
+            FollowSelected();
+        }
     }
 
-    [JsonInclude] [JsonPropertyName("spacing")]
-    private Dictionary<string, double> JsonSpacing
+    [JsonInclude] [JsonPropertyName("selectedConfig")]
+    private string? JsonSelectedConfig
     {
-        get => _spacing;
-        set => _spacing = value ?? [];
+        get => _configs.SelectedName;
+        set
+        {
+            _configs.LoadSelected(value);
+            FollowSelected();
+        }
     }
 
 
@@ -61,8 +70,8 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public event Action<string>? ColorChanged; // a palette key's color (changed or reset)
-    public event Action<string>? SpacingChanged; // a base value's number (changed or reset)
+    public event Action<string>? ColorChanged; // a palette key's color (changed, reset, or another theme chosen)
+    public event Action<string>? ValueChanged; // a number (changed, reset, or another theme chosen)
     public event Action? Changed; // something saved changed
 
 
@@ -73,26 +82,12 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
 
     public ThemeComponentModel()
     {
-        _colors = [];
-        _spacing = [];
+        _configs = new("theme", () => new ThemeConfigModel());
         _defaultColors = [];
-        _defaultSpacing = [];
-    }
+        _defaultValues = [];
 
-
-
-    // json callbacks
-
-
-
-    // drops what isn't (or is no longer) something the tab shows, or isn't a usable value
-    public void OnDeserialized()
-    {
-        foreach (var key in _colors.Keys.ToList())
-            if (!IsColorKey(key) || !Color.TryParse(_colors[key], out _)) _colors.Remove(key);
-
-        foreach (var key in _spacing.Keys.ToList())
-            if (!IsSpacingKey(key) || _spacing[key] is < 0 or > MaxSpacing || double.IsNaN(_spacing[key])) _spacing.Remove(key);
+        _configs.Changed += OnConfigsChanged;
+        _configs.SelectedChanged += OnSelectedChanged;
     }
 
 
@@ -102,25 +97,36 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
 
 
     // what the app ships with, read from its resources at startup (by ThemeManager, before anything is changed)
-    public void SetDefaults(IReadOnlyDictionary<string, string> colors, IReadOnlyDictionary<string, double> spacing)
+    public void SetDefaults(IReadOnlyDictionary<string, string> colors, IReadOnlyDictionary<string, double> values)
     {
         _defaultColors = new(colors);
-        _defaultSpacing = new(spacing);
+        _defaultValues = new(values);
     }
 
 
 
-    public string GetColor(string key) => _colors.TryGetValue(key, out var color) ? color : _defaultColors.GetValueOrDefault(key, "#000000");
-    public bool IsColorChanged(string key) => _colors.ContainsKey(key);
-    public double GetSpacing(string key) => _spacing.TryGetValue(key, out var value) ? value : _defaultSpacing.GetValueOrDefault(key);
-    public bool IsSpacingChanged(string key) => _spacing.ContainsKey(key);
+    public string GetColor(string key) =>
+        _configs.Selected != null && _configs.Selected.TryGetColor(key, out var color) ? color : _defaultColors.GetValueOrDefault(key, "#000000");
+
+    public bool IsColorChanged(string key) => _configs.Selected?.TryGetColor(key, out _) == true;
+
+    public double GetValue(string key) =>
+        _configs.Selected != null && _configs.Selected.TryGetValue(key, out var value) ? value : _defaultValues.GetValueOrDefault(key);
+
+    public bool IsValueChanged(string key) => _configs.Selected?.TryGetValue(key, out _) == true;
 
 
 
-    // a color as text: #rgb, #rrggbb, #aarrggbb or a name (red)
+    // a color as text: #rgb, #rrggbb, #aarrggbb or a name (red); the default again counts as unchanged
     public bool TrySetColor(string key, string text)
     {
-        if (!IsColorKey(key))
+        if (_configs.Selected is not { } theme)
+        {
+            AppLog.WriteError("can't set theme color, no theme");
+            return false;
+        }
+
+        if (!ThemePalette.Colors.Any(c => c.Key == key))
         {
             AppLog.WriteError($"can't set theme color, no such color ({key})");
             return false;
@@ -132,63 +138,55 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
             return false;
         }
 
-        SetColor(key, ToText(color));
+        var value = ToText(color);
+        theme.SetColor(key, value == _defaultColors.GetValueOrDefault(key) ? null : value);
         return true;
     }
 
 
 
-    // a number from 0 to MaxSpacing, as text (what the tab's boxes hold)
-    public bool TrySetSpacing(string key, string text)
+    // a number in the value's range, as text (what the tab's boxes hold); the default again counts as unchanged
+    public bool TrySetValue(string key, string text)
     {
-        if (!IsSpacingKey(key))
+        if (_configs.Selected is not { } theme)
         {
-            AppLog.WriteError($"can't set theme spacing, no such value ({key})");
+            AppLog.WriteError("can't set theme value, no theme");
             return false;
         }
 
-        if (!double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || value is < 0 or > MaxSpacing)
+        if (SpacingRecipes.AllValues.FirstOrDefault(v => v.Key == key) is not { } info)
         {
-            AppLog.WriteError($"can't set theme spacing, must be 0 to {MaxSpacing} ({text.Trim()})");
+            AppLog.WriteError($"can't set theme value, no such value ({key})");
             return false;
         }
 
-        SetSpacing(key, value);
+        if (!double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || !info.Accepts(value))
+        {
+            AppLog.WriteError($"can't set {info.Label.ToLowerInvariant()}, must be {info.Min} to {info.Max} ({text.Trim()})");
+            return false;
+        }
+
+        theme.SetValue(key, _defaultValues.TryGetValue(key, out var def) && value == def ? null : value);
         return true;
     }
 
 
 
-    public void ResetColor(string key)
-    {
-        if (!_colors.Remove(key)) return;
-
-        ColorChanged?.Invoke(key);
-        Changed?.Invoke();
-    }
-
-
-
-    public void ResetSpacing(string key)
-    {
-        if (!_spacing.Remove(key)) return;
-
-        SpacingChanged?.Invoke(key);
-        Changed?.Invoke();
-    }
+    public void ResetColor(string key) => _configs.Selected?.SetColor(key, null);
+    public void ResetValue(string key) => _configs.Selected?.SetValue(key, null);
 
 
 
     public void ResetAllColors()
     {
-        foreach (var key in _colors.Keys.ToList()) ResetColor(key);
+        foreach (var color in ThemePalette.Colors) ResetColor(color.Key);
     }
 
 
 
-    public void ResetAllSpacing()
+    public void ResetAll(IEnumerable<ThemeValue> values)
     {
-        foreach (var key in _spacing.Keys.ToList()) ResetSpacing(key);
+        foreach (var value in values) ResetValue(value.Key);
     }
 
 
@@ -199,39 +197,52 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
 
 
 
-    // private
+    // config callbacks
 
 
 
-    // the default again counts as unchanged (so it follows the app's files from then on)
-    private void SetColor(string key, string color)
+    private void OnConfigsChanged() => Changed?.Invoke();
+
+
+
+    // another theme (or none): everything may look different
+    private void OnSelectedChanged(ThemeConfigModel? oldTheme, ThemeConfigModel? newTheme)
     {
-        if (color == GetColor(key)) return;
+        FollowSelected();
 
-        if (color == _defaultColors.GetValueOrDefault(key)) _colors.Remove(key);
-        else _colors[key] = color;
-
-        ColorChanged?.Invoke(key);
-        Changed?.Invoke();
+        foreach (var color in ThemePalette.Colors) ColorChanged?.Invoke(color.Key);
+        foreach (var value in SpacingRecipes.AllValues) ValueChanged?.Invoke(value.Key);
     }
 
 
 
-    private void SetSpacing(string key, double value)
+    private void OnThemeColorChanged(string key) => ColorChanged?.Invoke(key);
+    private void OnThemeValueChanged(string key) => ValueChanged?.Invoke(key);
+
+
+
+    // helpers
+
+
+
+    // passes on the changes of the theme in use (the one kept, not re-read later, so it's always the one unsubscribed)
+    private void FollowSelected()
     {
-        if (value == GetSpacing(key)) return;
+        if (_subscribed == _configs.Selected) return;
 
-        if (_defaultSpacing.TryGetValue(key, out var def) && value == def) _spacing.Remove(key);
-        else _spacing[key] = value;
+        if (_subscribed != null)
+        {
+            _subscribed.ColorChanged -= OnThemeColorChanged;
+            _subscribed.ValueChanged -= OnThemeValueChanged;
+        }
 
-        SpacingChanged?.Invoke(key);
-        Changed?.Invoke();
+        _subscribed = _configs.Selected;
+        if (_subscribed != null)
+        {
+            _subscribed.ColorChanged += OnThemeColorChanged;
+            _subscribed.ValueChanged += OnThemeValueChanged;
+        }
     }
-
-
-
-    private static bool IsColorKey(string key) => ThemePalette.Colors.Any(c => c.Key == key);
-    private static bool IsSpacingKey(string key) => SpacingRecipes.BaseValues.Any(b => b.Key == key);
 
 
 
@@ -239,5 +250,17 @@ public class ThemeComponentModel : ModelBase, IJsonOnDeserialized
 
 
 
-    public override void Dispose() { }
+    public override void Dispose()
+    {
+        if (_subscribed != null)
+        {
+            _subscribed.ColorChanged -= OnThemeColorChanged;
+            _subscribed.ValueChanged -= OnThemeValueChanged;
+            _subscribed = null;
+        }
+
+        _configs.Changed -= OnConfigsChanged;
+        _configs.SelectedChanged -= OnSelectedChanged;
+        _configs.Dispose();
+    }
 }

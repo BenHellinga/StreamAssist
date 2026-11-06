@@ -56,6 +56,11 @@ public static class JsonFileStore
 
 
 
+    // whether the file has been made yet (e.g. a tab's config file before the app first saves it)
+    public static bool Exists(string name) => File.Exists(PathOf(name));
+
+
+
     // the file's data, or defaults if it doesn't exist yet. If it can't be read: defaults, the file is marked broken
     // (never saved over) and that's logged once
     public static T Load<T>(string name) where T : class, new()

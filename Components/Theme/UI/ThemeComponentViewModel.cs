@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Components.Theme.Model;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Shell;
@@ -13,8 +14,9 @@ namespace StreamAssist.Components.Theme.UI;
 
 
 
-// the Themes tab: a row per palette color, then a row per base spacing value. Each box applies when it's left (Enter or
-// clicking away), the app follows at once; a refused value is put back
+// the Themes tab: the config bar (named themes), then a row per palette color, per style value, per spacing value and
+// per component value (a subsection per component). Each box applies when it's left (Enter or clicking away), the app
+// follows at once; a refused value is put back. With no theme, the page says to make one
 public sealed partial class ThemeComponentViewModel : ViewModelBase
 {
     // private
@@ -22,8 +24,14 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
 
 
     private readonly ThemeComponentModel _model;
+    private readonly ConfigBarViewModel _configBar;
+    private readonly NoConfigViewModel _noConfig;
     private readonly List<ThemeColorRowViewModel> _colors;
-    private readonly List<ThemeSpacingRowViewModel> _spacing;
+    private readonly List<ThemeValueRowViewModel> _styles;
+    private readonly List<ThemeValueRowViewModel> _spacing;
+    private readonly List<ThemeGroupViewModel> _components;
+
+    [ObservableProperty] private bool _hasConfig;
 
 
 
@@ -31,8 +39,12 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
 
 
 
+    public ConfigBarViewModel ConfigBar => _configBar;
+    public NoConfigViewModel NoConfig => _noConfig;
     public IReadOnlyList<ThemeColorRowViewModel> Colors => _colors;
-    public IReadOnlyList<ThemeSpacingRowViewModel> Spacing => _spacing;
+    public IReadOnlyList<ThemeValueRowViewModel> Styles => _styles;
+    public IReadOnlyList<ThemeValueRowViewModel> Spacing => _spacing;
+    public IReadOnlyList<ThemeGroupViewModel> Components => _components;
 
 
 
@@ -57,8 +69,14 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
     public ThemeComponentViewModel(ThemeComponentModel model)
     {
         _model = model;
+        _configBar = new(_model.Configs);
+        _noConfig = new();
         _colors = ThemePalette.Colors.Select(c => new ThemeColorRowViewModel(_model, c.Key, c.Label)).ToList();
-        _spacing = SpacingRecipes.BaseValues.Select(b => new ThemeSpacingRowViewModel(_model, b.Key, b.Label)).ToList();
+        _styles = Rows(SpacingRecipes.StyleValues);
+        _spacing = Rows(SpacingRecipes.BaseValues);
+        _components = SpacingRecipes.ComponentValues.GroupBy(v => v.Group ?? "Other")
+            .Select(g => new ThemeGroupViewModel(g.Key, Rows(g))).ToList();
+        _hasConfig = _model.Configs.Selected != null;
 
         SubscribeToModel();
     }
@@ -70,7 +88,9 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
 
 
     [RelayCommand] private void ResetColors() => _model.ResetAllColors();
-    [RelayCommand] private void ResetSpacing() => _model.ResetAllSpacing();
+    [RelayCommand] private void ResetStyles() => _model.ResetAll(SpacingRecipes.StyleValues);
+    [RelayCommand] private void ResetSpacing() => _model.ResetAll(SpacingRecipes.BaseValues);
+    [RelayCommand] private void ResetComponents() => _model.ResetAll(SpacingRecipes.ComponentValues);
 
 
 
@@ -81,7 +101,8 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
     private void SubscribeToModel()
     {
         _model.ColorChanged += OnColorChanged;
-        _model.SpacingChanged += OnSpacingChanged;
+        _model.ValueChanged += OnValueChanged;
+        _model.Configs.ListChanged += OnConfigsListChanged;
     }
 
 
@@ -89,13 +110,26 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
     private void UnsubscribeFromModel()
     {
         _model.ColorChanged -= OnColorChanged;
-        _model.SpacingChanged -= OnSpacingChanged;
+        _model.ValueChanged -= OnValueChanged;
+        _model.Configs.ListChanged -= OnConfigsListChanged;
     }
 
 
 
     private void OnColorChanged(string key) => _colors.FirstOrDefault(r => r.Key == key)?.Refresh();
-    private void OnSpacingChanged(string key) => _spacing.FirstOrDefault(r => r.Key == key)?.Refresh();
+    private void OnValueChanged(string key) => AllValueRows().FirstOrDefault(r => r.Key == key)?.Refresh();
+    private void OnConfigsListChanged() => HasConfig = _model.Configs.Selected != null;
+
+
+
+    // helpers
+
+
+
+    private List<ThemeValueRowViewModel> Rows(IEnumerable<ThemeValue> values) =>
+        values.Select(v => new ThemeValueRowViewModel(_model, v.Key, v.Label)).ToList();
+
+    private IEnumerable<ThemeValueRowViewModel> AllValueRows() => _styles.Concat(_spacing).Concat(_components.SelectMany(g => g.Rows));
 
 
 
@@ -103,7 +137,22 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
 
 
 
-    public override void Dispose() => UnsubscribeFromModel();
+    public override void Dispose()
+    {
+        UnsubscribeFromModel();
+        _configBar.Dispose();
+    }
+}
+
+
+
+// a component's subsection in the Components section (e.g. Keyboard): its name and its values' rows
+public sealed class ThemeGroupViewModel(string name, IReadOnlyList<ThemeValueRowViewModel> rows) : ViewModelBase
+{
+    public string Name { get; } = name;
+    public IReadOnlyList<ThemeValueRowViewModel> Rows { get; } = rows;
+
+    public override void Dispose() { }
 }
 
 
@@ -135,7 +184,7 @@ public sealed partial class ThemeColorRowViewModel : ViewModelBase, ICommitOnLea
 
 
 
-    // shows the model's value (after a change, or putting back a refused one)
+    // shows the model's value (after a change, another theme, or putting back a refused one)
     public void Refresh()
     {
         Input = _model.GetColor(Key);
@@ -162,8 +211,8 @@ public sealed partial class ThemeColorRowViewModel : ViewModelBase, ICommitOnLea
 
 
 
-// a base spacing value: its label, its number, Reset while it's changed
-public sealed partial class ThemeSpacingRowViewModel : ViewModelBase, ICommitOnLeave
+// a number (a style, spacing or component value): its label, its number, Reset while it's changed
+public sealed partial class ThemeValueRowViewModel : ViewModelBase, ICommitOnLeave
 {
     private readonly ThemeComponentModel _model;
 
@@ -175,7 +224,7 @@ public sealed partial class ThemeSpacingRowViewModel : ViewModelBase, ICommitOnL
 
 
 
-    public ThemeSpacingRowViewModel(ThemeComponentModel model, string key, string label)
+    public ThemeValueRowViewModel(ThemeComponentModel model, string key, string label)
     {
         _model = model;
         Key = key;
@@ -189,21 +238,21 @@ public sealed partial class ThemeSpacingRowViewModel : ViewModelBase, ICommitOnL
 
     public void Refresh()
     {
-        Input = Text(_model.GetSpacing(Key));
-        IsChanged = _model.IsSpacingChanged(Key);
+        Input = Text(_model.GetValue(Key));
+        IsChanged = _model.IsValueChanged(Key);
     }
 
 
 
     public void Commit()
     {
-        if (Input.Trim() != Text(_model.GetSpacing(Key))) _model.TrySetSpacing(Key, Input);
+        if (Input.Trim() != Text(_model.GetValue(Key))) _model.TrySetValue(Key, Input);
         Refresh();
     }
 
 
 
-    [RelayCommand] private void Reset() => _model.ResetSpacing(Key);
+    [RelayCommand] private void Reset() => _model.ResetValue(Key);
 
 
 

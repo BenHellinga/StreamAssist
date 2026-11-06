@@ -1,0 +1,46 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- the sizes of controls and lines (the font sizes are in Typography.axaml). The Themes tab's Styles section edits
+         these (SpacingRecipes.StyleValues), so views use them as DynamicResource, or through a {s:Gap} recipe where a
+         property needs a Thickness or CornerRadius (BorderAll, Corners) -->
+
+
+
+    <!-- a divider's width, a splitter's width (the only things that set them) -->
+    <x:Double x:Key="ThinLineThickness">1</x:Double>
+    <x:Double x:Key="ThickLineThickness">5</x:Double>
+
+    <!-- the height of every single-line control: buttons, text boxes, dropdowns, bind boxes, tabs -->
+    <x:Double x:Key="ControlHeight">20</x:Double>
+
+    <!-- the Fluent theme's checkbox height (its minimum, and the grid its box sits in, set inside its template where a
+         style can't reach), brought to ControlHeight: app resources are found before the theme's. The Themes tab sets
+         it along with ControlHeight -->
+    <x:Double x:Key="CheckBoxMinHeight">20</x:Double>
+
+    <!-- a box's (text box, dropdown, bind box, empty slot) narrowest and widest: it starts at the min and grows to fit
+         its text or placeholder up to the max. Boxes in a list share their column's width (SharedSizeGroup), so rows line
+         up; plain text isn't sized by these -->
+    <x:Double x:Key="ControlMinWidth">100</x:Double>
+    <x:Double x:Key="ControlMaxWidth">300</x:Double>
+
+    <!-- a Small button (corner buttons on blocks, keys, docks; heading arrows, sort buttons), square ones as wide -->
+    <x:Double x:Key="SmallButtonSize">16</x:Double>
+
+    <!-- an icon inside a button (Styles/Resources/Icons.axaml) -->
+    <x:Double x:Key="IconSize">10</x:Double>
+
+    <!-- the border of a box (Border.Panel), button, text box or dropdown (BorderAll), and their rounding (Corners) -->
+    <x:Double x:Key="BoxBorderWidth">1</x:Double>
+    <x:Double x:Key="BoxCornerRadius">3</x:Double>
+
+
+
+    <!-- components (the Themes tab's Components section) -->
+
+    <!-- the input device boxes never get narrower than this: a smaller window scrolls them sideways instead, so the
+         keyboard picture stays usable -->
+    <x:Double x:Key="KeyboardMinWidth">1000</x:Double>
+
+</ResourceDictionary>

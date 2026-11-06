@@ -40,7 +40,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
 
                             <!-- the empty row at the end is a ghost box until a name is typed -->
-                            <TextBox Width="150" VerticalAlignment="Top"
+                            <TextBox MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" VerticalAlignment="Top"
                                      Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                                      Text="{Binding Name}" PlaceholderText="New button…"/>
 
@@ -50,7 +50,7 @@
                                     Classes.Bound="{Binding IsBound}"
                                     Classes.Disabled="{Binding IsDisabled}"
                                     Classes.Triggered="{Binding IsTriggered}"
-                                    MinWidth="100" MinHeight="25" VerticalAlignment="Top"
+                                    MinWidth="{DynamicResource ControlMinWidth}" MinHeight="{DynamicResource ControlHeight}" VerticalAlignment="Top"
                                     IsVisible="{Binding ShowBindBox}"
 
                                     DragDrop.AllowDrop="True"
@@ -61,16 +61,17 @@
 
                                 <!-- an invisible copy of the buttons keeps their room, so the text doesn't move -->
                                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" Classes.Placeholder="{Binding !IsBound}"
-                                               Margin="{s:Gap BoxTextMargin}" MaxWidth="200" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Classes="BoxText" Text="{Binding Name}" Classes.Placeholder="{Binding !IsBound}"
+                                               Margin="{s:Gap BoxTextMargin}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="BindLabel" Classes.Disabled="{Binding IsDisabled}"
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="BindLabel BoxText" Classes.Disabled="{Binding IsDisabled}"
                                                Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                Margin="{s:Gap BindLabelMargin}"/>
 
                                     <Panel Grid.Row="0" Grid.Column="1">
                                         <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
                                         <blocks:EditButtons Classes="HoverOnly"/>
+                                        <blocks:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
                                     </Panel>
                                 </Grid>
                             </Border>

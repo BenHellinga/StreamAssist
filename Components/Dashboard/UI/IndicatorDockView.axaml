@@ -32,10 +32,14 @@
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="ui:IndicatorRowViewModel">
-                    <TextBox Classes="Indicator" Width="150" HorizontalAlignment="Left"
-                             Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
-                             Classes.On="{Binding IsOn}" Classes.Off="{Binding IsOff}"
-                             Text="{Binding Name}" PlaceholderText="New indicator…"/>
+                    <!-- its name (coloured by its state), then a toggle (not on the empty last row) -->
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                        <TextBox Classes="Indicator" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                                 Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                 Classes.On="{Binding IsOn}" Classes.Off="{Binding IsOff}"
+                                 Text="{Binding Name}" PlaceholderText="New indicator…"/>
+                        <Button Content="Toggle" Command="{Binding TogglePressedCommand}" IsVisible="{Binding HasName}"/>
+                    </StackPanel>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

@@ -22,7 +22,7 @@
 
         <!-- the box's own corner buttons: hidden the same way, shown while the pointer is on the box (its own only, not
              the keys') -->
-        <Style Selector="blocks|EditButtons.HoverOnly">
+        <Style Selector="Border#Card > Panel > blocks|EditButtons.HoverOnly">
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
@@ -54,7 +54,7 @@
 
                 <!-- keyboard (each KeyViewModel becomes a KeyView through the ViewLocator), as wide as the box -->
 
-                <Decorator x:Name="KeyboardHost" Margin="{s:Gap PadAll}" IsVisible="{Binding !IsCollapsed}">
+                <keyboard:KeyboardHost x:Name="KeyboardHost" Margin="{s:Gap PadAll}" IsVisible="{Binding !IsCollapsed}">
                     <ItemsControl ItemsSource="{Binding Keys}"
                                   Width="{Binding CurrentWidth}"
                                   Height="{Binding CurrentHeight}">
@@ -78,7 +78,7 @@
                         </ItemsControl.ItemContainerTheme>
 
                     </ItemsControl>
-                </Decorator>
+                </keyboard:KeyboardHost>
 
             </DockPanel>
 

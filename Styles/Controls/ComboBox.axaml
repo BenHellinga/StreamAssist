@@ -1,11 +1,14 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:StreamAssist.Styles">
 
     <Style Selector="ComboBox">
         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
         <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+        <Setter Property="BorderThickness" Value="{s:Gap BorderAll}"/>
+        <Setter Property="CornerRadius" Value="{s:Gap Corners}"/>
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
         <Setter Property="Padding" Value="8,0,0,0"/>

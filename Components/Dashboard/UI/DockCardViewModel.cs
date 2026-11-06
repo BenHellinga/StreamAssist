@@ -18,6 +18,7 @@ public sealed class DockCardViewModel(DockKind kind) : ViewModelBase, IDraggable
         DockKind.Button => "Buttons you name, each running its own binding when pressed",
         DockKind.Variable => "Variables by name, to read or type their values ({var.name} and Set Variable use the same ones)",
         DockKind.Indicator => "Names you type, green or red as Set Indicator blocks naming this dock turn them on or off (e.g. muted)",
+        DockKind.Blank => "An empty spot: paste a copied dock into it (its paste button shows on hover)",
         _ => "",
     };
 

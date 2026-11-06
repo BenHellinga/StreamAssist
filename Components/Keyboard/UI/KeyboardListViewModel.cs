@@ -42,6 +42,14 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable, IDroppa
 
 
 
+    // a copied input device box pastes as an InputDeviceCopy (BlockClipboard)
+    static KeyboardListViewModel()
+    {
+        BlockClipboard.RegisterKind(InputDeviceCopy.Kind, data => System.Text.Json.JsonSerializer.Deserialize<InputDeviceCopy>(data));
+    }
+
+
+
     // constructor
 
 
@@ -78,7 +86,8 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable, IDroppa
 
 
     public bool CanAcceptDropPayload(object payload) =>
-        payload is NewInputDevicePayload || payload is KeyboardSlotDragPayload dragged && _list.Slots.Contains(dragged.Slot);
+        payload is NewInputDevicePayload || payload is KeyboardSlotDragPayload dragged && _list.Slots.Contains(dragged.Slot)
+        || payload is InputDeviceCopy && _list.Configs.Selected != null; // a pasted box
 
 
 
@@ -90,6 +99,7 @@ public partial class KeyboardListViewModel : ViewModelBase, IDisposable, IDroppa
 
         if (payload is NewInputDevicePayload card) _list.TryCreateSlot(card.Layout, index, out _);
         else if (payload is KeyboardSlotDragPayload dragged) _list.TryMoveSlot(dragged.Slot, index);
+        else if (payload is InputDeviceCopy copy) _list.TryCreateSlotCopy(copy.Layout, copy.IsDisabled, copy.Keys, index);
     }
 
 

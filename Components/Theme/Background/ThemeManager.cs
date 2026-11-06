@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -13,8 +14,8 @@ namespace StreamAssist.Components.Theme.Background;
 
 // puts the theme on the app: reads the shipped defaults from its resources once, then applies the user's changes at
 // startup and whenever one changes, and saves them (Config/theme.json).
-// A color sets every brush it paints in place (ThemePalette); a spacing value replaces its
-// resource at the app level (found before Spacing.axaml's), which views follow through DynamicResource and {s:Gap}
+// A color sets every brush it paints in place (ThemePalette); a number replaces its resource (and the ones that always
+// follow it) at the app level, found before the resource files', which views follow through DynamicResource and {s:Gap}
 public class ThemeManager : IDisposable
 {
     // private
@@ -33,13 +34,13 @@ public class ThemeManager : IDisposable
     public ThemeManager(ThemeComponentModel model)
     {
         _model = model;
-        _model.SetDefaults(ReadDefaultColors(), ReadDefaultSpacing());
+        _model.SetDefaults(ReadDefaultColors(), ReadDefaultValues());
 
         foreach (var color in ThemePalette.Colors) ApplyColor(color.Key);
-        foreach (var value in SpacingRecipes.BaseValues) ApplySpacing(value.Key);
+        foreach (var value in SpacingRecipes.AllValues) ApplyValue(value.Key);
 
         _model.ColorChanged += ApplyColor;
-        _model.SpacingChanged += ApplySpacing;
+        _model.ValueChanged += ApplyValue;
         _model.Changed += OnModelChanged;
     }
 
@@ -73,13 +74,17 @@ public class ThemeManager : IDisposable
 
 
 
-    private void ApplySpacing(string key)
+    private void ApplyValue(string key)
     {
         var app = Application.Current;
-        if (app == null) return;
+        var info = SpacingRecipes.AllValues.FirstOrDefault(v => v.Key == key);
+        if (app == null || info == null) return;
 
-        if (_model.IsSpacingChanged(key)) app.Resources[key] = _model.GetSpacing(key);
-        else app.Resources.Remove(key); // back to Spacing.axaml's
+        foreach (var resource in new[] { key }.Concat(info.AlsoSets ?? []))
+        {
+            if (_model.IsValueChanged(key)) app.Resources[resource] = _model.GetValue(key);
+            else app.Resources.Remove(resource); // back to the resource file's
+        }
     }
 
 
@@ -103,13 +108,13 @@ public class ThemeManager : IDisposable
 
 
 
-    private static Dictionary<string, double> ReadDefaultSpacing()
+    private static Dictionary<string, double> ReadDefaultValues()
     {
-        var spacing = new Dictionary<string, double>();
-        foreach (var (key, _, _) in SpacingRecipes.BaseValues)
-            if (Application.Current?.TryFindResource(key, out var found) == true && found is double value)
-                spacing[key] = value;
-        return spacing;
+        var values = new Dictionary<string, double>();
+        foreach (var value in SpacingRecipes.AllValues)
+            if (Application.Current?.TryFindResource(value.Key, out var found) == true && found is double number)
+                values[value.Key] = number;
+        return values;
     }
 
 
@@ -121,7 +126,7 @@ public class ThemeManager : IDisposable
     public void Dispose()
     {
         _model.ColorChanged -= ApplyColor;
-        _model.SpacingChanged -= ApplySpacing;
+        _model.ValueChanged -= ApplyValue;
         _model.Changed -= OnModelChanged;
     }
 }

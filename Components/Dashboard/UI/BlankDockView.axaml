@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.BlankDockView"
+             x:DataType="ui:BlankDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+             xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a blank dock: nothing but its grey outline (DockView) and, while the pointer is on it and a dock was copied, a
+         paste button top right, in the row of its corner buttons, just left of drag / remove (BlankPasteMargin). The
+         whole area is the paste button's Droppable host, filled so the pointer finds it anywhere -->
+
+    <Border Classes="Droppable" Background="{StaticResource PanelFill}">
+        <blocks:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap BlankPasteMargin}"/>
+    </Border>
+
+</UserControl>

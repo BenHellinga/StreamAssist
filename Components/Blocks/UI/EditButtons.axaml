@@ -4,41 +4,56 @@
              x:DataType="ui:IEditButtons"
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+             xmlns:controls="using:StreamAssist.Core.Controls"
         xmlns:s="using:StreamAssist.Styles">
 
-    <!-- small corner buttons for a key or block -->
+    <!-- small corner buttons for a key or block. Where they don't all fit (a small key), the least important are left
+         out first (PriorityStackPanel: higher Priority stays longest): drag and remove stay, then collapse, on/off, and
+         copy goes first (a key's script can still be copied from its blocks) -->
 
-    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource CornerGap}" Margin="{s:Gap CornerMargin}"
-                HorizontalAlignment="Right" VerticalAlignment="Top">
+    <controls:PriorityStackPanel Spacing="{DynamicResource CornerGap}" Margin="{s:Gap CornerMargin}"
+                                 HorizontalAlignment="Right" VerticalAlignment="Top">
+
+        <!-- copy (BlockClipboard): a block's tree, a key's or bind box's whole binding, a keyboard box -->
+
+        <Button Classes="Square Small Copy" controls:PriorityStackPanel.Priority="-1"
+                Command="{Binding CopyButtonPressedCommand}"
+                IsVisible="{Binding CanCopy}">
+            <Path Classes="Icon Line" Data="{StaticResource CopyIcon}"/>
+        </Button>
 
         <!-- collapse (blocks only) -->
 
-        <Button Classes="Square Small Collapse"
+        <Button Classes="Square Small Collapse" controls:PriorityStackPanel.Priority="1"
                 Content="▴"
                 Command="{Binding CollapseButtonPressedCommand}"
                 IsVisible="{Binding CanCollapse}"/>
 
-        <!-- toggle disable (not on docks) -->
+        <!-- switch off (－, while it's on) / back on (＋, while it's off), not on docks -->
 
-        <Button Classes="Square Small ToggleEnabled"
-                Content="+"
+        <Button Classes="Square Small ToggleEnabled" controls:PriorityStackPanel.Priority="0"
                 Command="{Binding ToggleButtonPressedCommand}"
-                IsVisible="{Binding CanToggle}"/>
+                IsVisible="{Binding CanToggle}">
+            <Panel>
+                <TextBlock Text="－" IsVisible="{Binding !IsDisabled}"/>
+                <TextBlock Text="＋" IsVisible="{Binding IsDisabled}"/>
+            </Panel>
+        </Button>
 
         <!-- drag handle (same size as the Small buttons next to it) -->
 
-        <Border Classes="Panel Draggable"
-                Width="15" Height="15"
+        <Border Classes="Panel Draggable" controls:PriorityStackPanel.Priority="3"
+                Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
                 PointerPressed="OnHandlePointerPressed">
             <TextBlock Text="⠿" HorizontalAlignment="Center"/>
         </Border>
 
         <!-- remove -->
 
-        <Button Classes="Square Small RemoveAction"
+        <Button Classes="Square Small RemoveAction" controls:PriorityStackPanel.Priority="2"
                 Content="X"
                 Command="{Binding RemoveButtonPressedCommand}"/>
 
-    </StackPanel>
+    </controls:PriorityStackPanel>
 
 </UserControl>

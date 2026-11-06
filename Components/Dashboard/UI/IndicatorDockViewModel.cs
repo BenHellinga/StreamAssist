@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Dashboard.Model;
 using StreamAssist.Core.Mvvm;
 
@@ -10,7 +11,7 @@ namespace StreamAssist.Components.Dashboard.UI;
 
 // an indicator dock's body: its rows (the last one always empty, typing a name in it adds the next), each coloured by
 // its state, which this dock keeps (Set Indicator names the dock and the row)
-public sealed class IndicatorDockViewModel : ViewModelBase
+public sealed partial class IndicatorDockViewModel : ViewModelBase
 {
     // private
 
@@ -37,6 +38,14 @@ public sealed class IndicatorDockViewModel : ViewModelBase
         _dock.Indicators.RowInserted += OnRowInserted;
         _dock.Indicators.RowRemoved += OnRowRemoved;
     }
+
+
+
+    // ui events
+
+
+
+    [RelayCommand] private void OnToggleAllPressed() => _dock.ToggleAllIndicators();
 
 
 
@@ -87,6 +96,7 @@ public sealed partial class IndicatorRowViewModel : ViewModelBase
     [ObservableProperty] private string _name;
     [ObservableProperty] private bool _isOn;
     [ObservableProperty] private bool _isOff;
+    [ObservableProperty] private bool _hasName; // the empty last row has no toggle
 
 
 
@@ -125,6 +135,11 @@ public sealed partial class IndicatorRowViewModel : ViewModelBase
 
 
 
+    // on ↔ off (one never set turns on)
+    [RelayCommand] private void OnTogglePressed() => _dock.TrySetIndicator(_row.Name, null, out _);
+
+
+
     // model events
 
 
@@ -148,6 +163,7 @@ public sealed partial class IndicatorRowViewModel : ViewModelBase
 
     private void UpdateState()
     {
+        HasName = !_row.IsEmpty;
         var state = _row.IsEmpty ? null : _dock.IndicatorState(_row.Name);
         IsOn = state == true;
         IsOff = state == false;

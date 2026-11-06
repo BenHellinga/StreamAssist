@@ -13,11 +13,37 @@
          in one fills that space and its border lands at the ring -->
 
     <UserControl.Styles>
+        <!-- an empty slot is a row like a value box: its sides padded, rows spaced by the list they're in (a block placed
+             in it fills to the ring at the sides) -->
         <Style Selector="ui|DropZone">
-            <Setter Property="Margin" Value="{s:Gap PadAll}"/>
+            <Setter Property="Margin" Value="{s:Gap PadSides}"/>
         </Style>
+        <!-- a value box is a text row: its sides padded (after a label, only its right: the label keeps the gap), its
+             rows spaced by the list they're in -->
         <Style Selector="Border.ValueDrop">
-            <Setter Property="Margin" Value="{s:Gap PadAll}"/>
+            <Setter Property="Margin" Value="{s:Gap ValueDropMargin}"/>
+        </Style>
+        <Style Selector="Border.ValueDrop.Labelled">
+            <Setter Property="Margin" Value="{s:Gap ValueDropAfterLabelMargin}"/>
+        </Style>
+
+        <Style Selector="TextBlock.BlockTitle">
+            <Setter Property="Margin" Value="{s:Gap BlockTitleMargin}"/>
+        </Style>
+        <Style Selector="TextBlock.BlockTitle.HasBody">
+            <Setter Property="Margin" Value="{s:Gap BlockTitleBodyMargin}"/>
+        </Style>
+        <Style Selector="ItemsControl.Settings.PadBelow">
+            <Setter Property="Margin" Value="{s:Gap PadBelow}"/>
+        </Style>
+        <Style Selector="ItemsControl.Slots.AfterSettings">
+            <Setter Property="Margin" Value="{s:Gap BlockSlotsMargin}"/>
+        </Style>
+        <Style Selector="ItemsControl.Slots.PadBelow">
+            <Setter Property="Margin" Value="{s:Gap PadBelow}"/>
+        </Style>
+        <Style Selector="ItemsControl.Slots.AfterSettings.PadBelow">
+            <Setter Property="Margin" Value="{s:Gap BlockSlotsPadBelowMargin}"/>
         </Style>
     </UserControl.Styles>
 
@@ -29,7 +55,7 @@
                 Classes.Triggered="{Binding IsTriggered}"
                 Classes.Disabled="{Binding IsDisabled}"
                 IsVisible="{Binding IsCollapsed}"
-                Width="100" Height="25" HorizontalAlignment="Left"
+                Width="{DynamicResource ControlMinWidth}" Height="{DynamicResource ControlHeight}" HorizontalAlignment="Left"
 
                 PointerPressed="OnCollapsedPointerPressed">
             <TextBlock Text="▾" HorizontalAlignment="Center"/>
@@ -51,22 +77,29 @@
 
                 <Grid ColumnDefinitions="*,Auto">
                     <!-- placed blocks only show their name, the description is in the block list (and on hover here) -->
-                    <TextBlock Grid.Column="0" Classes="Title" Text="{Binding Name}" Margin="{s:Gap BlockTitleMargin}"/>
+                    <TextBlock Grid.Column="0" Classes="Title BlockTitle" Classes.HasBody="{Binding HasBody}" Text="{Binding Name}"/>
                     <!-- only shown while the pointer is on this card (not a block inside it), hidden by opacity so the
                          title row keeps its size -->
                     <ui:EditButtons Grid.Column="1" x:Name="Buttons" Opacity="0" IsHitTestVisible="False" Margin="{s:Gap RingCornerMargin}"/>
                 </Grid>
 
-                <!-- settings, then the slots under them (or beside them, for blocks that ask) -->
+                <!-- settings, then the slots under them (or beside them, for blocks that ask), MediumVerticalGap under the
+                     title, rows SmallVerticalGap apart -->
 
-                <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto">
+                <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" Margin="{s:Gap BlockBodyTop}" IsVisible="{Binding HasBody}">
 
                     <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
 
-                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Configurators}" Margin="{s:Gap PadBelow}">
+                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Configurators}"
+                                  Classes="Settings" Classes.PadBelow="{Binding SettingsPadBelow}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="configurator:ConfigurableParameterViewModel">
-                                <ContentControl Content="{Binding}" Margin="{s:Gap BlockBodyMargin}"
+                                <ContentControl Content="{Binding}" Margin="{s:Gap PadSides}"
                                                 ContentTemplate="{Binding Configurator, Converter={StaticResource ConfiguratorTemplateSelector}}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -75,7 +108,8 @@
                     <!-- nested slots (each becomes a BlockSlotView or BlockSlotListView through the ViewLocator) -->
 
                     <ItemsControl Grid.Row="{Binding SlotsRow}" Grid.Column="{Binding SlotsColumn}"
-                                  ItemsSource="{Binding Slots}" Margin="{s:Gap BlockSlotsMargin}"
+                                  ItemsSource="{Binding Slots}"
+                                  Classes="Slots" Classes.AfterSettings="{Binding SlotsAfterSettings}" Classes.PadBelow="{Binding SlotsPadBelow}"
                                   IsVisible="{Binding HasSlots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

@@ -25,7 +25,7 @@ public class ChatbotSaveManager : IDisposable
 
 
 
-    private const string FileName = "chatbot";
+    public const string FileName = "chatbot";
     private const string CredentialsSection = "twitchApp";
 
     private readonly ChatbotComponentModel _model;

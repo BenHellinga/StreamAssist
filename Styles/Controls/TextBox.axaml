@@ -1,16 +1,19 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:StreamAssist.Styles">
 
     <Style Selector="TextBox">
         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
         <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+        <Setter Property="BorderThickness" Value="{s:Gap BorderAll}"/>
+        <Setter Property="CornerRadius" Value="{s:Gap Corners}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
         <!-- one line is ControlHeight tall (like a bind box); boxes that wrap or take Enter grow from there -->
         <Setter Property="MinHeight" Value="{DynamicResource ControlHeight}"/>
-        <Setter Property="Padding" Value="8,3,6,3"/>
+        <Setter Property="Padding" Value="8,1,6,1"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
@@ -27,6 +30,7 @@
     <!-- focus -->
 
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="{s:Gap BorderAll}"/> <!-- the theme thickens it when focused -->
         <Setter Property="Background" Value="{DynamicResource PanelFillToggle}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderToggle}"/>
     </Style>

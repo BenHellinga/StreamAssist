@@ -7,7 +7,7 @@
         xmlns:s="using:StreamAssist.Styles">
 
     <!-- by where things come from: App (the app's own events, e.g. App Started), then Twitch (its alerts, then the
-         channel point redeems with New redeem under them). A divider after each source, not between Alerts and
+         channel point redeems with New redeem under them). A divider between sources, not between Alerts and
          Redeems. Each section's content is inset, the dividers run edge to edge. Testing is the editor's Test button.
          The config bar sits right above (ChatbotComponentView), the divider under it is this page's first line -->
 
@@ -72,7 +72,7 @@
                                                 DragDrop.Drop="OnRedeemDrop">
                                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
                                                 <!-- the empty row at the end has a dim border until a title is typed -->
-                                                <TextBox Width="200" VerticalAlignment="Top"
+                                                <TextBox MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" VerticalAlignment="Top"
                                                          Classes.New="{Binding Title, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                                                          Text="{Binding Title}" PlaceholderText="New redeem…"/>
 
@@ -90,12 +90,12 @@
                             <Grid IsVisible="{Binding IsNewRewardOpen}"
                                   ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
                                 <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label" Text="Title" VerticalAlignment="Center"/>
-                                <TextBox Grid.Row="0" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardTitle}"
+                                <TextBox Grid.Row="0" Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" Text="{Binding NewRewardTitle}"
                                          PlaceholderText="Unique on your channel" MaxLength="45"/>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label" Text="Cost" VerticalAlignment="Center"/>
-                                <TextBox Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="{Binding NewRewardCost}"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" HorizontalAlignment="Left" Text="{Binding NewRewardCost}"/>
                                 <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label" Text="Prompt" VerticalAlignment="Center"/>
-                                <TextBox Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Left" Text="{Binding NewRewardPrompt}"
+                                <TextBox Grid.Row="2" Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" Text="{Binding NewRewardPrompt}"
                                          PlaceholderText="What viewers see (optional)"/>
                                 <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label" Text="Viewer types text" VerticalAlignment="Center"/>
                                 <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding NewRewardNeedsInput}" VerticalAlignment="Center"/>
@@ -104,8 +104,6 @@
                             </Grid>
                         </StackPanel>
                     </StackPanel>
-
-                    <Border Classes="Divider"/>
 
                 </StackPanel>
             </Border>

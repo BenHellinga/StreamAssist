@@ -26,6 +26,7 @@ public class BlockBranchListViewModel : ViewModelBase, IDroppable
 
 
     public ObservableCollection<BlockBranchViewModel> Branches => _branches;
+    public bool HasBranches => _branches.Count > 0; // none: the branch list is hidden, so it adds no gap above the end zone
 
 
 
@@ -108,11 +109,13 @@ public class BlockBranchListViewModel : ViewModelBase, IDroppable
 
 
 
-    // the first branch reads "if", the rest "else if"
+    // the first branch reads "if", the rest "else if" (called whenever a branch comes or goes)
     private void UpdateHeaders()
     {
         for (int i = 0; i < _branches.Count; i++)
             _branches[i].Header = i == 0 ? "if" : "else if";
+
+        OnPropertyChanged(nameof(HasBranches));
     }
 
 

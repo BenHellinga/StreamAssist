@@ -15,7 +15,7 @@
 
         <TextBox DockPanel.Dock="Top"
                  Margin="{s:Gap PadAll}"
-                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
+                 Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                  Text="{Binding SearchText}"
                  PlaceholderText="Search blocks…"/>
 

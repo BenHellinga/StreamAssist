@@ -8,9 +8,9 @@
          each line's [time] can be muted, and new lines scroll it to the bottom -->
 
     <ScrollViewer x:Name="LogScrollViewer" Classes="Gapped">
-        <!-- fills the whole log (transparent background) so clicking empty space still focuses it for Ctrl+A
-             (inset with Padding, not Margin, so filling the log doesn't make it scrollable) -->
-        <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent" Padding="{s:Gap PadSides}"
+        <!-- fills the whole log (transparent background) so clicking empty space still focuses it for Ctrl+A (the
+             Gapped scroll area keeps it ContentGap from the lines) -->
+        <SelectableTextBlock x:Name="LogText" Classes="OutputLine" Background="Transparent"
                              MinHeight="{Binding #LogScrollViewer.Viewport.Height}"/>
     </ScrollViewer>
 

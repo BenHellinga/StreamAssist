@@ -106,7 +106,9 @@ public class KeybindViewModel : BindableEditorViewModel
     {
         if (_key == null || _config == null) return;
 
-        var label = $"Key: {_key.Label.Replace('\n', '-')}"; // the tab's config is in the bar above
+        // the key's name on one line, without the spacing its two-line picture uses (the tab's config is in the bar above)
+        var name = string.Join("-", _key.Label.Split('\n').Select(part => part.Trim()).Where(part => part != ""));
+        var label = $"Key: {name}";
         var config = _config;
         var vk = _key.VK;
 

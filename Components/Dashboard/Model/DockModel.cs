@@ -2,15 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace StreamAssist.Components.Dashboard.Model;
 
 
 
-// what a dock shows (the dock list's cards, in this order), saved by name
+// what a dock shows (the dock list's cards, in this order), saved by name. Blank is an empty spot a copied dock is
+// pasted into (it takes the blank's place)
 [JsonConverter(typeof(JsonStringEnumConverter<DockKind>))]
-public enum DockKind { Console, Timer, Button, Indicator, Variable }
+public enum DockKind { Console, Timer, Button, Indicator, Variable, Blank }
 
 
 
@@ -18,7 +20,9 @@ public enum DockKind { Console, Timer, Button, Indicator, Variable }
 // to its place in the layout and never changes. A console's lines are only kept while the app runs; a button dock's
 // indicator and variable docks' rows are saved. A timer dock's timers and an indicator dock's on/off states live here
 // too, only while the app runs (blocks name the dock, then the timer or indicator). Variable docks show the Data tab's
-// variables, which live there
+// variables, which live there. A dock can be turned off (saved, not a blank one): then everything that would change it
+// does nothing, quietly (a message, a timer started or changed, an indicator set, a button pressed); reading it still
+// works
 public sealed class DockModel : IDisposable
 {
     // constants
@@ -41,6 +45,7 @@ public sealed class DockModel : IDisposable
     private readonly DockNameList _variables;
     private readonly TimersModel _timers;
     private readonly Dictionary<string, bool> _indicatorStates; // by indicator name, case ignored
+    private bool _isDisabled;
 
 
 
@@ -56,6 +61,8 @@ public sealed class DockModel : IDisposable
     [JsonIgnore] public DockNameList Indicators => _indicators; // an indicator dock's rows
     [JsonIgnore] public DockNameList Variables => _variables; // a variable dock's rows
     [JsonIgnore] public TimersModel Timers => _timers; // a timer dock's running timers
+    [JsonIgnore] public bool IsDisabled => _isDisabled;
+    [JsonIgnore] public bool CanDisable => _kind != DockKind.Blank;
 
 
 
@@ -82,6 +89,17 @@ public sealed class DockModel : IDisposable
     {
         get => _kind;
         set => _kind = value;
+    }
+
+    [JsonInclude] [JsonPropertyName("isDisabled")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    private bool JsonIsDisabled
+    {
+        get => _isDisabled;
+        set
+        {
+            _isDisabled = value;
+            _timers.SetIsOff(value);
+        }
     }
 
     // only written for button docks
@@ -117,6 +135,7 @@ public sealed class DockModel : IDisposable
     public event Action? NameChanged;
     public event Action? Changed; // anything saved changed
     public event Action<string>? IndicatorStateChanged; // the indicator's name
+    public event Action<bool>? IsDisabledChanged;
 
 
 
@@ -147,6 +166,26 @@ public sealed class DockModel : IDisposable
 
 
 
+    // a copy of a dock (pasted), the same way it's saved, under another id and name (null if it can't be read back)
+    public static DockModel? CopyOf(DockModel dock, string id, string name)
+    {
+        try
+        {
+            var copy = JsonSerializer.Deserialize<DockModel>(JsonSerializer.Serialize(dock));
+            if (copy == null) return null;
+
+            copy._id = id;
+            copy._name = name;
+            return copy;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+
+
     // how a kind is shown (its card in the dock list, a new dock's name); the enum names are the saved ones, so they stay
     public static string KindTitle(DockKind kind) => kind switch
     {
@@ -154,6 +193,7 @@ public sealed class DockModel : IDisposable
         DockKind.Button => "Buttons",
         DockKind.Indicator => "Indicators",
         DockKind.Variable => "Variables",
+        DockKind.Blank => "Blank",
         _ => kind.ToString(),
     };
 
@@ -174,23 +214,40 @@ public sealed class DockModel : IDisposable
 
 
 
+    // on / off (not a blank dock): off, nothing changes it until it's back on
+    public void SetIsDisabled(bool isDisabled)
+    {
+        if (!CanDisable || isDisabled == _isDisabled) return;
+
+        _isDisabled = isDisabled;
+        _timers.SetIsOff(isDisabled);
+        IsDisabledChanged?.Invoke(isDisabled);
+        Changed?.Invoke();
+    }
+
+
+
     // adds a console line, the oldest go past MaxLines (nothing is saved)
     public void WriteLine(string message)
     {
+        if (_isDisabled) return;
         Lines.Add($"[{DateTime.Now:HH:mm:ss}] {message}");
         while (Lines.Count > MaxLines) Lines.RemoveAt(0);
     }
 
 
 
-    public void ClearLines() => Lines.Clear();
+    public void ClearLines()
+    {
+        if (!_isDisabled) Lines.Clear();
+    }
 
 
 
     // a button of this dock was pressed: runs its binding (refused if it's not this dock's, unbound or disabled)
     public bool TryPressButton(DockButton button)
     {
-        if (!_buttons.Rows.Contains(button)) return false;
+        if (_isDisabled || !_buttons.Rows.Contains(button)) return false;
         return button.TryRun();
     }
 
@@ -206,6 +263,7 @@ public sealed class DockModel : IDisposable
     public bool TrySetIndicator(string name, bool? isOn, out string error)
     {
         error = "";
+        if (_isDisabled) return true; // quietly nothing
         var key = name.Trim();
         if (!HasIndicator(key))
         {
@@ -215,6 +273,16 @@ public sealed class DockModel : IDisposable
 
         SetIndicator(key, isOn ?? IndicatorState(key) != true);
         return true;
+    }
+
+
+
+    // every named indicator flipped (an indicator dock's header), one never set turns on
+    public void ToggleAllIndicators()
+    {
+        if (_isDisabled) return;
+        foreach (var row in _indicators.Rows.Where(r => !r.IsEmpty).ToList())
+            TrySetIndicator(row.Name, null, out _);
     }
 
 
@@ -237,6 +305,7 @@ public sealed class DockModel : IDisposable
     // every button of this dock, top to bottom (its header's ▶): unbound or disabled ones are skipped
     public void PressAllButtons()
     {
+        if (_isDisabled) return;
         foreach (var button in _buttons.Rows.ToList())
             button.TryRun();
     }

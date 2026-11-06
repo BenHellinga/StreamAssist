@@ -17,6 +17,11 @@
     <Style Selector="TextBlock.Label">
     </Style>
 
+    <!-- a label ending in a colon ("Name:"), so the gap after it is measured from the colon (ColonTrim) -->
+    <Style Selector="TextBlock.Colon">
+        <Setter Property="Margin" Value="{s:Gap ColonTrim}"/>
+    </Style>
+
     <!-- a heading under a big title (e.g. Alerts / Redeems): the font's empty space above and below its letters is
          pulled back, so the text itself is the stack's 10 from what's around it -->
     <Style Selector="TextBlock.Subheading">
@@ -44,6 +49,11 @@
 
     <Style Selector="TextBlock.BindLabel.Disabled">
         <Setter Property="Foreground" Value="{DynamicResource Disabled}"/>
+    </Style>
+
+    <!-- text inside a box (a bind box's name and label line): the size of a text box's text -->
+    <Style Selector="TextBlock.BoxText">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
     </Style>
 
     <Style Selector="TextBlock.Placeholder">

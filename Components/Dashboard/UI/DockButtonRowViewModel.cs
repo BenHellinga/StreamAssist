@@ -40,6 +40,8 @@ public partial class DockButtonRowViewModel : ViewModelBase, IDroppable, IEditBu
 
 
     public bool CanCollapse => false; // the collapse button is hidden
+    public bool CanCopy => true;
+    [RelayCommand] private void OnCopyButtonPressed() { if (_bindable != null) BlockClipboard.CopyBindable(_bindable); } // the whole binding, pastes on other keys / bind boxes
     public bool CanToggle => true;
 
 
@@ -66,6 +68,7 @@ public partial class DockButtonRowViewModel : ViewModelBase, IDroppable, IEditBu
         _button.NameChanged += OnButtonNameChanged;
         _button.BindableChanged += OnButtonBindableChanged;
         DockButtonSelection.Changed += OnSelectionChanged;
+        _dock.IsDisabledChanged += OnDockIsDisabledChanged;
     }
 
 
@@ -193,10 +196,14 @@ public partial class DockButtonRowViewModel : ViewModelBase, IDroppable, IEditBu
 
 
 
+    private void OnDockIsDisabledChanged(bool _) => UpdateShown();
+
+
+
     private void UpdateShown()
     {
         ShowBindBox = !_button.IsEmpty;
-        CanPress = _bindable != null && !_bindable.IsDisabled;
+        CanPress = _bindable != null && !_bindable.IsDisabled && !_dock.IsDisabled;
     }
 
 
@@ -236,6 +243,7 @@ public partial class DockButtonRowViewModel : ViewModelBase, IDroppable, IEditBu
         _button.NameChanged -= OnButtonNameChanged;
         _button.BindableChanged -= OnButtonBindableChanged;
         DockButtonSelection.Changed -= OnSelectionChanged;
+        _dock.IsDisabledChanged -= OnDockIsDisabledChanged;
         SetBindable(null);
         _flash.Dispose();
     }

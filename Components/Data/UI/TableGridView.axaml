@@ -9,35 +9,35 @@
     <!-- header: the table (rename / delete, and Delete columns mode, green while on, for custom tables), then search rows |
          a line | the grid: the id column, a line, then a column per table column (its header: name with the sort button
          over its right end, and type), an empty box after the last one to make a new column, a line under the headers, a
-         row per table row, then an empty row to make a new one. Every box is the same width. Every box in the grid looks
+         row per table row, then an empty row to make a new one. A column is as wide as its header (which grows with its name), its cells take that width. Every box in the grid looks
          like plain text (a border only while typing, a type dropdown keeps its arrow), Enter or clicking away saves -->
 
     <UserControl.Styles>
         <Style Selector="TextBox.Cell">
-            <Setter Property="Width" Value="160"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Height" Value="{StaticResource ControlHeight}"/>
+            <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <!-- a column name: room on the right for the sort (and, in delete mode, delete) buttons over it -->
         <Style Selector="TextBox.Name">
-            <Setter Property="Padding" Value="6,0,52,0"/>
+            <Setter Property="Padding" Value="{s:Gap SortNamePadding}"/>
         </Style>
         <!-- Delete columns while it's on -->
         <Style Selector="Button.Active /template/ ContentPresenter, Button.Active:pointerover /template/ ContentPresenter">
             <Setter Property="BorderBrush" Value="{DynamicResource Bound}"/>
         </Style>
         <Style Selector="ComboBox.Kind">
-            <Setter Property="Width" Value="160"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
         </Style>
         <!-- its text the size of the cells' (the app's TextBlock style would make it bigger) -->
         <Style Selector="ComboBox.Kind TextBlock">
             <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
         </Style>
-        <!-- every row is this tall (a cell and SmallVerticalGap), so the id column and the cells beside it always line up -->
+        <!-- every row is a cell tall with SmallVerticalGap under it, so the id column and the cells beside it always line up -->
         <Style Selector="Grid.Row">
-            <Setter Property="Height" Value="30"/>
+            <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
+            <Setter Property="Margin" Value="{s:Gap SmallGapBelow}"/>
         </Style>
     </UserControl.Styles>
 
@@ -46,27 +46,27 @@
         <!-- the table -->
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
-                    Margin="{s:Gap PadAll}" Height="{StaticResource ControlHeight}">
+                    Margin="{s:Gap PadAll}" Height="{DynamicResource ControlHeight}">
             <TextBlock Classes="Label" Text="{Binding TableName}" VerticalAlignment="Center" IsVisible="{Binding !IsCustom}"/>
-            <TextBox Text="{Binding TableNameInput}" Width="200" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
+            <TextBox Text="{Binding TableNameInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
                      IsVisible="{Binding IsCustom}"/>
-            <Button Content="Rename" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RenamePressedCommand}" IsVisible="{Binding IsCustom}"/>
-            <Button Content="{Binding DeleteTableText}" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteTablePressedCommand}" IsVisible="{Binding IsCustom}"/>
-            <Button Content="Delete columns" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteColumnsPressedCommand}" IsVisible="{Binding IsCustom}"
+            <Button Content="Rename" Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RenamePressedCommand}" IsVisible="{Binding IsCustom}"/>
+            <Button Content="{Binding DeleteTableText}" Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteTablePressedCommand}" IsVisible="{Binding IsCustom}"/>
+            <Button Content="Delete columns" Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding DeleteColumnsPressedCommand}" IsVisible="{Binding IsCustom}"
                     Classes.Active="{Binding IsDeleteColumnsMode}"/>
-            <Button Content="Renumber ids" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RenumberPressedCommand}"/>
+            <Button Content="Renumber ids" Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RenumberPressedCommand}"/>
         </StackPanel>
 
         <!-- search rows (as you type) | a query (Run query or Enter applies it, see RowQuery) -->
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Margin="{s:Gap SearchRowMargin}">
-            <TextBox Text="{Binding SearchText}" Width="200" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Search rows…"/>
-            <TextBox Classes="Query" Text="{Binding QueryText}" Width="400" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Query, e.g. user:bud points>100">
+            <TextBox Text="{Binding SearchText}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Search rows…"/>
+            <TextBox Classes="Query" Text="{Binding QueryText}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center" PlaceholderText="Query, e.g. user:bud points>100">
                 <TextBox.KeyBindings>
                     <KeyBinding Gesture="Enter" Command="{Binding RunQueryPressedCommand}"/>
                 </TextBox.KeyBindings>
             </TextBox>
-            <Button Content="Run query" Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RunQueryPressedCommand}"/>
+            <Button Content="Run query" Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center" Command="{Binding RunQueryPressedCommand}"/>
         </StackPanel>
 
         <Border DockPanel.Dock="Top" Classes="Divider"/>
@@ -80,7 +80,7 @@
                 <Grid ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="{s:Gap ScrollInset}" HorizontalAlignment="Left">
 
                     <!-- the id header: its sort button -->
-                    <Grid Grid.Row="0" Grid.Column="0" Width="50" VerticalAlignment="Top" Height="{StaticResource ControlHeight}" Margin="{s:Gap PadRight}">
+                    <Grid Grid.Row="0" Grid.Column="0" Width="50" VerticalAlignment="Top" Height="{DynamicResource ControlHeight}" Margin="{s:Gap PadRight}">
                         <TextBlock Classes="Label" Text="id" VerticalAlignment="Center"/>
                         <Button Classes="Square Small" Content="{Binding IdSortText}" Command="{Binding SortByIdPressedCommand}"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -99,8 +99,10 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="ui:ColumnHeaderViewModel">
-                                    <StackPanel Width="160" Spacing="{DynamicResource SmallVerticalGap}">
-                                        <Grid Height="{StaticResource ControlHeight}">
+                                    <!-- the column's width: the header grows with its name (min to max), the cells below take its width
+                                         (OnHeaderSizeChanged), never their own text's -->
+                                    <StackPanel MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Spacing="{DynamicResource SmallVerticalGap}" SizeChanged="OnHeaderSizeChanged">
+                                        <Grid Height="{DynamicResource ControlHeight}">
                                             <TextBox Classes="Cell Name Commit" Classes.Plain="{Binding !IsEditable}" Text="{Binding NameInput}" IsReadOnly="{Binding !IsEditable}"/>
                                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="{s:Gap SortButtonsMargin}">
                                                 <Button Classes="Square Small" Content="－" Command="{Binding DeletePressedCommand}" IsVisible="{Binding IsDeleteMode}"/>
@@ -113,12 +115,11 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBox Classes="Cell New Commit" Text="{Binding NewColumnName}" PlaceholderText="New column…"
+                        <TextBox Classes="Cell New Commit" Text="{Binding NewColumnName}" PlaceholderText="New column…" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
                                  VerticalAlignment="Top" IsVisible="{Binding IsCustom}"/>
                     </StackPanel>
 
-                    <!-- the line under the headers, 10 from them and 10 from the first row's boxes (7.5 + the 2.5 a 25 tall box sits
-                         down in its 30 tall row) -->
+                    <!-- the line under the headers, ContentGap from them and from the first row's boxes -->
                     <Border Grid.Row="1" Grid.ColumnSpan="3" Classes="Divider" Margin="{s:Gap TableHeaderLineMargin}"/>
 
                     <!-- the ids -->
@@ -145,7 +146,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="ui:CellViewModel">
-                                                <TextBox Classes="Cell Commit" Text="{Binding Text}"/>
+                                                <TextBox Classes="Cell Commit" Text="{Binding Text}" Width="{Binding Header.Width}"/>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -158,7 +159,7 @@
 
                     <!-- the empty row: a value typed in any of its cells makes a new row (no id until then) -->
                     <Grid Grid.Row="3" Grid.Column="0" Classes="Row"/>
-                    <ItemsControl Grid.Row="3" Grid.Column="2" Margin="{s:Gap PadLeft}" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Center" Height="30">
+                    <ItemsControl Grid.Row="3" Grid.Column="2" Margin="{s:Gap PadLeft}" ItemsSource="{Binding NewRowCells}" VerticalAlignment="Top" Height="{DynamicResource ControlHeight}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" VerticalAlignment="Center"/>
@@ -166,7 +167,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="ui:CellViewModel">
-                                <TextBox Classes="Cell New Commit" Text="{Binding Text}" PlaceholderText="{Binding Placeholder}"/>
+                                <TextBox Classes="Cell New Commit" Text="{Binding Text}" PlaceholderText="{Binding Placeholder}" Width="{Binding Header.Width}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

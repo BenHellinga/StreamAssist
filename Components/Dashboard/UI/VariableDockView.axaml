@@ -26,14 +26,14 @@
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="ui:VariableRowViewModel">
-                    <Grid ColumnDefinitions="150,*" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
 
-                        <TextBox Grid.Column="0" VerticalAlignment="Top"
+                        <TextBox Grid.Column="0" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" VerticalAlignment="Top"
                                  Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                                  Classes.Missing="{Binding IsMissing}"
                                  Text="{Binding Name}" PlaceholderText="New variable…"/>
 
-                        <TextBox Grid.Column="1" Classes="Commit" Text="{Binding ValueInput}" PlaceholderText="Value…"
+                        <TextBox Grid.Column="1" Classes="Commit" Text="{Binding ValueInput}" PlaceholderText="Value…" IsReadOnly="{Binding IsFrozen}"
                                  AcceptsReturn="True" TextWrapping="Wrap" IsVisible="{Binding ShowValue}"/>
                     </Grid>
                 </DataTemplate>

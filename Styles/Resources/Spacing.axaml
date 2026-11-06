@@ -6,9 +6,7 @@
          follow live; the Themes tab edits them (its changes are saved in Config/theme.json and applied over these at
          startup).
 
-         lines and regions:
-           ThinLineThickness   1   a divider's width (the only thing that sets it)
-           ThickLineThickness  5   a splitter's width (the only thing that sets it)
+         lines and regions (the lines' widths are in Sizes.axaml):
            LineGap             5   the empty zone every line keeps on each side (the window's edge counts as a line).
                                    Lines bring it themselves (their styles): nothing else goes in it, not content and not
                                    other lines, so a divider stops LineGap short of a splitter
@@ -25,9 +23,6 @@
 
 
 
-    <x:Double x:Key="ThinLineThickness">1</x:Double>
-    <x:Double x:Key="ThickLineThickness">5</x:Double>
-
     <x:Double x:Key="LineGap">5</x:Double>
     <x:Double x:Key="ContentGap">10</x:Double>
 
@@ -43,14 +38,7 @@
 
 
 
-    <!-- sizes (not spacing, not in the Themes tab) -->
-
-    <!-- the height of every single-line control: buttons, text boxes, dropdowns, bind boxes, tabs -->
-    <x:Double x:Key="ControlHeight">25</x:Double>
-
-    <!-- the Fluent theme's checkbox height (its minimum, and the grid its box sits in, set inside its template where a
-         style can't reach), brought to ControlHeight: app resources are found before the theme's -->
-    <x:Double x:Key="CheckBoxMinHeight">25</x:Double>
+    <!-- layout sizes (not in the Themes tab) -->
 
     <!-- extra room below a tab's scrolled content, so the last row can be scrolled up to a comfortable spot
          (Padding on a Border wrapping the content of each tab's main scroll area and the bottom editor;

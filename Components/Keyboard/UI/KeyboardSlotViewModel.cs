@@ -56,6 +56,11 @@ public partial class KeyboardSlotViewModel : ViewModelBase, IEditButtons
     public ObservableCollection<DeviceMenuItem> DeviceMenuItems => _deviceMenuItems;
     public ObservableCollection<KeyViewModel> Keys => _keys;
     public bool CanCollapse => true;
+    public bool CanCopy => true;
+
+    // the box (its layout, on/off) and its keys' bindings in the config in use, pasted on the ghost slot at the end
+    [RelayCommand] private void OnCopyButtonPressed() =>
+        BlockClipboard.Copy(InputDeviceCopy.Kind, new InputDeviceCopy(_slot.Layout, _slot.IsDisabled, _slot.SelectedConfig?.Keybinds));
     public bool CanToggle => true;
 
 

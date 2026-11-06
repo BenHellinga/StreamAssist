@@ -1,4 +1,6 @@
+using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -26,13 +28,16 @@ public partial class BlockView : ViewBase
 
 
     // pointer events bubble up through every card the pointer is in, so a card only takes the hover when the
-    // pointer's nearest block is itself
+    // pointer's nearest block is itself, and not while it's on a bind box inside it (a Clickable box: it shows its own
+    // buttons)
     private void OnCardPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (_hovered == this) return;
-        if ((e.Source as Visual)?.FindAncestorOfType<BlockView>(includeSelf: true) != this) return;
+        if (e.Source is not Visual source || source.FindAncestorOfType<BlockView>(includeSelf: true) != this) return;
 
-        SetHovered(this);
+        var onBindBox = source.GetSelfAndVisualAncestors().TakeWhile(v => v != this)
+            .Any(v => v is Border border && border.Classes.Contains("Clickable"));
+        var hovered = onBindBox ? null : this;
+        if (_hovered != hovered) SetHovered(hovered);
     }
 
 

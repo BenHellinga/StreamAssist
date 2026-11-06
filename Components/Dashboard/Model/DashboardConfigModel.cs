@@ -192,6 +192,45 @@ public sealed class DashboardConfigModel : INamedConfig, IJsonOnDeserialized
 
 
 
+    // a copied dock pasted over a blank one: it takes the blank's place (and its id, which ties it to the layout), with
+    // the copied dock's name if that's free, otherwise a numbered one ("Timers 2")
+    public bool TryPasteDock(DockModel blank, DockModel copied)
+    {
+        if (!_docks.Contains(blank) || blank.Kind != DockKind.Blank)
+        {
+            AppLog.WriteError("can't paste a dock, only onto a blank dock");
+            return false;
+        }
+
+        if (copied.Kind == DockKind.Blank)
+        {
+            AppLog.WriteError("can't paste a blank dock");
+            return false;
+        }
+
+        var name = copied.Name.Trim() == "" ? DockModel.KindTitle(copied.Kind) : copied.Name.Trim();
+        var title = name;
+        for (var n = 2; FindDock(name) is { } other && other != blank; n++) name = $"{title} {n}";
+
+        if (DockModel.CopyOf(copied, blank.Id, name) is not { } dock)
+        {
+            AppLog.WriteError($"can't paste dock '{copied.Name}', it couldn't be copied");
+            return false;
+        }
+
+        _docks[_docks.IndexOf(blank)] = dock;
+        blank.Changed -= OnDockChanged;
+        dock.Changed += OnDockChanged;
+
+        DocksChanged?.Invoke();
+        LayoutChanged?.Invoke(); // same layout, another dock in the blank's region
+        Changed?.Invoke();
+        blank.Dispose(); // after the views let go of it
+        return true;
+    }
+
+
+
     // the dock goes, and its region closes up (the neighbours share its space)
     public bool TryRemoveDock(DockModel dock)
     {

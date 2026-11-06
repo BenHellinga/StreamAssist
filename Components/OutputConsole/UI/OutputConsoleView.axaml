@@ -15,13 +15,13 @@
         <!-- title, Clear beside it (as on a console dock) -->
 
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
-                    Margin="{s:Gap PadAll}" Height="{StaticResource ControlHeight}">
+                    Margin="{s:Gap PadAll}" Height="{DynamicResource ControlHeight}">
 
             <TextBlock Classes="Label" Text="Output" VerticalAlignment="Center"/>
 
             <Button Content="Clear"
                     Command="{Binding ClearCommand}"
-                    Height="{StaticResource ControlHeight}"
+                    Height="{DynamicResource ControlHeight}"
                     VerticalContentAlignment="Center"/>
 
         </StackPanel>

@@ -25,7 +25,7 @@
                     <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
 
                         <!-- an empty row (the one at the end that adds the next) has a dim border, in the background -->
-                        <TextBox Grid.Column="0" Width="160" VerticalAlignment="Top" Margin="{s:Gap PadLeft}"
+                        <TextBox Grid.Column="0" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" VerticalAlignment="Top" Margin="{s:Gap PadLeft}"
                                  Classes.New="{Binding Pattern, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                                  Text="{Binding Pattern}" PlaceholderText="Text or /regex/…"/>
 

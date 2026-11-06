@@ -16,12 +16,14 @@
         <ContentControl Content="{Binding NoConfig}" IsVisible="{Binding !HasConfig}"/>
 
         <ScrollViewer IsVisible="{Binding HasConfig}"
-                      HorizontalScrollBarVisibility="Disabled"
+                      HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto"
                       Classes="Gapped">
             <!-- the padding is room to scroll the last box up (Spacing.axaml ScrollEndPadding) -->
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}">
+                <!-- never narrower than KeyboardMinWidth: a narrow window scrolls sideways, the keyboard pictures stay
+                     usable (they don't ask for width themselves, KeyboardHost, so wider windows still widen them) -->
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}" MinWidth="{DynamicResource KeyboardMinWidth}">
                     <ItemsControl ItemsSource="{Binding Slots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

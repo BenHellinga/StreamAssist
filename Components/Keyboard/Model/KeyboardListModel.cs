@@ -168,6 +168,31 @@ public class KeyboardListModel : ModelBase, IJsonOnDeserialized
 
 
 
+    // a new box like a copied one (pasted): its layout, on / off, and copies of its keys' bindings in the config in use
+    // (the device is left for the user to pick)
+    public bool TryCreateSlotCopy(string layout, bool isDisabled, IReadOnlyDictionary<ushort, BindableModel> keybinds, int index)
+    {
+        if (_configs.Selected == null)
+        {
+            AppLog.WriteError("can't paste an input device, no keyboard config");
+            return false;
+        }
+
+        if (!TryCreateSlot(layout, index, out var slot)) return false;
+
+        slot.SetIsDisabled(isDisabled);
+        var keys = _configs.Selected.ForSlot(slot.Id);
+        foreach (var (vk, bindable) in keybinds)
+        {
+            var copy = BindableModel.DeepCopy(bindable);
+            if (!keys.TryBindKey(vk, copy)) copy.Dispose();
+        }
+
+        return true;
+    }
+
+
+
     // a slot to just before the one now at index (the list's length = last), e.g. dragged there to reorder
     public bool TryMoveSlot(KeyboardSlotModel slot, int index)
     {

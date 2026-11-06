@@ -655,8 +655,53 @@ internal static class EngineChecks
             tm.AddTimeAll(TimeSpan.FromSeconds(-20));
             tm.FinishDue();
             Check("timers: taking more than is left ends this lap now", ended.Count == 3 && tm.Timers.Count == 1);
+            tm.AddTime(tm.Timers[0], TimeSpan.FromSeconds(2));
             tm.Finish(tm.Timers[0]);
-            Check("timers: finishing a repeating one ends it for good", ended.Count == 4 && tm.Timers.Count == 0);
+            Check("timers: finishing a repeating one early runs its end and starts a fresh lap", ended.Count == 4 && tm.Timers.Count == 1
+                && tm.Timers[0].LeftAt(clock) == TimeSpan.FromSeconds(5));
+            tm.Kill(tm.Timers[0]);
+            Check("timers: only killing a repeating one ends it (without its end)", ended.Count == 4 && tm.Timers.Count == 0);
+
+            // a dock turned off takes no changes (quietly), a blank dock takes a pasted copy of another
+            {
+                cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Console);
+                var console = cfg.Docks.Last();
+                console.SetIsDisabled(true);
+                console.WriteLine("hi");
+                Check("docks: a turned-off console takes no messages", console.IsDisabled && console.Lines.Count == 0);
+                console.SetIsDisabled(false);
+                console.WriteLine("hi");
+                Check("docks: back on it does", console.Lines.Count == 1);
+
+                cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Timer);
+                var offTimers = cfg.Docks.Last();
+                offTimers.SetIsDisabled(true);
+                Check("docks: a turned-off timer dock starts nothing, and says nothing",
+                    offTimers.Timers.TryStart("x", TimeSpan.FromSeconds(5), Restart, null, null, out var offError) && offError == "" && offTimers.Timers.Timers.Count == 0);
+
+                cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Indicator);
+                var lights = cfg.Docks.Last();
+                lights.Indicators.Rows[0].SetName("Mic");
+                lights.ToggleAllIndicators();
+                Check("docks: toggle all turns indicators never set on", lights.IndicatorState("Mic") == true);
+                lights.SetIsDisabled(true);
+                lights.ToggleAllIndicators();
+                Check("docks: a turned-off indicator dock doesn't change", lights.IndicatorState("Mic") == true
+                    && lights.TrySetIndicator("Nope", false, out var lightsError) && lightsError == "");
+
+                cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Blank);
+                var blank = cfg.Docks.Last();
+                var blankId = blank.Id;
+                blank.SetIsDisabled(true);
+                Check("docks: a blank dock can't be turned off", !blank.IsDisabled);
+                Check("docks: a dock pasted over a blank one takes its place and id, under a free name",
+                    cfg.TryPasteDock(blank, console) && cfg.Docks.FirstOrDefault(d => d.Id == blankId) is { } pastedDock
+                    && pastedDock != console && pastedDock.Kind == StreamAssist.Components.Dashboard.Model.DockKind.Console
+                    && pastedDock.Name == console.Name + " 2" && !cfg.Docks.Any(d => d.Kind == StreamAssist.Components.Dashboard.Model.DockKind.Blank));
+                Check("docks: only a blank dock takes a paste", !cfg.TryPasteDock(console, lights));
+
+                foreach (var dock in new[] { console, offTimers, lights }.Concat(cfg.Docks.Where(d => d.Id == blankId)).ToList()) cfg.TryRemoveDock(dock);
+            }
 
             // the timer blocks, on a timer dock named in their Dock slot
             var timerDock = (cfg.TryAddDock(StreamAssist.Components.Dashboard.Model.DockKind.Timer) ? D("Timers") : null)!;
@@ -2913,40 +2958,95 @@ internal static class EngineChecks
                 System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(file))!;
 
             var theme = new StreamAssist.Components.Theme.Model.ThemeComponentModel();
-            theme.SetDefaults(new Dictionary<string, string> { ["ColorEnabled"] = "#3d9963" }, new Dictionary<string, double> { ["LineGap"] = 5 });
+            theme.SetDefaults(new Dictionary<string, string> { ["ColorEnabled"] = "#3d9963", ["ColorLine"] = "#2e2e2e" },
+                new Dictionary<string, double> { ["LineGap"] = 5, ["FontSizeSmall"] = 12 });
+            Check("theme: with no theme the defaults are used and nothing can be changed", theme.GetColor("ColorEnabled") == "#3d9963"
+                && !theme.TrySetColor("ColorEnabled", "red") && !theme.TrySetValue("LineGap", "7") && theme.GetValue("LineGap") == 5);
+
+            theme.Configs.TryCreate("Dark");
             var colorEvents = 0;
             var saves = 0;
             theme.ColorChanged += _ => colorEvents++;
             theme.Changed += () => saves++;
 
-            Check("theme: unchanged values are the defaults", theme.GetColor("ColorEnabled") == "#3d9963" && theme.GetSpacing("LineGap") == 5
-                && !theme.IsColorChanged("ColorEnabled") && !theme.IsSpacingChanged("LineGap"));
+            Check("theme: a new theme starts as the defaults", theme.GetColor("ColorEnabled") == "#3d9963" && theme.GetValue("LineGap") == 5
+                && !theme.IsColorChanged("ColorEnabled") && !theme.IsValueChanged("LineGap"));
             Check("theme: a color is kept as #rrggbb, any way it's typed", theme.TrySetColor("ColorEnabled", " #C08A2E ") && theme.GetColor("ColorEnabled") == "#c08a2e"
                 && theme.IsColorChanged("ColorEnabled") && theme.TrySetColor("ColorEnabled", "red") && theme.GetColor("ColorEnabled") == "#ff0000");
-            Check("theme: not a color, an unknown key or a spacing out of range is refused",
+            Check("theme: not a color, an unknown key or a number out of its range is refused",
                 !theme.TrySetColor("ColorEnabled", "greenish") && theme.GetColor("ColorEnabled") == "#ff0000" && !theme.TrySetColor("ColorNope", "#000000")
-                && !theme.TrySetSpacing("LineGap", "-1") && !theme.TrySetSpacing("LineGap", "abc") && !theme.TrySetSpacing("LineGapz", "5")
-                && !theme.TrySetSpacing("LineGap", "101") && theme.GetSpacing("LineGap") == 5);
-            Check("theme: typing the default again counts as unchanged", theme.TrySetSpacing("LineGap", "7.5") && theme.IsSpacingChanged("LineGap")
-                && theme.TrySetSpacing("LineGap", "5") && !theme.IsSpacingChanged("LineGap"));
+                && !theme.TrySetValue("LineGap", "-1") && !theme.TrySetValue("LineGap", "abc") && !theme.TrySetValue("LineGapz", "5")
+                && !theme.TrySetValue("LineGap", "101") && theme.GetValue("LineGap") == 5
+                && !theme.TrySetValue("FontSizeSmall", "0") && !theme.TrySetValue("FontSizeSmall", "NaN") && theme.GetValue("FontSizeSmall") == 12);
+            Check("theme: typing the default again counts as unchanged", theme.TrySetValue("LineGap", "7.5") && theme.IsValueChanged("LineGap")
+                && theme.TrySetValue("LineGap", "5") && !theme.IsValueChanged("LineGap"));
+            theme.TrySetValue("FontSizeSmall", "13");
+            theme.ResetAll(StreamAssist.Styles.SpacingRecipes.BaseValues);
+            Check("theme: resetting the spacing leaves the styles", theme.IsValueChanged("FontSizeSmall") && theme.GetValue("FontSizeSmall") == 13);
+            theme.ResetAll(StreamAssist.Styles.SpacingRecipes.StyleValues);
             theme.ResetAllColors();
             Check("theme: reset goes back to the default, each change is one event and one save",
-                theme.GetColor("ColorEnabled") == "#3d9963" && !theme.IsColorChanged("ColorEnabled") && colorEvents == 3 && saves == 5);
+                theme.GetColor("ColorEnabled") == "#3d9963" && !theme.IsColorChanged("ColorEnabled") && !theme.IsValueChanged("FontSizeSmall") && colorEvents == 3 && saves == 7);
+
+            theme.TrySetColor("ColorLine", "#555555");
+            theme.Configs.TryCreate("Light");
+            Check("theme: a new theme copies the one in use", theme.GetColor("ColorLine") == "#555555");
+            theme.TrySetColor("ColorLine", "#111111");
+            colorEvents = 0;
+            theme.Configs.TrySelect("Dark");
+            Check("theme: switching themes shows (and tells about) every color of the new one",
+                theme.GetColor("ColorLine") == "#555555" && colorEvents == StreamAssist.Styles.ThemePalette.Colors.Count);
+            theme.Configs.TryDelete("Dark");
+            theme.Configs.TryDelete("Light");
+            Check("theme: deleting the last theme goes back to the defaults", theme.Configs.Selected == null && theme.GetColor("ColorLine") == "#2e2e2e");
+            theme.Dispose();
 
             var loaded = System.Text.Json.JsonSerializer.Deserialize<StreamAssist.Components.Theme.Model.ThemeComponentModel>(
-                """{"colors": {"ColorLine": "#555555", "ColorGone": "#000000", "ColorText": "nope"}, "spacing": {"ContentGap": 12, "LineGap": -3, "Old": 1}}""")!;
-            Check("theme: loading drops unknown keys and unusable values", loaded.IsColorChanged("ColorLine") && loaded.GetColor("ColorLine") == "#555555"
-                && !loaded.IsColorChanged("ColorText") && !loaded.IsColorChanged("ColorGone") && loaded.IsSpacingChanged("ContentGap")
-                && loaded.GetSpacing("ContentGap") == 12 && !loaded.IsSpacingChanged("LineGap"));
-            Check("theme: every palette color and base value is in the app's resource files", StreamAssist.Styles.ThemePalette.Colors.All(c =>
-                    System.IO.File.ReadAllText(System.IO.Path.Combine(RepoDir(), "Styles", "Resources", "Brushes.axaml")).Contains($"x:Key=\"{c.Key}\""))
-                && StreamAssist.Styles.SpacingRecipes.BaseValues.All(b =>
-                    System.IO.File.ReadAllText(System.IO.Path.Combine(RepoDir(), "Styles", "Resources", "Spacing.axaml")).Contains($"x:Key=\"{b.Key}\"")));
+                """{"configs": [{"name": "Dark", "colors": {"ColorLine": "#555555", "ColorGone": "#000000", "ColorText": "nope"}, "values": {"ContentGap": 12, "LineGap": -3, "Old": 1, "FontSizeTitle": 2}}, {"name": "Other"}], "selectedConfig": "Dark"}""")!;
+            Check("theme: loading keeps the selected theme, drops unknown keys and unusable values", loaded.Configs.SelectedName == "Dark"
+                && loaded.IsColorChanged("ColorLine") && loaded.GetColor("ColorLine") == "#555555"
+                && !loaded.IsColorChanged("ColorText") && !loaded.IsColorChanged("ColorGone") && loaded.IsValueChanged("ContentGap")
+                && loaded.GetValue("ContentGap") == 12 && !loaded.IsValueChanged("LineGap") && !loaded.IsValueChanged("FontSizeTitle"));
+            string Resources(params string[] files) => string.Concat(files.Select(f => System.IO.File.ReadAllText(System.IO.Path.Combine(RepoDir(), "Styles", "Resources", f))));
+            Check("theme: every palette color and number is in the app's resource files, letters unique",
+                StreamAssist.Styles.ThemePalette.Colors.All(c => Resources("Brushes.axaml").Contains($"x:Key=\"{c.Key}\""))
+                && StreamAssist.Styles.SpacingRecipes.AllValues.All(v => Resources("Spacing.axaml", "Sizes.axaml", "Typography.axaml").Contains($"x:Key=\"{v.Key}\""))
+                && StreamAssist.Styles.SpacingRecipes.AllValues.Select(v => v.Letter).Distinct().Count() == StreamAssist.Styles.SpacingRecipes.AllValues.Count());
             Check("theme: every spacing recipe only uses known letters", StreamAssist.Styles.SpacingRecipes.Recipes.Keys.All(name =>
             {
                 try { return StreamAssist.Styles.SpacingRecipes.Compute(name) != null; }
                 catch (InvalidOperationException) { return false; }
             }));
+        }
+
+        // ---- copy / paste (BlockClipboard, no system clipboard here: it's kept in the app) ----
+        {
+            var list = new StreamAssist.Components.Blocks.Containers.ListBlock();
+            ((BlockSlotList)list.Slots[0]).TryInsertBlock(new WaitAction(), 0);
+            StreamAssist.Components.Blocks.UI.BlockClipboard.CopyBlock(list);
+
+            var script = new BindableModel();
+            var root = new StreamAssist.Components.Blocks.UI.BlockSlotListViewModel(script.Root);
+            var wait = new WaitAction();
+            var seconds = new StreamAssist.Components.Blocks.UI.ValueSlotViewModel((ValueSlot)wait.Slots[0]);
+            Check("paste: a block tree pastes where it fits, as its own copy",
+                StreamAssist.Components.Blocks.UI.BlockClipboard.TryPasteOn(root, root) && script.Root.Blocks is [StreamAssist.Components.Blocks.Containers.ListBlock pasted]
+                && pasted != list && ((BlockSlotList)pasted.Slots[0]).Blocks is [WaitAction]);
+            Check("paste: an action doesn't fit a value slot", !StreamAssist.Components.Blocks.UI.BlockClipboard.CanPasteOn(seconds));
+
+            ((ValueSlot)wait.Slots[0]).SetText("5");
+            StreamAssist.Components.Blocks.UI.BlockClipboard.CopyBlock(new TextLengthBlock());
+            Check("paste: a value block pastes over a value slot's typed text", StreamAssist.Components.Blocks.UI.BlockClipboard.TryPasteOn(seconds, seconds)
+                && ((ValueSlot)wait.Slots[0]).BlockSlot.Block is TextLengthBlock);
+
+            StreamAssist.Components.Blocks.UI.BlockClipboard.CopyBindable(script);
+            var emptyRoot = new StreamAssist.Components.Blocks.UI.BlockSlotListViewModel(new BindableModel().Root);
+            Check("paste: a whole binding doesn't paste into block slots", !StreamAssist.Components.Blocks.UI.BlockClipboard.CanPasteOn(emptyRoot));
+
+            StreamAssist.Components.Blocks.UI.BlockClipboard.ReadText = () => Task.FromResult<string?>("just some text");
+            await StreamAssist.Components.Blocks.UI.BlockClipboard.RefreshAsync();
+            StreamAssist.Components.Blocks.UI.BlockClipboard.ReadText = null;
+            Check("paste: text that isn't ours pastes nowhere", !StreamAssist.Components.Blocks.UI.BlockClipboard.CanPasteOn(emptyRoot));
         }
 
         return failed;

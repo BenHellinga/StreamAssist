@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
@@ -55,6 +56,14 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     public int SlotsRow => _block.SlotsBesideSettings ? 0 : 1;
     public bool HasSlots => _block.Slots.Count > 0; // a block without any doesn't show the (empty) slot area
     public int SlotsColumn => _block.SlotsBesideSettings ? 1 : 0;
+
+    // how the card is spaced (BlockView): rows SmallVerticalGap apart, the body ends ContentPadding above the bottom
+    // border (except slots beside the settings, which end at the ring)
+    public bool HasSettings => _configurators.Count > 0;
+    public bool HasBody => HasSettings || HasSlots;
+    public bool SettingsPadBelow => HasSettings && (!HasSlots || _block.SlotsBesideSettings); // nothing under them
+    public bool SlotsAfterSettings => HasSettings && HasSlots && !_block.SlotsBesideSettings;
+    public bool SlotsPadBelow => HasSlots && !_block.SlotsBesideSettings; // slots beside the settings (Parse Parameter's) end at the ring
 
 
 
@@ -115,6 +124,8 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
 
 
     public bool CanCollapse => true;
+    public bool CanCopy => true;
+    [RelayCommand] private void OnCopyButtonPressed() => BlockClipboard.CopyBlock(_block); // the block and everything in it
     public bool CanToggle => true;
     [RelayCommand] private void OnCollapseButtonPressed() => _block.SetIsCollapsed(true);
     [RelayCommand] private void OnExpandPressed() => _block.SetIsCollapsed(false);

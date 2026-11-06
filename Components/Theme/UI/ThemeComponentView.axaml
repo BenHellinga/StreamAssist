@@ -6,9 +6,9 @@
              xmlns:ui="using:StreamAssist.Components.Theme.UI"
              xmlns:s="using:StreamAssist.Styles">
 
-    <!-- a section per kind of setting (like the Connections tab): Colors, then Spacing. Each row: what it is | its value
-         (applied when the box is left) | Reset while it's changed. A changed value's label is bright, an unchanged one
-         is plain -->
+    <!-- the config bar (named themes), then a section per kind of setting (like the Connections tab): Colors, Styles,
+         Spacing, Components (a subsection per component). Each row: what it is | its value (applied when the box is
+         left) | Reset while it's changed. A changed value's label is bright. With no theme, the page says to make one -->
 
     <UserControl.Styles>
         <Style Selector="TextBlock.Changed">
@@ -16,71 +16,153 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer Classes="Gapped Lined" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-        <Border Padding="{StaticResource ScrollEndPadding}">
-            <StackPanel Spacing="{s:Gap ContentPadding}" Margin="{s:Gap ScrollInset}">
+    <!-- the rows: label | swatch | value | Reset. The label and swatch columns are shared by every row of the page (the
+         number rows leave the swatch empty), so the labels set one column and every value box lines up -->
 
-                <!-- colors: a swatch (not clickable, outlined so a dark one still shows) and its value as text -->
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="ui:ThemeColorRowViewModel">
+            <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Swatch"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Classes="Label" Classes.Changed="{Binding IsChanged}" Text="{Binding Label}"/>
+                <Border Grid.Column="1" Classes="Panel" Background="{Binding Swatch}"
+                        Width="{DynamicResource ControlHeight}" Height="{DynamicResource ControlHeight}"/>
+                <TextBox Grid.Column="2" Classes="Commit" Text="{Binding Input}" MinWidth="{DynamicResource ControlMinWidth}"/>
+                <Button Grid.Column="3" Content="Reset" Command="{Binding ResetCommand}" IsVisible="{Binding IsChanged}"/>
+            </Grid>
+        </DataTemplate>
 
-                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                    <TextBlock Classes="Title" Text="Colors" Margin="{s:Gap BigTitleMargin}"/>
+        <DataTemplate DataType="ui:ThemeValueRowViewModel">
+            <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Swatch"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Classes="Label" Classes.Changed="{Binding IsChanged}" Text="{Binding Label}"/>
+                <TextBox Grid.Column="2" Classes="Commit" Text="{Binding Input}" MinWidth="{DynamicResource ControlMinWidth}"/>
+                <Button Grid.Column="3" Content="Reset" Command="{Binding ResetCommand}" IsVisible="{Binding IsChanged}"/>
+            </Grid>
+        </DataTemplate>
 
-                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
-                        <ItemsControl ItemsSource="{Binding Colors}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="ui:ThemeColorRowViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
-                                        <!-- 320 + the swatch and its gap = the spacing rows' 350, so the value boxes line up -->
-                                        <TextBlock Classes="Label" Classes.Changed="{Binding IsChanged}" Text="{Binding Label}" Width="320"/>
-                                        <Border Classes="Panel" Background="{Binding Swatch}"
-                                                Width="{StaticResource ControlHeight}" Height="{StaticResource ControlHeight}"/>
-                                        <TextBox Classes="Commit" Text="{Binding Input}" Width="100"/>
-                                        <Button Content="Reset" Command="{Binding ResetCommand}" IsVisible="{Binding IsChanged}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <Button Content="Reset all colors" Command="{Binding ResetColorsCommand}"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <Border Classes="Divider"/>
-
-                <!-- spacing: only the base values, everything else is worked out from them (Styles/Gap.cs) -->
-
-                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                    <TextBlock Classes="Title" Text="Spacing" Margin="{s:Gap BigTitleMargin}"/>
-
-                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
-                        <ItemsControl ItemsSource="{Binding Spacing}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="ui:ThemeSpacingRowViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
-                                        <TextBlock Classes="Label" Classes.Changed="{Binding IsChanged}" Text="{Binding Label}" Width="350"/>
-                                        <TextBox Classes="Commit" Text="{Binding Input}" Width="100"/>
-                                        <Button Content="Reset" Command="{Binding ResetCommand}" IsVisible="{Binding IsChanged}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <Button Content="Reset all spacing" Command="{Binding ResetSpacingCommand}"/>
-                    </StackPanel>
-                </StackPanel>
-
+        <!-- a component's subsection: its name as a subheading, then its rows -->
+        <DataTemplate DataType="ui:ThemeGroupViewModel">
+            <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
+                <TextBlock Classes="Label Subheading" Text="{Binding Name}"/>
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
             </StackPanel>
-        </Border>
-    </ScrollViewer>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <DockPanel>
+
+        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{s:Gap PadAll}"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <Panel>
+
+            <ContentControl Content="{Binding NoConfig}" IsVisible="{Binding !HasConfig}"/>
+
+            <ScrollViewer Classes="Gapped Lined" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsVisible="{Binding HasConfig}">
+                <Border Padding="{StaticResource ScrollEndPadding}">
+                    <StackPanel Spacing="{s:Gap ContentPadding}" Margin="{s:Gap ScrollInset}" Grid.IsSharedSizeScope="True">
+
+                        <!-- colors: a swatch (not clickable, outlined so a dark one still shows) and its value as text -->
+
+                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                            <TextBlock Classes="Title" Text="Colors" Margin="{s:Gap BigTitleMargin}"/>
+
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                                <ItemsControl ItemsSource="{Binding Colors}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+
+                                <Button Content="Reset all colors" Command="{Binding ResetColorsCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Classes="Divider"/>
+
+                        <!-- styles: font sizes, control sizes, borders, line widths -->
+
+                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                            <TextBlock Classes="Title" Text="Styles" Margin="{s:Gap BigTitleMargin}"/>
+
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                                <ItemsControl ItemsSource="{Binding Styles}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+
+                                <Button Content="Reset all styles" Command="{Binding ResetStylesCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Classes="Divider"/>
+
+                        <!-- spacing: only the base values, everything else is worked out from them (Styles/Gap.cs) -->
+
+                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                            <TextBlock Classes="Title" Text="Spacing" Margin="{s:Gap BigTitleMargin}"/>
+
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                                <ItemsControl ItemsSource="{Binding Spacing}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+
+                                <Button Content="Reset all spacing" Command="{Binding ResetSpacingCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Classes="Divider"/>
+
+                        <!-- components: their own sizes, a subsection each -->
+
+                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                            <TextBlock Classes="Title" Text="Components" Margin="{s:Gap BigTitleMargin}"/>
+
+                            <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
+                                <ItemsControl ItemsSource="{Binding Components}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="{DynamicResource MediumVerticalGap}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+
+                                <Button Content="Reset all components" Command="{Binding ResetComponentsCommand}" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
+            </ScrollViewer>
+
+        </Panel>
+
+    </DockPanel>
 
 </UserControl>

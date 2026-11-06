@@ -47,8 +47,9 @@ public sealed class RunningTimer
 
 // one timer dock's timers (DockModel.Timers): found by name (any number with the same name), only kept while the app
 // runs. Started by the Start Timer block, ended by the TimerManager (it calls FinishDue on every timer dock's), shown by
-// their dock. Finishing runs the timer's end, killing doesn't. A repeating timer that runs out runs its end and starts
-// its next lap; finishing it early (or killing it) ends it for good
+// their dock. Finishing runs the timer's end, killing doesn't. A repeating timer that runs out, or is finished early,
+// runs its end and starts its next lap; only killing it ends it for good. While its dock is turned off nothing changes them
+// (quietly), the running ones carry on to their end
 public sealed class TimersModel : IDisposable
 {
     // private
@@ -57,6 +58,7 @@ public sealed class TimersModel : IDisposable
 
     private readonly List<RunningTimer> _timers;
     private readonly Func<DateTime> _now;
+    private bool _isOff; // its dock is turned off: starting, pausing, adding time, finishing and cancelling do nothing
 
 
 
@@ -65,6 +67,7 @@ public sealed class TimersModel : IDisposable
 
 
     public IReadOnlyList<RunningTimer> Timers => _timers;
+    public bool IsOff => _isOff;
     public DateTime Now => _now();
 
 
@@ -104,6 +107,7 @@ public sealed class TimersModel : IDisposable
     public bool TryStart(string name, TimeSpan length, TimerRepeat repeat, Action? onEnd, object? owner, out string error, bool repeats = false)
     {
         error = "";
+        if (_isOff) return true; // quietly nothing
         var trimmed = name.Trim();
 
         if (trimmed == "")
@@ -126,7 +130,7 @@ public sealed class TimersModel : IDisposable
 
     public void SetIsPaused(RunningTimer timer, bool isPaused)
     {
-        if (!_timers.Contains(timer) || timer.IsPaused == isPaused) return;
+        if (_isOff || !_timers.Contains(timer) || timer.IsPaused == isPaused) return;
 
         var now = _now();
         if (isPaused) timer.PausedLeft = timer.LeftAt(now);
@@ -144,7 +148,7 @@ public sealed class TimersModel : IDisposable
     // more (or, negative, less) time left on it; one taken to nothing ends on the next tick
     public void AddTime(RunningTimer timer, TimeSpan amount)
     {
-        if (!_timers.Contains(timer) || amount == TimeSpan.Zero) return;
+        if (_isOff || !_timers.Contains(timer) || amount == TimeSpan.Zero) return;
 
         if (timer.IsPaused) timer.PausedLeft = Max(timer.PausedLeft!.Value + amount, TimeSpan.Zero);
         else timer.EndsAt += amount;
@@ -155,10 +159,21 @@ public sealed class TimersModel : IDisposable
 
 
 
-    // ends it now and runs its end (stop early)
+    // runs its end now (finish early): a timer ends there, a repeating one starts its next lap from now (only killing
+    // ends a repeating one; a paused one stays paused, with the whole lap left)
     public void Finish(RunningTimer timer)
     {
-        if (!_timers.Remove(timer)) return;
+        if (_isOff || !_timers.Contains(timer)) return;
+
+        if (timer.Lap is not { } lap)
+        {
+            End(timer);
+            return;
+        }
+
+        timer.Total = lap;
+        timer.EndsAt = _now() + lap;
+        if (timer.IsPaused) timer.PausedLeft = lap;
 
         TimersChanged?.Invoke();
         timer.OnEnd?.Invoke();
@@ -169,7 +184,7 @@ public sealed class TimersModel : IDisposable
     // ends it without running its end
     public void Kill(RunningTimer timer)
     {
-        if (!_timers.Remove(timer)) return;
+        if (_isOff || !_timers.Remove(timer)) return;
         TimersChanged?.Invoke();
     }
 
@@ -207,7 +222,7 @@ public sealed class TimersModel : IDisposable
 
     public void KillAll()
     {
-        if (_timers.Count == 0) return;
+        if (_isOff || _timers.Count == 0) return;
 
         _timers.Clear();
         TimersChanged?.Invoke();
@@ -232,7 +247,7 @@ public sealed class TimersModel : IDisposable
         {
             if (timer.Lap is not { } lap)
             {
-                Finish(timer);
+                End(timer);
                 continue;
             }
 
@@ -247,7 +262,22 @@ public sealed class TimersModel : IDisposable
 
 
 
+    // its dock was turned off or on (DockModel)
+    internal void SetIsOff(bool isOff) => _isOff = isOff;
+
+
+
     // helpers
+
+
+
+    private void End(RunningTimer timer)
+    {
+        if (!_timers.Remove(timer)) return;
+
+        TimersChanged?.Invoke();
+        timer.OnEnd?.Invoke();
+    }
 
 
 

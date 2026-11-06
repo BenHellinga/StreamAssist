@@ -3,11 +3,22 @@
              x:Class="StreamAssist.Components.Blocks.UI.ValueSlotPairListView"
              x:DataType="ui:ValueSlotPairListViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- one row per name / value (like Match Text's rows): the name's slot | the value's slot, the last row always empty.
          The name column is as wide as Match Text's pattern boxes, so the values line up (a block placed there can be wider).
          Dropping a row's block on another row moves it before that one (the line above it lights up) -->
+
+    <!-- the name's box pads only its left, the value's only its right, so they're SmallHorizontalGap apart -->
+    <UserControl.Styles>
+        <Style Selector="ContentControl.Key Border.ValueDrop">
+            <Setter Property="Margin" Value="{s:Gap ValueDropBeforeValueMargin}"/>
+        </Style>
+        <Style Selector="ContentControl.Value Border.ValueDrop">
+            <Setter Property="Margin" Value="{s:Gap ValueDropAfterLabelMargin}"/>
+        </Style>
+    </UserControl.Styles>
 
     <ItemsControl ItemsSource="{Binding Items}">
         <ItemsControl.ItemsPanel>
@@ -23,8 +34,8 @@
                         DragDrop.DragLeave="OnZoneDragLeave"
                         DragDrop.Drop="OnZoneDrop">
                     <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
-                        <ContentControl Grid.Column="0" Content="{Binding Key}" MinWidth="160" VerticalAlignment="Top"/>
-                        <ContentControl Grid.Column="1" Content="{Binding Value}" VerticalAlignment="Top"/>
+                        <ContentControl Grid.Column="0" Classes="Key" Content="{Binding Key}" VerticalAlignment="Top"/>
+                        <ContentControl Grid.Column="1" Classes="Value" Content="{Binding Value}" VerticalAlignment="Top"/>
                     </Grid>
                 </Border>
             </DataTemplate>

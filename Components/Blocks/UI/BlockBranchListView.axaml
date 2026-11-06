@@ -10,7 +10,7 @@
 
     <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
 
-        <ItemsControl ItemsSource="{Binding Branches}">
+        <ItemsControl ItemsSource="{Binding Branches}" IsVisible="{Binding HasBranches}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>

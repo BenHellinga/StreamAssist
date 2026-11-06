@@ -40,8 +40,9 @@ public sealed class VariableDockViewModel : ViewModelBase
     {
         _dock = dock;
         _data = data;
-        Rows = new(_dock.Variables.Rows.Select(row => new VariableRowViewModel(row, _data)));
+        Rows = new(_dock.Variables.Rows.Select(row => new VariableRowViewModel(row, _data, _dock.IsDisabled)));
 
+        _dock.IsDisabledChanged += OnDockIsDisabledChanged;
         _dock.Variables.RowInserted += OnRowInserted;
         _dock.Variables.RowRemoved += OnRowRemoved;
         SubscribeToData(_data);
@@ -53,7 +54,16 @@ public sealed class VariableDockViewModel : ViewModelBase
 
 
 
-    private void OnRowInserted(DockNameRow row, int index) => Rows.Insert(index, new VariableRowViewModel(row, _data));
+    private void OnRowInserted(DockNameRow row, int index) => Rows.Insert(index, new VariableRowViewModel(row, _data, _dock.IsDisabled));
+
+
+
+    // off: the values stay as they are and can't be typed in; back on, they catch up with the Data tab
+    private void OnDockIsDisabledChanged(bool isDisabled)
+    {
+        foreach (var row in Rows) row.IsFrozen = isDisabled;
+        if (!isDisabled) RefreshAll();
+    }
 
 
 
@@ -93,6 +103,7 @@ public sealed class VariableDockViewModel : ViewModelBase
 
     private void Refresh(string variable)
     {
+        if (_dock.IsDisabled) return;
         foreach (var row in Rows.Where(r => r.Shows(variable)))
             row.Refresh();
     }
@@ -101,6 +112,7 @@ public sealed class VariableDockViewModel : ViewModelBase
 
     private void RefreshAll()
     {
+        if (_dock.IsDisabled) return;
         foreach (var row in Rows)
             row.Refresh();
     }
@@ -135,6 +147,7 @@ public sealed class VariableDockViewModel : ViewModelBase
 
     public override void Dispose()
     {
+        _dock.IsDisabledChanged -= OnDockIsDisabledChanged;
         _dock.Variables.RowInserted -= OnRowInserted;
         _dock.Variables.RowRemoved -= OnRowRemoved;
         UnsubscribeFromData(_data);
@@ -161,6 +174,7 @@ public sealed partial class VariableRowViewModel : ViewModelBase, ICommitOnLeave
     [ObservableProperty] private string _valueInput;
     [ObservableProperty] private bool _isMissing; // no variable has this name
     [ObservableProperty] private bool _showValue; // not on the empty last row
+    [ObservableProperty] private bool _isFrozen; // its dock is off: the value can't be typed in
 
 
 
@@ -168,10 +182,11 @@ public sealed partial class VariableRowViewModel : ViewModelBase, ICommitOnLeave
 
 
 
-    public VariableRowViewModel(DockNameRow row, DataModel? data)
+    public VariableRowViewModel(DockNameRow row, DataModel? data, bool isFrozen)
     {
         _row = row;
         _data = data;
+        _isFrozen = isFrozen;
         _name = _row.Name;
         _valueInput = "";
 
@@ -217,7 +232,7 @@ public sealed partial class VariableRowViewModel : ViewModelBase, ICommitOnLeave
     public void Commit()
     {
         var name = _row.Name.Trim();
-        if (_data == null || name == "") return;
+        if (_data == null || name == "" || IsFrozen) return;
 
         if (_data.VariableKind(name) == null)
         {

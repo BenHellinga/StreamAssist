@@ -7,8 +7,9 @@
              xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
         xmlns:s="using:StreamAssist.Styles">
 
-    <!-- a dock is something the user made, so it looks like a block: a green outline, its name box top-left, the edit
-         buttons top-right (drag and remove only), a divider, then its body. While a dock or a card is dragged over it, the half it
+    <!-- a dock is something the user made, so it looks like a block: a green outline (red while it's off), its name box
+         top-left, the edit buttons top-right (copy, on / off, drag, remove), a divider, then its body. A blank dock is
+         only a grey outline (no header) with drag and remove, and a paste button in its body. While a dock or a card is dragged over it, the half it
          would go to is outlined (DropMarker, placed in code-behind) -->
 
     <!-- the edit buttons show only while the pointer is on the dock (hidden by opacity, so nothing moves) -->
@@ -27,7 +28,8 @@
          header), the divider at the ring. The drop marker sits over the whole card, outside the ring -->
 
     <Panel Margin="{s:Gap PadAll}">
-    <Border x:Name="Card" Classes="Panel Bound" DragDrop.AllowDrop="True" Padding="{s:Gap LineZoneAll}">
+    <Border x:Name="Card" Classes="Panel" Classes.Bound="{Binding !IsBlank}" Classes.Disabled="{Binding IsDisabled}"
+            DragDrop.AllowDrop="True" Padding="{s:Gap LineZoneAll}">
 
         <Panel>
             <DockPanel>
@@ -37,20 +39,24 @@
                      there to use, over the header if the dock is that narrow. A divider under it, as under the window's
                      panel headers -->
 
-                <Panel DockPanel.Dock="Top" ClipToBounds="True">
+                <Panel DockPanel.Dock="Top" ClipToBounds="True" IsVisible="{Binding !IsBlank}">
 
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Margin="{s:Gap PadAll}" HorizontalAlignment="Left">
 
-                        <TextBox Classes="Commit" Text="{Binding NameInput}" Width="150"
-                                 Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+                        <TextBox Classes="Commit" Text="{Binding NameInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                                 Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
 
                         <Button Content="Clear" Command="{Binding ClearPressedCommand}"
-                                VerticalAlignment="Center" IsVisible="{Binding IsConsole}"/>
+                                VerticalAlignment="Center" IsVisible="{Binding IsConsole}" IsEnabled="{Binding !IsDisabled}"/>
+
+                        <!-- indicators: flip every one (one never set turns on) -->
+                        <Button Content="Toggle all" Command="{Binding Indicators.ToggleAllPressedCommand}" VerticalAlignment="Center"
+                                IsVisible="{Binding Indicators, Converter={x:Static ObjectConverters.IsNotNull}}" IsEnabled="{Binding !IsDisabled}"/>
 
                         <!-- timers: a row's three buttons for all of them (pause shows play while all are paused), dimmed
                              while none run, then the seconds every ＋ adds (this one to all, each row's to its own) -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" VerticalAlignment="Center"
-                                    IsVisible="{Binding Timers, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    IsVisible="{Binding Timers, Converter={x:Static ObjectConverters.IsNotNull}}" IsEnabled="{Binding !IsDisabled}">
                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
                                         Opacity="{Binding Timers.IsEmpty, Converter={x:Static ui:DockView.DimWhenTrue}, FallbackValue=1}">
                                 <Button Classes="Square Medium" Command="{Binding Timers.PauseAllPressedCommand}">
@@ -66,14 +72,14 @@
                                     <Path Classes="Icon" Data="{StaticResource StopIcon}"/>
                                 </Button>
                             </StackPanel>
-                            <TextBox Text="{Binding Timers.AddSeconds, FallbackValue=''}" Width="80" PlaceholderText="Seconds"
-                                     Height="{StaticResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+                            <TextBox Text="{Binding Timers.AddSeconds, FallbackValue=''}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" PlaceholderText="Seconds"
+                                     Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
                             <Button Classes="Square Medium" Content="＋" Command="{Binding Timers.AddTimeAllPressedCommand}"/>
                         </StackPanel>
 
                         <!-- buttons: press every one, top to bottom -->
                         <Button Classes="Square Medium" VerticalAlignment="Center"
-                                Command="{Binding Buttons.PressAllPressedCommand}"
+                                Command="{Binding Buttons.PressAllPressedCommand}" IsEnabled="{Binding !IsDisabled}"
                                 IsVisible="{Binding Buttons, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <Path Classes="Icon" Data="{StaticResource PlayIcon}"/>
                         </Button>
@@ -81,7 +87,7 @@
 
                 </Panel>
 
-                <Border DockPanel.Dock="Top" Classes="Divider"/>
+                <Border DockPanel.Dock="Top" Classes="Divider" IsVisible="{Binding !IsBlank}"/>
 
                 <ContentControl Content="{Binding Body}"/>
 
@@ -94,7 +100,7 @@
     </Border>
 
     <Border x:Name="DropMarker" IsVisible="False" IsHitTestVisible="False" Background="{StaticResource PanelFillHover}"
-            BorderBrush="{StaticResource Bound}" BorderThickness="1" CornerRadius="3"/>
+            BorderBrush="{StaticResource Bound}" BorderThickness="{s:Gap BorderAll}" CornerRadius="{s:Gap Corners}"/>
     </Panel>
 
 </UserControl>

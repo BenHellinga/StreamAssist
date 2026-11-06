@@ -23,14 +23,16 @@ public partial class CellViewModel : ObservableObject, ICommitOnLeave
 
     [ObservableProperty] private string _text;
 
-    public CellViewModel(string text, Func<string, bool> commit, string placeholder = "")
+    public CellViewModel(ColumnHeaderViewModel header, string text, Func<string, bool> commit, string placeholder = "")
     {
+        Header = header;
         _text = text;
         _shown = text;
         _commit = commit;
         Placeholder = placeholder;
     }
 
+    public ColumnHeaderViewModel Header { get; } // its column's header, whose width it takes
     public string Placeholder { get; }
 
     public void Commit()
@@ -73,6 +75,7 @@ public partial class ColumnHeaderViewModel : ObservableObject, ICommitOnLeave
     [ObservableProperty] private string _kindName;
     [ObservableProperty] private string _sortText; // ↕ not sorted by it, ▲ least to greatest, ▼ greatest to least
     [ObservableProperty] private bool _isDeleteMode; // the grid's Delete columns is on
+    [ObservableProperty] private double _width = double.NaN; // as laid out (set by the view), its cells take it; until then they size themselves
 
     public ColumnHeaderViewModel(DataModel model, TableModel table, TableColumn column, Action<string> sort, bool isDeleteMode)
     {
@@ -339,7 +342,7 @@ public partial class TableGridViewModel : ViewModelBase, ICommitOnLeave
         NewRowCells = _table.Columns.Select((column, i) =>
         {
             CellViewModel? cell = null;
-            cell = new CellViewModel("", text => AddRowWith(column.Name, text, cell!), i == 0 ? "New row…" : "");
+            cell = new CellViewModel(Columns[i], "", text => AddRowWith(column.Name, text, cell!), i == 0 ? "New row…" : "");
             return cell;
         }).ToList();
         ShowRows();
@@ -420,10 +423,10 @@ public partial class TableGridViewModel : ViewModelBase, ICommitOnLeave
 
     private RowViewModel CreateRow(TableRow row)
     {
-        var cells = _table.Columns.Select(column =>
+        var cells = _table.Columns.Select((column, i) =>
         {
             CellViewModel? cell = null;
-            cell = new CellViewModel(Text(row.Get(column.Name)), text =>
+            cell = new CellViewModel(Columns[i], Text(row.Get(column.Name)), text =>
             {
                 var ok = _model.TrySetValue(_table.Name, row.Id, column.Name, text);
                 cell!.Show(Text(row.Get(column.Name))); // refused: back to what's there; accepted: how the model keeps it (e.g. 5.0 → 5)

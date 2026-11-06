@@ -106,7 +106,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // the theme next, so the window is drawn with it from the start
 
+        var freshTheme = !JsonFileStore.Exists(ThemeManager.FileName);
         _themeComponentModel = ThemeManager.Load();
+        if (freshTheme) _themeComponentModel.Configs.TryCreate(ConfigSet<ThemeConfigModel>.DefaultName);
         _themeManager = new(_themeComponentModel); // reads the shipped defaults, applies the user's changes, saves new ones
 
         // data (tables and variables) before the other models, so blocks loading below can already look up variables
@@ -117,7 +119,12 @@ public partial class MainWindowViewModel : ViewModelBase
         TriggerContext.VariableText = name =>
             _dataModel.VariableKind(name) != null && _dataModel.TryGetVariable(name, out _, out var value) ? ValueTypes.ToText(value) : null;
 
-        // models
+        // models (a tab whose file doesn't exist yet, the first time, starts with a config named Default so it can be used
+        // right away; deleting every config later leaves it with none, and that's what's saved)
+
+        var freshKeyboard = !JsonFileStore.Exists("keyboard");
+        var freshChatbot = !JsonFileStore.Exists(ChatbotSaveManager.FileName);
+        var freshDashboard = !JsonFileStore.Exists(DashboardSaveManager.FileName);
 
         _windowLayoutModel = WindowLayoutSaveManager.Load();
         _keyboardComponentModel = JsonFileStore.Load<KeyboardComponentModel>("keyboard");
@@ -126,6 +133,14 @@ public partial class MainWindowViewModel : ViewModelBase
         _obsComponentModel = ObsSaveManager.Load();
         _spotifyComponentModel = SpotifySaveManager.Load();
         _dashboardComponentModel = DashboardSaveManager.Load();
+
+        if (freshKeyboard) _keyboardComponentModel.ListModel.Configs.TryCreate(ConfigSet<KeyboardConfigModel>.DefaultName);
+        if (freshChatbot)
+        {
+            _chatbotComponentModel.ChatConfigs.TryCreate(ConfigSet<ChatConfigModel>.DefaultName);
+            _chatbotComponentModel.EventsConfigs.TryCreate(ConfigSet<EventsConfigModel>.DefaultName);
+        }
+        if (freshDashboard) _dashboardComponentModel.Configs.TryCreate(ConfigSet<DashboardConfigModel>.DefaultName);
 
         // managers
 

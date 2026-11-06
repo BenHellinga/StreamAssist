@@ -7,8 +7,8 @@
     <Style Selector="Border.Panel">
         <Setter Property="Background" Value="{DynamicResource PanelFill}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="BorderThickness" Value="{s:Gap BorderAll}"/>
+        <Setter Property="CornerRadius" Value="{s:Gap Corners}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.07"/>

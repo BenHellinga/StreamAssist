@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:s="using:StreamAssist.Styles">
 
     <Style Selector="Button">
         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}"/>
@@ -8,7 +9,8 @@
         <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
         <Setter Property="Padding" Value="8,0"/>
         <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
-        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="CornerRadius" Value="{s:Gap Corners}"/>
+        <Setter Property="BorderThickness" Value="{s:Gap BorderAll}"/>
         <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
@@ -33,8 +35,8 @@
          (the hover colour is set on the button's template presenter, which a Path isn't inside of, hence its own rule) -->
 
     <Style Selector="Button Path.Icon">
-        <Setter Property="Width" Value="10"/>
-        <Setter Property="Height" Value="10"/>
+        <Setter Property="Width" Value="{DynamicResource IconSize}"/>
+        <Setter Property="Height" Value="{DynamicResource IconSize}"/>
         <Setter Property="Stretch" Value="None"/>
         <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}"/>
     </Style>
@@ -64,9 +66,9 @@
 
     <!-- corner buttons on keys and actions -->
     <Style Selector="Button.Small">
-        <Setter Property="Height" Value="15"/>
+        <Setter Property="Height" Value="{DynamicResource SmallButtonSize}"/>
         <Setter Property="Padding" Value="0"/>
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}"/>
     </Style>
 
     <!-- inline buttons next to inputs (config create/delete), as tall as the inputs -->
@@ -84,7 +86,7 @@
     <!-- square + size: explicit width, more reliable than the Bounds.Height binding above -->
 
     <Style Selector="Button.Square.Small">
-        <Setter Property="Width" Value="15"/>
+        <Setter Property="Width" Value="{DynamicResource SmallButtonSize}"/>
     </Style>
     <Style Selector="Button.Square.Medium">
         <Setter Property="Width" Value="{DynamicResource ControlHeight}"/>

@@ -40,29 +40,30 @@
                 <!-- header: what's being edited, its label, Test (runs it once with the Parameters list's values) | the
                      Parameters toggle -->
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}"
-                            Margin="{s:Gap PadAll}" Height="{StaticResource ControlHeight}">
-                    <!-- what it is, then "Label:" and its box -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="{DynamicResource LargeHorizontalGap}"
+                            Margin="{s:Gap PadAll}" Height="{DynamicResource ControlHeight}">
+                    <!-- what it is | "Label:" and its box, Test, Parameters -->
+                    <TextBlock Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
+
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
-                        <TextBlock Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
-                        <TextBlock Classes="Label" Text="Label:" VerticalAlignment="Center"/>
+                        <TextBlock Classes="Label Colon" Text="Label:" VerticalAlignment="Center"/>
                         <!-- greyed out until there's a saved binding with blocks (a draft or an empty one can't be labelled) -->
-                        <TextBox Width="250" Height="{StaticResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                        <TextBox MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
                                  Text="{Binding BindLabel}" PlaceholderText="Optional"
                                  IsEnabled="{Binding CanEditBindLabel}"
                                  Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"/>
+
+                        <Button Content="Test" Command="{Binding TestPressedCommand}"
+                                Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center"/>
+
+                        <Button Command="{Binding ParametersTogglePressedCommand}"
+                                Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center">
+                            <Panel>
+                                <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
+                                <TextBlock Text="Parameters ▾" IsVisible="{Binding IsParametersOpen}"/>
+                            </Panel>
+                        </Button>
                     </StackPanel>
-
-                    <Button Content="Test" Command="{Binding TestPressedCommand}"
-                            Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center"/>
-
-                    <Button Command="{Binding ParametersTogglePressedCommand}"
-                            Height="{StaticResource ControlHeight}" VerticalContentAlignment="Center">
-                        <Panel>
-                            <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
-                            <TextBlock Text="Parameters ▾" IsVisible="{Binding IsParametersOpen}"/>
-                        </Panel>
-                    </Button>
                 </StackPanel>
 
                 <Border Grid.Row="1" Classes="Divider"/>
@@ -88,7 +89,7 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <SelectableTextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" MinWidth="150"/>
-                                        <TextBox Grid.Column="1" Width="200" Text="{Binding Value}" PlaceholderText="Value…"/>
+                                        <TextBox Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" Text="{Binding Value}" PlaceholderText="Value…"/>
                                         <TextBlock Grid.Column="2" Classes="Description" Text="{Binding Kind}" VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="3" Classes="Description" Text="{Binding Description}" VerticalAlignment="Center"/>
                                     </Grid>
@@ -109,9 +110,9 @@
                                             <ColumnDefinition Width="Auto" SharedSizeGroup="name"/>
                                             <ColumnDefinition Width="Auto" SharedSizeGroup="value"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Width="150" HorizontalAlignment="Left" Text="{Binding Name}" PlaceholderText="Extra parameter…"
+                                        <TextBox Grid.Column="0" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" Text="{Binding Name}" PlaceholderText="Extra parameter…"
                                                  Classes.New="{Binding IsEmpty}"/>
-                                        <TextBox Grid.Column="1" Width="200" Text="{Binding Value}" PlaceholderText="Value…"
+                                        <TextBox Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" Text="{Binding Value}" PlaceholderText="Value…"
                                                  IsVisible="{Binding Name, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                     </Grid>
                                 </DataTemplate>

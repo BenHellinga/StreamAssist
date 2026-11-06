@@ -1,3 +1,6 @@
+using Avalonia.Input.Platform;
+using StreamAssist.Components.Blocks.UI;
+using System.Threading.Tasks;
 using System;
 using Avalonia;
 using Avalonia.Controls;
@@ -27,6 +30,11 @@ public partial class MainWindowView : Window
 
         AddHandler(PointerPressedEvent, OnBackgroundPointerPressed, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DragOverEvent, OnTabDragOver, handledEventsToo: true);
+
+        // copy / paste go through the system clipboard; something copied elsewhere shows once the app has focus again
+        BlockClipboard.WriteText = text => Clipboard?.SetTextAsync(text) ?? Task.CompletedTask;
+        BlockClipboard.ReadText = () => Clipboard?.TryGetTextAsync() ?? Task.FromResult<string?>(null);
+        Activated += (_, _) => _ = BlockClipboard.RefreshAsync();
 
         // restore the saved window layout before the window is shown
         ApplyLayoutBounds();

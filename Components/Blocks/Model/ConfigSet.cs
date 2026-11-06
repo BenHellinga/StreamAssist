@@ -42,6 +42,10 @@ public sealed class ConfigSet<T> : IConfigSet, IDisposable where T : class, INam
 
 
 
+    public const string DefaultName = "Default"; // the config a tab starts with the first time (its file doesn't exist yet)
+
+
+
     // private
 
 

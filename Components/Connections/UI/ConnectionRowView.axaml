@@ -3,7 +3,8 @@
              x:Class="StreamAssist.Components.Connections.UI.ConnectionRowView"
              x:DataType="ui:ConnectionRowViewModel"
 
-             xmlns:ui="using:StreamAssist.Components.Connections.UI">
+             xmlns:ui="using:StreamAssist.Components.Connections.UI"
+        xmlns:s="using:StreamAssist.Styles">
 
     <!-- name | status | connect/disconnect/retry | connect on startup | the row's extra checkbox, if any
          which account it's connected to is only in the status box's tooltip, so it isn't on screen when the tab is shown -->
@@ -31,7 +32,7 @@
                    Text="{Binding StatusText}" Width="130" VerticalAlignment="Center" Background="Transparent"
                    ToolTip.Tip="{Binding Detail}"/>
 
-        <Button Content="{Binding ButtonText}" Command="{Binding ButtonPressedCommand}" Width="100"
+        <Button Content="{Binding ButtonText}" Command="{Binding ButtonPressedCommand}" MinWidth="{DynamicResource ControlMinWidth}"
                 HorizontalContentAlignment="Center"/>
 
         <TextBlock Classes="Label" Text="Connect on startup"/>

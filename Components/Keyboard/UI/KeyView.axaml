@@ -38,6 +38,9 @@
                            TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
 
+            <!-- an unbound key takes a pasted binding -->
+            <blocks:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
+
             <ContentControl Content="{Binding EditButtonsContext}">
                 <ContentControl.ContentTemplate>
                     <DataTemplate x:DataType="keyboard:KeyViewModel">

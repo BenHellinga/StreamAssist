@@ -1,18 +1,20 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="StreamAssist.Components.Blocks.UI.DropZone">
+             x:Class="StreamAssist.Components.Blocks.UI.DropZone"
+        xmlns:s="using:StreamAssist.Styles"
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI">
 
     <!-- the one place that decides what a block drop target looks like, every slot uses this control
          (the borders need the Droppable class, it's how DropBehaviorHandler finds them) -->
 
     <UserControl.Styles>
         <Style Selector="Border.DropZone">
-            <Setter Property="Width" Value="100"/>
-            <Setter Property="Height" Value="25"/>
+            <Setter Property="Width" Value="{DynamicResource ControlMinWidth}"/>
+            <Setter Property="Height" Value="{DynamicResource ControlHeight}"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="DragDrop.AllowDrop" Value="True"/>
         </Style>
-        <Style Selector="Border.DropZone > TextBlock">
+        <Style Selector="Border.DropZone > Panel > TextBlock">
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
 
@@ -21,7 +23,7 @@
         <Style Selector="Border.DropZone:not(.Dragover)">
             <Setter Property="BorderBrush" Value="{DynamicResource Ghost}"/>
         </Style>
-        <Style Selector="Border.DropZone:not(.Dragover) > TextBlock">
+        <Style Selector="Border.DropZone:not(.Dragover) > Panel > TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Ghost}"/>
         </Style>
     </UserControl.Styles>
@@ -31,13 +33,19 @@
         <!-- slot for blocks that run (containers, actions) -->
 
         <Border x:Name="BlockZone" Classes="Panel Droppable DropZone">
-            <TextBlock Text="+"/>
+            <Panel>
+                <TextBlock Text="+"/>
+                <ui:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
+            </Panel>
         </Border>
 
         <!-- slot for conditions -->
 
         <Border x:Name="ConditionZone" Classes="Panel Droppable DropZone" IsVisible="False">
-            <TextBlock Text="+ condition"/>
+            <Panel>
+                <TextBlock Text="+ condition"/>
+                <ui:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
+            </Panel>
         </Border>
 
     </Panel>
