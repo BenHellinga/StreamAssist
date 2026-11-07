@@ -25,7 +25,7 @@ public class StopTimerAction : ActionBlock
 
 
 
-    private string _mode;
+    private readonly MenuSlot _mode;
     private readonly ValueSlot<string> _dock;
     private readonly ValueSlot<string> _timerName;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -36,13 +36,6 @@ public class StopTimerAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
-    public string Mode
-    {
-        get => _mode;
-        set => SetParameter(ref _mode, value);
-    }
-
     public static List<string> GetModeMenuItems() => ["Finish Now", "Cancel"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -52,6 +45,13 @@ public class StopTimerAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("mode")]
+    private ValueSlotData JsonMode
+    {
+        get => _mode.GetData();
+        set => _mode.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("dock")]
     private ValueSlotData JsonDock
@@ -75,10 +75,10 @@ public class StopTimerAction : ActionBlock
 
     public StopTimerAction()
     {
-        _mode = "Finish Now";
+        _mode = new("Mode", GetModeMenuItems, "Finish Now");
         _dock = new("Dock");
         _timerName = new("Timer");
-        _slots = [_dock, _timerName];
+        _slots = [_mode, _dock, _timerName];
 
         TrackSlots();
     }
@@ -91,6 +91,7 @@ public class StopTimerAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var mode = await _mode.EvaluateAsync(context);
         var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
         if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Timer, out var dock, out var dockError)) throw Fail(dockError);
         var timers = dock.Timers;
@@ -98,7 +99,7 @@ public class StopTimerAction : ActionBlock
 
         foreach (var timer in timers.Find(name).ToList())
         {
-            if (_mode == "Cancel") timers.Kill(timer);
+            if (mode == "Cancel") timers.Kill(timer);
             else timers.Finish(timer);
         }
     }

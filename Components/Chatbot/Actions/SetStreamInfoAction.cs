@@ -25,7 +25,7 @@ public class SetStreamInfoAction : ActionBlock
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly ValueSlot<string> _value;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class SetStreamInfoAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set => SetParameter(ref _setting, value);
-    }
 
     public static List<string> GetSettingMenuItems() => ["Title", "Category"];
 
@@ -51,6 +44,13 @@ public class SetStreamInfoAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("value")]
     private ValueSlotData JsonValue
@@ -67,9 +67,9 @@ public class SetStreamInfoAction : ActionBlock
 
     public SetStreamInfoAction()
     {
-        _setting = "Title";
+        _setting = new("Setting", GetSettingMenuItems, "Title");
         _value = new("Value");
-        _slots = [_value];
+        _slots = [_setting, _value];
 
         TrackSlots();
     }
@@ -83,10 +83,11 @@ public class SetStreamInfoAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var setting = await _setting.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var value = (await _value.EvaluateAsync(context)).Trim();
         if (value == "") throw Fail("Value is empty");
 
-        if (!await chatbot.TrySetStreamInfoAsync(_setting, value, context.CancellationToken)) throw new BlockFailedException("stream info not set");
+        if (!await chatbot.TrySetStreamInfoAsync(setting, value, context.CancellationToken)) throw new BlockFailedException("stream info not set");
     }
 }

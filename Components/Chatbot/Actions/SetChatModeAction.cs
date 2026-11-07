@@ -25,8 +25,8 @@ public class SetChatModeAction : ActionBlock
 
 
 
-    private string _mode;
-    private string _change;
+    private readonly MenuSlot _mode;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _duration;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -36,21 +36,8 @@ public class SetChatModeAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
-    public string Mode
-    {
-        get => _mode;
-        set => SetParameter(ref _mode, value);
-    }
-
     public static List<string> GetModeMenuItems() => TwitchInfos.ChatModes.ToList();
 
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
 
     public static List<string> GetChangeMenuItems() => ["On", "Off", "Toggle"];
 
@@ -61,6 +48,20 @@ public class SetChatModeAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("mode")]
+    private ValueSlotData JsonMode
+    {
+        get => _mode.GetData();
+        set => _mode.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("duration")]
     private ValueSlotData JsonDuration
@@ -77,10 +78,10 @@ public class SetChatModeAction : ActionBlock
 
     public SetChatModeAction()
     {
-        _mode = "Slow Mode";
-        _change = "Toggle";
+        _mode = new("Mode", GetModeMenuItems, "Slow Mode");
+        _change = new("Do", GetChangeMenuItems, "Toggle");
         _duration = new("Duration");
-        _slots = [_duration];
+        _slots = [_mode, _change, _duration];
 
         TrackSlots();
     }
@@ -94,6 +95,8 @@ public class SetChatModeAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var mode = await _mode.EvaluateAsync(context);
+        var change = await _change.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         // empty duration = leave it as twitch has it
         var durationText = (await _duration.EvaluateAsync(context)).Trim();
@@ -104,7 +107,7 @@ public class SetChatModeAction : ActionBlock
             duration = parsed;
         }
 
-        bool? on = _change == "On" ? true : _change == "Off" ? false : null;
-        if (!await chatbot.TrySetChatModeAsync(_mode, on, duration, context.CancellationToken)) throw new BlockFailedException("chat mode not set");
+        bool? on = change == "On" ? true : change == "Off" ? false : null;
+        if (!await chatbot.TrySetChatModeAsync(mode, on, duration, context.CancellationToken)) throw new BlockFailedException("chat mode not set");
     }
 }

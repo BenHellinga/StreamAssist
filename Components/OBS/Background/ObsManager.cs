@@ -299,14 +299,7 @@ public class ObsManager : IDisposable
     public Task<(bool Ok, bool Value)> TrySetOutputAsync(string output, ObsToggle change) =>
         TryRequestAsync($"start/stop {output.ToLowerInvariant()}", async client =>
         {
-            var name = output switch
-            {
-                "Recording" => "Record",
-                "Streaming" => "Stream",
-                "Replay Buffer" => "ReplayBuffer",
-                "Virtual Camera" => "VirtualCam",
-                _ => throw new Exception($"no output '{output}'"),
-            };
+            var name = OutputRequestName(output);
 
             if (change == ObsToggle.Toggle)
             {
@@ -318,6 +311,30 @@ public class ObsManager : IDisposable
             if (active != (change == ObsToggle.On)) await client.RequestAsync((change == ObsToggle.On ? "Start" : "Stop") + name, null);
             return true;
         });
+
+
+
+    // whether an output is running and, for streaming and recording, how long it has been (OBS's own count, so a
+    // recording's paused time isn't in it); zero while it's off
+    public Task<(bool Ok, (bool Active, TimeSpan Time) Value)> TryGetOutputAsync(string output) =>
+        TryRequestAsync($"read {output.ToLowerInvariant()}", async client =>
+        {
+            var data = await client.RequestAsync($"Get{OutputRequestName(output)}Status", null);
+            var active = data.GetProperty("outputActive").GetBoolean();
+            var time = active && data.TryGetProperty("outputDuration", out var ms) ? TimeSpan.FromMilliseconds(ms.GetDouble()) : TimeSpan.Zero;
+            return (active, time);
+        });
+
+
+
+    private static string OutputRequestName(string output) => output switch
+    {
+        "Recording" => "Record",
+        "Streaming" => "Stream",
+        "Replay Buffer" => "ReplayBuffer",
+        "Virtual Camera" => "VirtualCam",
+        _ => throw new Exception($"no output '{output}'"),
+    };
 
 
 

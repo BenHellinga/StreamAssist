@@ -24,7 +24,7 @@ public class SetIndicatorAction : ActionBlock
 
 
 
-    private string _set;
+    private readonly MenuSlot _set;
     private readonly ValueSlot<string> _dock;
     private readonly ValueSlot<string> _indicator;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -35,13 +35,6 @@ public class SetIndicatorAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Set", ConfiguratorType.Menu)] [JsonPropertyName("set")]
-    public string Set
-    {
-        get => _set;
-        set => SetParameter(ref _set, value);
-    }
-
     public static List<string> GetSetMenuItems() => ["On", "Off", "Toggle"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -51,6 +44,13 @@ public class SetIndicatorAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("set")]
+    private ValueSlotData JsonSet
+    {
+        get => _set.GetData();
+        set => _set.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("dock")]
     private ValueSlotData JsonDock
@@ -74,10 +74,10 @@ public class SetIndicatorAction : ActionBlock
 
     public SetIndicatorAction()
     {
-        _set = "On";
+        _set = new("Set", GetSetMenuItems, "On");
         _dock = new("Dock");
         _indicator = new("Indicator");
-        _slots = [_dock, _indicator];
+        _slots = [_set, _dock, _indicator];
 
         TrackSlots();
     }
@@ -90,11 +90,12 @@ public class SetIndicatorAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var set = await _set.EvaluateAsync(context);
         var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
         if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Indicator, out var dock, out var dockError)) throw Fail(dockError);
         var name = await _indicator.EvaluateAsync(context);
 
-        bool? isOn = _set switch { "Off" => false, "Toggle" => null, _ => true };
+        bool? isOn = set switch { "Off" => false, "Toggle" => null, _ => true };
         if (!dock.TrySetIndicator(name, isOn, out var error)) throw Fail(error);
     }
 }

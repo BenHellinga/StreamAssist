@@ -8,7 +8,7 @@ namespace StreamAssist.Components.Input.Model;
 
 
 
-// one config of the Keyboard tab: every keyboard slot's keys (by the slot's id). Switching configs swaps every
+// one config of the Input tab: every keyboard slot's keys (by the slot's id). Switching configs swaps every
 // keyboard's keys at once (see InputListModel.Configs). A slot's keys are made when it's first shown in this config
 public sealed class InputConfigModel : INamedConfig
 {
@@ -17,7 +17,7 @@ public sealed class InputConfigModel : INamedConfig
 
 
     private string _name;
-    private readonly Dictionary<int, KeybindConfigModel> _keyboards;
+    private readonly Dictionary<int, KeybindConfigModel> _slotKeybinds;
 
 
 
@@ -26,7 +26,7 @@ public sealed class InputConfigModel : INamedConfig
 
 
     [JsonIgnore] public string Name => _name;
-    [JsonIgnore] public IReadOnlyDictionary<int, KeybindConfigModel> Keyboards => _keyboards;
+    [JsonIgnore] public IReadOnlyDictionary<int, KeybindConfigModel> SlotKeybinds => _slotKeybinds;
 
 
 
@@ -41,11 +41,11 @@ public sealed class InputConfigModel : INamedConfig
         set => _name = value;
     }
 
-    // by slot id, each key code to its binding (keyboards with no keys bound aren't saved)
-    [JsonInclude] [JsonPropertyName("keyboards")]
-    private Dictionary<int, Dictionary<ushort, BindableModel>> JsonKeyboards
+    // by slot id, each key code to its binding (boxes with no keys bound aren't saved)
+    [JsonInclude] [JsonPropertyName("slotKeybinds")]
+    private Dictionary<int, Dictionary<ushort, BindableModel>> JsonSlotKeybinds
     {
-        get => _keyboards.Where(k => k.Value.Keybinds.Count > 0).ToDictionary(k => k.Key, k => k.Value.Keybinds.ToDictionary());
+        get => _slotKeybinds.Where(k => k.Value.Keybinds.Count > 0).ToDictionary(k => k.Key, k => k.Value.Keybinds.ToDictionary());
         set
         {
             foreach (var (slotId, keybinds) in value)
@@ -70,7 +70,7 @@ public sealed class InputConfigModel : INamedConfig
     public InputConfigModel()
     {
         _name = "";
-        _keyboards = [];
+        _slotKeybinds = [];
     }
 
 
@@ -92,7 +92,7 @@ public sealed class InputConfigModel : INamedConfig
     // a slot's keys in this config, empty ones made the first time they're asked for
     public KeybindConfigModel ForSlot(int slotId)
     {
-        if (_keyboards.TryGetValue(slotId, out var keys)) return keys;
+        if (_slotKeybinds.TryGetValue(slotId, out var keys)) return keys;
 
         keys = new KeybindConfigModel(_name, null);
         Add(slotId, keys);
@@ -104,7 +104,7 @@ public sealed class InputConfigModel : INamedConfig
     // a slot was deleted: its keys go with it
     public void RemoveSlot(int slotId)
     {
-        if (!_keyboards.Remove(slotId, out var keys)) return;
+        if (!_slotKeybinds.Remove(slotId, out var keys)) return;
 
         UnsubscribeFromKeys(keys);
         keys.Dispose();
@@ -143,13 +143,13 @@ public sealed class InputConfigModel : INamedConfig
 
     private void Add(int slotId, KeybindConfigModel keys)
     {
-        if (_keyboards.Remove(slotId, out var old))
+        if (_slotKeybinds.Remove(slotId, out var old))
         {
             UnsubscribeFromKeys(old);
             old.Dispose();
         }
 
-        _keyboards[slotId] = keys;
+        _slotKeybinds[slotId] = keys;
         SubscribeToKeys(keys);
     }
 
@@ -182,12 +182,12 @@ public sealed class InputConfigModel : INamedConfig
 
     public void Dispose()
     {
-        foreach (var keys in _keyboards.Values)
+        foreach (var keys in _slotKeybinds.Values)
         {
             UnsubscribeFromKeys(keys);
             keys.Dispose();
         }
 
-        _keyboards.Clear();
+        _slotKeybinds.Clear();
     }
 }

@@ -16,7 +16,7 @@ public partial class InputComponentViewModel : ViewModelBase
 
 
 
-    private InputListViewModel _keyboardList;
+    private InputListViewModel _inputList;
     private readonly WindowLayoutModel _layout;
     private readonly InputDevicePaletteViewModel _palette;
     [ObservableProperty] private GridLength _inputDeviceListWidth; // bound two-way to the input device list column
@@ -27,7 +27,7 @@ public partial class InputComponentViewModel : ViewModelBase
 
 
 
-    public InputListViewModel KeyboardList => _keyboardList;
+    public InputListViewModel InputList => _inputList;
     public InputDevicePaletteViewModel Palette => _palette;
 
 
@@ -56,7 +56,7 @@ public partial class InputComponentViewModel : ViewModelBase
         var keybindConfigurator = new KeybindViewModel(layout);
         keyConfiguratorPanel.TransferContent(keybindConfigurator);
 
-        _keyboardList = new InputListViewModel(model.ListModel, manager.GetInputManager(), keybindConfigurator);
+        _inputList = new InputListViewModel(model.ListModel, manager.GetInputManager(), keybindConfigurator);
         _layout = layout;
         _palette = new();
         _inputDeviceListWidth = new(_layout.GetPanelSize(WindowLayoutModel.SideListPanel, 250));
@@ -91,7 +91,7 @@ public partial class InputComponentViewModel : ViewModelBase
 
     public override void Dispose()
     {
-        _keyboardList.Dispose();
+        _inputList.Dispose();
         _palette.Dispose();
         _layout.PanelSizeChanged -= OnLayoutPanelSizeChanged;
     }

@@ -24,8 +24,8 @@ public class SetVoicemeeterGainAction : ActionBlock
 
 
 
-    private string _channel;
-    private string _mode;
+    private readonly MenuSlot _channel;
+    private readonly MenuSlot _mode;
     private readonly ValueSlot<double> _gain;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -35,23 +35,9 @@ public class SetVoicemeeterGainAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Channel", ConfiguratorType.Menu)] [JsonPropertyName("channel")]
-    public string Channel
-    {
-        get => _channel;
-        set => SetParameter(ref _channel, value);
-    }
-
     public static List<string> GetChannelMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow());
 
     // Set to the value, or Change by it (added to what it is now, e.g. -2 for a step down)
-    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
-    public string Mode
-    {
-        get => _mode;
-        set => SetParameter(ref _mode, value);
-    }
-
     public static List<string> GetModeMenuItems() => ["Set to", "Change by"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -61,6 +47,20 @@ public class SetVoicemeeterGainAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("channel")]
+    private ValueSlotData JsonChannel
+    {
+        get => _channel.GetData();
+        set => _channel.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("mode")]
+    private ValueSlotData JsonMode
+    {
+        get => _mode.GetData();
+        set => _mode.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("gain")]
     private ValueSlotData JsonGain
@@ -77,10 +77,10 @@ public class SetVoicemeeterGainAction : ActionBlock
 
     public SetVoicemeeterGainAction()
     {
-        _channel = "Stereo Input 1";
-        _mode = "Set to";
+        _channel = new("Channel", GetChannelMenuItems, "Stereo Input 1", isFixed: false);
+        _mode = new("Mode", GetModeMenuItems, "Set to");
         _gain = new("Gain dB");
-        _slots = [_gain];
+        _slots = [_channel, _mode, _gain];
         _gain.SetText("0");
 
         TrackSlots();
@@ -95,16 +95,18 @@ public class SetVoicemeeterGainAction : ActionBlock
     // Voicemeeter logs its own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var channel = await _channel.EvaluateAsync(context);
+        var mode = await _mode.EvaluateAsync(context);
         var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
         var gain = await _gain.EvaluateAsync(context);
 
         // a failure is already logged by the manager
-        if (_mode == "Change by")
+        if (mode == "Change by")
         {
-            if (!voicemeeter.TryGetGain(_channel, out var now)) throw new BlockFailedException("gain not read");
+            if (!voicemeeter.TryGetGain(channel, out var now)) throw new BlockFailedException("gain not read");
             gain += now;
         }
 
-        if (!voicemeeter.TrySetGain(_channel, (float)gain)) throw new BlockFailedException("gain not set");
+        if (!voicemeeter.TrySetGain(channel, (float)gain)) throw new BlockFailedException("gain not set");
     }
 }

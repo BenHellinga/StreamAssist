@@ -9,7 +9,7 @@ namespace StreamAssist.Components.Blocks.UI;
 
 
 // view model for a list slot: each block's card with a drop zone above it, plus one at the end
-public class BlockSlotListViewModel : ViewModelBase, IDroppable
+public class BlockSlotListViewModel : ViewModelBase, IDroppable, ISlotTagSource
 {
     // private
 
@@ -24,6 +24,7 @@ public class BlockSlotListViewModel : ViewModelBase, IDroppable
 
 
 
+    public BlockSlotBase TagSlot => _list; // clicked while empty: the lists show what fits
     public string Label => _list.Label;
     public bool HasLabel => !string.IsNullOrEmpty(_list.Label);
     public bool IsConditionSlot => typeof(ConditionBlock).IsAssignableFrom(_list.AcceptedType);

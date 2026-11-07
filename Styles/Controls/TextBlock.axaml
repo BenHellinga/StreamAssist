@@ -9,8 +9,14 @@
         <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}"/>
     </Style>
 
+    <!-- a big title: LargeVerticalGap above and below it comes from its container's spacing (the font's own space is
+         trimmed here); the first one under a line adds the difference between a line's gap and a title's (UnderLine) -->
     <Style Selector="TextBlock.Title">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}"/>
+        <Setter Property="Margin" Value="{s:Gap TitleTrim}"/>
+    </Style>
+    <Style Selector="TextBlock.Title.UnderLine">
+        <Setter Property="Margin" Value="{s:Gap TitleUnderLineMargin}"/>
     </Style>
 
     <!-- marker class for field labels, no overrides yet -->

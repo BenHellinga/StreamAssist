@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Dashboard.UI.SoundDockView"
+             x:DataType="ui:SoundDockViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Dashboard.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- this dock's sounds in the order they play: name | Playing, Paused or Waiting (muted) | pause | stop. The name
+         takes what the dock's width leaves (cut with … when it's long), never less than ControlMinWidth: a dock narrower
+         than that cuts the row off on the right, like its header -->
+
+    <ScrollViewer Classes="Gapped">
+        <StackPanel Margin="{s:Gap ScrollInset}">
+
+            <TextBlock Classes="Description" Text="No sounds playing" IsVisible="{Binding IsEmpty}"/>
+
+            <!-- the state column is shared by all rows, so the buttons line up -->
+            <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True" ClipToBounds="True">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ui:SoundRowViewModel">
+                        <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" MinWidth="{DynamicResource ControlMinWidth}"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="SoundState"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+
+                            <TextBlock Grid.Column="1" Classes="Label" Classes.Placeholder="{Binding !IsPlaying}" Text="{Binding State}"
+                                       Margin="{s:Gap SmallGapSides}" VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="2" Classes="Square Medium" Command="{Binding PausePressedCommand}" IsEnabled="{Binding IsPlaying}">
+                                <Panel>
+                                    <Path Classes="Icon" Data="{StaticResource PauseIcon}" IsVisible="{Binding !IsPaused}"/>
+                                    <Path Classes="Icon" Data="{StaticResource PlayIcon}" IsVisible="{Binding IsPaused}"/>
+                                </Panel>
+                            </Button>
+
+                            <Button Grid.Column="3" Classes="Square Medium" Command="{Binding StopPressedCommand}">
+                                <Path Classes="Icon" Data="{StaticResource StopIcon}"/>
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

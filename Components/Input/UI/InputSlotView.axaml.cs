@@ -12,12 +12,12 @@ public partial class InputSlotView : ViewBase
     {
         InitializeComponent();
         CommitOnLeave.Attach(this); // a microphone box's hold applies when its box is left
-        DevicePictureHost.SizeChanged += OnKeyboardHostSizeChanged;
+        DevicePictureHost.SizeChanged += OnPictureHostSizeChanged;
     }
 
 
 
-    private void OnKeyboardHostSizeChanged(object? sender, SizeChangedEventArgs e)
+    private void OnPictureHostSizeChanged(object? sender, SizeChangedEventArgs e)
     {
         if (DataContext is InputSlotViewModel vm)
             vm.SetDisplayWidth(e.NewSize.Width);

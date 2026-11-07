@@ -21,9 +21,9 @@
                       Classes="Gapped">
             <!-- the padding is room to scroll the last box up (Spacing.axaml ScrollEndPadding) -->
             <Border Padding="{StaticResource ScrollEndPadding}">
-                <!-- never narrower than KeyboardMinWidth: a narrow window scrolls sideways, the keyboard pictures stay
+                <!-- never narrower than InputBoxMinWidth: a narrow window scrolls sideways, the keyboard pictures stay
                      usable (they don't ask for width themselves, DevicePictureHost, so wider windows still widen them) -->
-                <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}" MinWidth="{DynamicResource KeyboardMinWidth}">
+                <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}" MinWidth="{DynamicResource InputBoxMinWidth}">
                     <ItemsControl ItemsSource="{Binding Slots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

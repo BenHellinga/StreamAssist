@@ -87,7 +87,7 @@ public class InputListModel : ModelBase, IJsonOnDeserialized
 
     public InputListModel()
     {
-        _configs = new("keyboard config", () => new InputConfigModel());
+        _configs = new("input config", () => new InputConfigModel());
         _slots = [];
         _devices = null; // set later through AttachDevices
 
@@ -146,7 +146,7 @@ public class InputListModel : ModelBase, IJsonOnDeserialized
 
 
 
-    // a slot of this layout (the Keyboard tab's input device cards: Keyboard, Generic) before the one now at index
+    // a slot of this layout (the Input tab's device cards) before the one now at index
     // (the list's length = at the end)
     public bool TryCreateSlot(string layout, int index, out InputSlotModel slot)
     {
@@ -174,7 +174,7 @@ public class InputListModel : ModelBase, IJsonOnDeserialized
     {
         if (_configs.Selected == null)
         {
-            AppLog.WriteError("can't paste an input device, no keyboard config");
+            AppLog.WriteError("can't paste an input device, no input config");
             return false;
         }
 

@@ -134,6 +134,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
     // keys can't collapse (the button is hidden)
     public bool CanCollapse => false;
+    public bool IsCollapsed => false;
     public bool CanCopy => true;
     [RelayCommand] private void OnCopyButtonPressed() { if (_keybind != null) BlockClipboard.CopyBindable(_keybind); } // the whole binding, pastes on other keys / bind boxes
     public bool CanToggle => true;

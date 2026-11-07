@@ -1,6 +1,5 @@
 using System;
 using System.Text.Json.Serialization;
-using Avalonia.Threading;
 using StreamAssist.Components.Chatbot.Model;
 using StreamAssist.Core.Persistence;
 
@@ -29,7 +28,7 @@ public class ChatbotSaveManager : IDisposable
     private const string CredentialsSection = "twitchApp";
 
     private readonly ChatbotComponentModel _model;
-    private IDisposable? _pendingSave;
+    private readonly DelayedSave _save; // typing in a text box changes the model on every key, so wait for it to settle
 
 
 
@@ -40,7 +39,7 @@ public class ChatbotSaveManager : IDisposable
     public ChatbotSaveManager(ChatbotComponentModel model)
     {
         _model = model;
-        _pendingSave = null;
+        _save = new(Write, TimeSpan.FromSeconds(1));
 
         _model.Changed += OnModelChanged;
         _model.CredentialsChanged += OnModelChanged;
@@ -52,12 +51,7 @@ public class ChatbotSaveManager : IDisposable
 
 
 
-    // typing in a text box changes the model on every key, so wait for it to settle
-    private void OnModelChanged()
-    {
-        _pendingSave?.Dispose();
-        _pendingSave = DispatcherTimer.RunOnce(SaveNow, TimeSpan.FromSeconds(1));
-    }
+    private void OnModelChanged() => _save.Request();
 
 
 
@@ -76,11 +70,12 @@ public class ChatbotSaveManager : IDisposable
 
 
 
-    public void SaveNow()
-    {
-        _pendingSave?.Dispose();
-        _pendingSave = null;
+    public void SaveNow() => _save.Now();
 
+
+
+    private void Write()
+    {
         JsonFileStore.Save(FileName, _model);
         CredentialStore.Save(CredentialsSection, new TwitchAppData { ClientId = _model.ClientId, ClientSecret = _model.ClientSecret });
     }
@@ -96,7 +91,6 @@ public class ChatbotSaveManager : IDisposable
         _model.Changed -= OnModelChanged;
         _model.CredentialsChanged -= OnModelChanged;
 
-        // the app is closing, write the final state instead of dropping a pending save
-        if (_pendingSave != null) SaveNow();
+        _save.Dispose(); // the app is closing: a waiting save is written now
     }
 }

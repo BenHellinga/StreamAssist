@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using StreamAssist.Components.Dashboard.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Persistence;
 
@@ -34,28 +35,40 @@ public static class AudioHelper
 
 
 
-    // path is inside Assets/ (e.g. "Sounds/boom.mp3", see AppPaths), never anywhere else on the PC
+    // plays a sound straight away, over anything else playing, with no way to stop it (a sound with no dock). path is
+    // inside Assets/ (e.g. "Sounds/boom.mp3", see AppPaths), never anywhere else on the PC
     public static bool TryPlaySound(string path, float volume = 1.0f, string? deviceName = null)
+    {
+        if (TryOpenSound(path, volume, deviceName) is not { } playback) return false;
+
+        playback.Start(() => { });
+        return true;
+    }
+
+
+
+    // a sound ready to play (not started), e.g. for a sound dock's queue; null if it can't be (logged). A folder gives
+    // one of its sounds at random (e.g. Sounds/hype for variety)
+    public static SoundPlayback? TryOpenSound(string path, float volume = 1.0f, string? deviceName = null)
     {
         if (!AppPaths.TryResolveAsset(path, out var fullPath, out var error))
         {
             AppLog.WriteError($"can't play '{path}' ({error})");
-            return false;
+            return null;
         }
 
-        // a folder plays one of its sounds at random (e.g. Sounds/hype for variety)
         if (System.IO.Directory.Exists(fullPath))
         {
             var sounds = System.IO.Directory.GetFiles(fullPath).Where(IsSound).ToArray();
             if (sounds.Length == 0)
             {
                 AppLog.WriteError($"can't play '{path}' (no sounds in that folder)");
-                return false;
+                return null;
             }
             fullPath = sounds[Random.Shared.Next(sounds.Length)];
         }
 
-        if (!TryGetDeviceByString(deviceName, out var device)) return false;
+        if (!TryGetDeviceByString(deviceName, out var device)) return null;
 
         AudioFileReader audioFile;
         try
@@ -65,46 +78,25 @@ public static class AudioHelper
         catch (Exception)
         {
             AppLog.WriteError($"can't load sound '{path}'");
-            return false;
+            return null;
         }
 
-        var outputDevice = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
-
-        outputDevice.Init(audioFile);
-        outputDevice.Play();
-        outputDevice.PlaybackStopped += (_, _) =>
-        {
-            outputDevice.Dispose();
-            audioFile.Dispose();
-        };
-
-        return true;
+        return new SoundPlayback(device, audioFile, audioFile);
     }
 
 
 
-    // plays audio already in memory (e.g. Speak Text's speech) on a device, finished when it has played (or failed to
-    // start, false). It owns the stream from here and disposes it
-    public static Task<bool> PlayWaveAsync(WaveStream wave, float volume, string? deviceName)
+    // audio already in memory (e.g. Speak Text's speech), ready to play on a device (null if the device isn't there,
+    // logged). It owns the stream from here and disposes it
+    public static SoundPlayback? TryOpenWave(WaveStream wave, float volume, string? deviceName)
     {
         if (!TryGetDeviceByString(deviceName, out var device))
         {
             wave.Dispose();
-            return Task.FromResult(false);
+            return null;
         }
 
-        var done = new TaskCompletionSource<bool>();
-        var outputDevice = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
-        outputDevice.Init(new VolumeSampleProvider(wave.ToSampleProvider()) { Volume = volume });
-        outputDevice.PlaybackStopped += (_, _) =>
-        {
-            outputDevice.Dispose();
-            wave.Dispose();
-            done.TrySetResult(true);
-        };
-        outputDevice.Play();
-
-        return done.Task;
+        return new SoundPlayback(device, new VolumeSampleProvider(wave.ToSampleProvider()) { Volume = volume }.ToWaveProvider(), wave);
     }
 
 
@@ -145,5 +137,82 @@ public static class AudioHelper
 
         device = match;
         return true;
+    }
+}
+
+
+
+// one sound on its device, made ready by AudioHelper: Start plays it (finished comes on the UI thread when it has played
+// or was stopped), Stop ends it early. Either way its device and stream are freed once, at the end
+public sealed class SoundPlayback : ISoundPlayback
+{
+    private readonly WasapiOut _output;
+    private readonly IDisposable _source;
+    private Action? _finished;
+    private bool _started;
+    private bool _freed;
+
+
+
+    internal SoundPlayback(MMDevice device, IWaveProvider provider, IDisposable source)
+    {
+        _output = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
+        _output.Init(provider);
+        _source = source;
+        _output.PlaybackStopped += OnStopped;
+    }
+
+
+
+    public void Start(Action finished)
+    {
+        if (_started || _freed) return;
+
+        _started = true;
+        _finished = finished;
+        _output.Play();
+    }
+
+
+
+    public void Pause()
+    {
+        if (_started && !_freed) _output.Pause();
+    }
+
+
+
+    public void Resume()
+    {
+        if (_started && !_freed) _output.Play();
+    }
+
+
+
+    public void Stop()
+    {
+        if (_started) _output.Stop(); // PlaybackStopped frees it
+        else Free();
+    }
+
+
+
+    private void OnStopped(object? sender, StoppedEventArgs e)
+    {
+        Free();
+        var finished = _finished;
+        if (finished != null) Avalonia.Threading.Dispatcher.UIThread.Post(finished);
+    }
+
+
+
+    private void Free()
+    {
+        if (_freed) return;
+
+        _freed = true;
+        _output.PlaybackStopped -= OnStopped;
+        _output.Dispose();
+        _source.Dispose();
     }
 }

@@ -25,7 +25,7 @@ public class SetSpotifyVolumeAction : ActionBlock
 
 
 
-    private string _mode;
+    private readonly MenuSlot _mode;
     private readonly ValueSlot<int> _volume;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -36,13 +36,6 @@ public class SetSpotifyVolumeAction : ActionBlock
 
 
     // Set to the value, or Change by it (added to what it is now, e.g. -2 for a step down)
-    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
-    public string Mode
-    {
-        get => _mode;
-        set => SetParameter(ref _mode, value);
-    }
-
     public static List<string> GetModeMenuItems() => ["Set to", "Change by"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -52,6 +45,13 @@ public class SetSpotifyVolumeAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("mode")]
+    private ValueSlotData JsonMode
+    {
+        get => _mode.GetData();
+        set => _mode.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("volume")]
     private ValueSlotData JsonVolume
@@ -68,9 +68,9 @@ public class SetSpotifyVolumeAction : ActionBlock
 
     public SetSpotifyVolumeAction()
     {
-        _mode = "Set to";
+        _mode = new("Mode", GetModeMenuItems, "Set to");
         _volume = new("Volume");
-        _slots = [_volume];
+        _slots = [_mode, _volume];
 
         _volume.SetText("50");
 
@@ -86,11 +86,12 @@ public class SetSpotifyVolumeAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var mode = await _mode.EvaluateAsync(context);
         var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
         var volume = await _volume.EvaluateAsync(context);
 
         // Spotify may report the old volume for a moment after a change, so quick presses can land on the same step
-        if (_mode == "Change by")
+        if (mode == "Change by")
         {
             var (ok, now) = await spotify.TryGetPlaybackAsync(SpotifyInfos.Find(SpotifyInfos.Playback, "Volume")!, context.CancellationToken);
             if (!ok) throw new BlockFailedException("volume not read");

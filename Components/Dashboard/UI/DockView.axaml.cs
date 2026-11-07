@@ -14,6 +14,7 @@ public partial class DockView : UserControl
 {
     // something that can't be used right now is drawn at half strength (a button row's ▶)
     public static readonly IValueConverter DimWhenTrue = new FuncValueConverter<bool, double>(dim => dim ? 0.5 : 1);
+    public static readonly IValueConverter HideWhenTrue = new FuncValueConverter<bool, double>(hide => hide ? 0 : 1); // keeps its room
 
 
 

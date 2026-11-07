@@ -40,6 +40,7 @@ public partial class DockButtonRowViewModel : ViewModelBase, IDroppable, IEditBu
 
 
     public bool CanCollapse => false; // the collapse button is hidden
+    public bool IsCollapsed => false;
     public bool CanCopy => true;
     [RelayCommand] private void OnCopyButtonPressed() { if (_bindable != null) BlockClipboard.CopyBindable(_bindable); } // the whole binding, pastes on other keys / bind boxes
     public bool CanToggle => true;

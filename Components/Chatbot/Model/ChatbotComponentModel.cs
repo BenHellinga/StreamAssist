@@ -338,7 +338,8 @@ public class ChatbotComponentModel : ModelBase
         if (place.Row != null && !place.Row.Target.IsEmpty)
             return Refuse(logErrors, out failure, CommandFailure.AlreadyExists, $"can't add {name}, already exists");
 
-        var send = new SendChatMessageAction { Reply = "Yes" }; // commands answer the message that asked
+        var send = new SendChatMessageAction(); // commands answer the message that asked
+        send.Reply.SetText("Yes");
         send.Message.SetText(text);
         var bindable = new BindableModel();
         bindable.TryAddBlock(send);

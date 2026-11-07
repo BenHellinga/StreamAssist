@@ -51,16 +51,18 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
     public BlockModel Block => _block;
     public ObservableCollection<ConfigurableParameterViewModel> Configurators => _configurators;
     public ObservableCollection<ViewModelBase> Slots => _slots; // BlockSlotViewModel or BlockSlotListViewModel
+    public ObservableCollection<ViewModelBase> LeadSlots { get; } // the first slots, above the settings (see SlotsBeforeSettings)
 
     // where the slots go in the card: under the settings, or beside them (e.g. Parse Parameter)
-    public int SlotsRow => _block.SlotsBesideSettings ? 0 : 1;
-    public bool HasSlots => _block.Slots.Count > 0; // a block without any doesn't show the (empty) slot area
+    public int SlotsRow => _block.SlotsBesideSettings ? 1 : 2;
+    public bool HasSlots => _slots.Count > 0; // a block without any doesn't show the (empty) slot area
+    public bool HasLeadSlots => LeadSlots.Count > 0;
     public int SlotsColumn => _block.SlotsBesideSettings ? 1 : 0;
 
     // how the card is spaced (BlockView): rows SmallVerticalGap apart, the body ends ContentPadding above the bottom
     // border (except slots beside the settings, which end at the ring)
     public bool HasSettings => _configurators.Count > 0;
-    public bool HasBody => HasSettings || HasSlots;
+    public bool HasBody => HasSettings || HasSlots || HasLeadSlots;
     public bool SettingsPadBelow => HasSettings && (!HasSlots || _block.SlotsBesideSettings); // nothing under them
     public bool SlotsAfterSettings => HasSettings && HasSlots && !_block.SlotsBesideSettings;
     public bool SlotsPadBelow => HasSlots && !_block.SlotsBesideSettings; // slots beside the settings (Parse Parameter's) end at the ring
@@ -77,16 +79,18 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
         _removeFromSource = removeFromSource;
         _configurators = ConfiguratorListBuilder.Build(block);
         _slots = [];
+        LeadSlots = [];
         _flash = new(isOn => IsTriggered = isOn);
 
         _isDisabled = _block.IsDisabled;
         _isCollapsed = _block.IsCollapsed;
         _isTriggered = false;
 
-        foreach (var slot in _block.Slots)
+        var lead = _configurators.Count > 0 ? _block.SlotsBeforeSettings : 0;
+        foreach (var (slot, index) in _block.Slots.Select((s, i) => (s, i)))
         {
             var createViewModel = FindSlotViewModelFactory(slot.GetType());
-            if (createViewModel != null) _slots.Add(createViewModel(slot));
+            if (createViewModel != null) (index < lead ? LeadSlots : _slots).Add(createViewModel(slot));
         }
 
         SubscribeToBlockModel(_block);
@@ -195,7 +199,7 @@ public partial class BlockViewModel : ViewModelBase, IEditButtons
         UnsubscribeFromBlockModel(_block);
         _flash.Dispose();
 
-        foreach (var slot in _slots)
+        foreach (var slot in LeadSlots.Concat(_slots))
             slot.Dispose();
     }
 }

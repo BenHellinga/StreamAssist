@@ -25,7 +25,7 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly ValueSlot<string> _user;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -36,17 +36,6 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
 
 
     // picking a setting also picks its type below (when the slot it's in can take it)
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set
-        {
-            SetParameter(ref _setting, value);
-            if (TwitchInfos.Find(TwitchInfos.Follower, value) is { } info && Kind != info.Kind) TrySetKind(info.Kind);
-        }
-    }
-
     public static List<string> GetSettingMenuItems() => TwitchInfos.Names(TwitchInfos.Follower);
 
     // what it's read as, placing it in a slot picks the slot's type (saved after the setting, so a loaded block keeps it)
@@ -64,9 +53,29 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
 
 
 
+    // menu events
+
+
+
+    // picking an option in the dropdown (not a block in it: that's only known when it runs)
+    private void OnSettingPicked()
+    {
+        var value = _setting.Text;
+        if (TwitchInfos.Find(TwitchInfos.Follower, value) is { } info && Kind != info.Kind) TrySetKind(info.Kind);
+    }
+
+
+
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("user")]
     private ValueSlotData JsonUser
@@ -83,11 +92,12 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
 
     public GetFollowerInfoBlock() : base(ValueKind.Int)
     {
-        _setting = "Days Following";
+        _setting = new("Setting", GetSettingMenuItems, "Days Following");
         _user = new("User");
-        _slots = [_user];
+        _slots = [_setting, _user];
         _user.SetText("{userLogin}");
 
+        _setting.TextChanged += OnSettingPicked;
         TrackSlots();
     }
 
@@ -99,8 +109,9 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
+        var setting = await _setting.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var info = TwitchInfos.Find(TwitchInfos.Follower, _setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var info = TwitchInfos.Find(TwitchInfos.Follower, setting) ?? throw Fail($"unknown setting '{setting}'");
         var user = await _user.EvaluateAsync(context);
 
         var (ok, value) = await chatbot.TryGetFollowerInfoAsync(user, info, context.CancellationToken);

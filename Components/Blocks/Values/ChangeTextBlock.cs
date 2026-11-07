@@ -24,7 +24,7 @@ public class ChangeTextBlock : ValueBlock<string>
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _text;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -33,13 +33,6 @@ public class ChangeTextBlock : ValueBlock<string>
     // public
 
 
-
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
 
     public static List<string> GetChangeMenuItems() => ["Upper Case", "Lower Case", "Trim", "Capitalize"];
 
@@ -50,6 +43,13 @@ public class ChangeTextBlock : ValueBlock<string>
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("text")]
     private ValueSlotData JsonText
@@ -66,9 +66,9 @@ public class ChangeTextBlock : ValueBlock<string>
 
     public ChangeTextBlock()
     {
-        _change = "Upper Case";
+        _change = new("Do", GetChangeMenuItems, "Upper Case");
         _text = new("Text");
-        _slots = [_text];
+        _slots = [_change, _text];
 
         TrackSlots();
     }
@@ -81,9 +81,10 @@ public class ChangeTextBlock : ValueBlock<string>
 
     protected override async Task<string> ComputeAsync(TriggerContext context)
     {
+        var change = await _change.EvaluateAsync(context);
         var text = await _text.EvaluateAsync(context);
 
-        return _change switch
+        return change switch
         {
             "Lower Case" => text.ToLowerInvariant(),
             "Trim" => text.Trim(),

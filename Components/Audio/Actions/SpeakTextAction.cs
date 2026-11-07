@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 using NAudio.Wave;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.Dashboard.Model;
+using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Actions;
 
@@ -33,7 +36,7 @@ public class SpeakTextAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Speak Text";
-    [JsonIgnore] public override string Description => "Reads text out loud with a Windows voice or a Kokoro voice (natural sounding, free, works offline). Speed is -10 (slowest) to 10, Volume 0 to 1. Wait Until Done holds the run until it has finished speaking.";
+    [JsonIgnore] public override string Description => "Reads text out loud with a Windows voice or a Kokoro voice (natural sounding, free, works offline). Speed is -10 (slowest) to 10, Volume 0 to 1. With no Dock it speaks straight away, over anything else playing; naming a sound dock queues it there, so speech plays one at a time in order and can be skipped or stopped. Wait Until Done holds the run until it has finished speaking (or was stopped).";
     [JsonIgnore] public override BlockGroup Group => BlockGroup.App;
 
 
@@ -45,8 +48,9 @@ public class SpeakTextAction : ActionBlock
     private readonly ValueSlot<string> _text;
     private readonly ValueSlot<double> _speed;
     private readonly ValueSlot<double> _volume;
-    private string _voice;
-    private string _outputDevice;
+    private readonly ValueSlot<string> _dock;
+    private readonly MenuSlot _voice;
+    private readonly MenuSlot _outputDevice;
     private bool _waitUntilDone;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -55,20 +59,6 @@ public class SpeakTextAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Voice", ConfiguratorType.Menu)] [JsonPropertyName("voice")]
-    public string Voice
-    {
-        get => _voice;
-        set => SetParameter(ref _voice, value);
-    }
-
-    [ConfigurableParameter("Output Device", ConfiguratorType.Menu)] [JsonPropertyName("outputDevice")]
-    public string OutputDevice
-    {
-        get => _outputDevice;
-        set => SetParameter(ref _outputDevice, value);
-    }
 
     [ConfigurableParameter("Wait Until Done", ConfiguratorType.Boolean)] [JsonPropertyName("waitUntilDone")]
     public bool WaitUntilDone
@@ -84,6 +74,20 @@ public class SpeakTextAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("voice")]
+    private ValueSlotData JsonVoice
+    {
+        get => _voice.GetData();
+        set => _voice.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("outputDevice")]
+    private ValueSlotData JsonOutputDevice
+    {
+        get => _outputDevice.GetData();
+        set => _outputDevice.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("text")]
     private ValueSlotData JsonText
@@ -106,6 +110,13 @@ public class SpeakTextAction : ActionBlock
         set => _volume.LoadData(value);
     }
 
+    [JsonInclude] [JsonPropertyName("dock")]
+    private ValueSlotData JsonDock
+    {
+        get => _dock.GetData();
+        set => _dock.LoadData(value);
+    }
+
 
 
     // constructor
@@ -117,10 +128,11 @@ public class SpeakTextAction : ActionBlock
         _text = new("Text");
         _speed = new("Speed");
         _volume = new("Volume");
-        _voice = DefaultVoice;
-        _outputDevice = AudioHelper.DefaultDevice;
+        _voice = new("Voice", GetVoiceMenuItems, DefaultVoice, isFixed: false);
+        _outputDevice = new("Output Device", GetOutputDeviceMenuItems, AudioHelper.DefaultDevice, isFixed: false);
         _waitUntilDone = false;
-        _slots = [_text, _speed, _volume];
+        _dock = new("Dock");
+        _slots = [_voice, _outputDevice, _text, _speed, _volume, _dock];
 
         _speed.SetText("0");
         _volume.SetText("1");
@@ -159,6 +171,8 @@ public class SpeakTextAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var voiceOption = await _voice.EvaluateAsync(context);
+        var outputDevice = await _outputDevice.EvaluateAsync(context);
         var text = await _text.EvaluateAsync(context);
         if (text.Trim() == "") return; // nothing to say
 
@@ -167,19 +181,57 @@ public class SpeakTextAction : ActionBlock
         if (double.IsNaN(speed)) throw Fail("speed isn't a number");
         if (double.IsNaN(volume)) throw Fail("volume isn't a number");
 
-        var voice = _voice;
+        var voice = voiceOption;
         var rate = (int)Math.Round(Math.Clamp(speed, -10, 10));
+        var device = outputDevice;
+
+        // a named sound dock is found first, so the speech takes its place in the queue now, before it's made
+        var dockName = await _dock.EvaluateAsync(context);
+        SoundsModel? queue = null;
+        if (dockName.Trim() != "" && !(GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard")).TryFindSoundQueue(dockName, out queue, out var dockError))
+            throw Fail(dockError);
 
         // making the speech takes a moment (as long as a short sound), so off the UI thread. A Kokoro voice's speed is
         // a factor: -10 half, 0 normal, 10 twice as fast
-        var (wave, error) = KokoroVoices.TryFind(voice, out var speaker)
-            ? await Task.Run(() => KokoroVoices.Synthesize(text, speaker, Math.Pow(2, rate / 10.0)))
-            : await Task.Run(() => Synthesize(text, voice, rate));
-        if (wave == null) throw Fail(error);
+        var made = Task.Run(() => KokoroVoices.TryFind(voice, out var speaker)
+            ? KokoroVoices.Synthesize(text, speaker, Math.Pow(2, rate / 10.0))
+            : Synthesize(text, voice, rate));
 
-        var played = AudioHelper.PlayWaveAsync(wave, (float)Math.Clamp(volume, 0, 1), _outputDevice);
-        if (_waitUntilDone && !await played.WaitAsync(context.CancellationToken)) throw Fail("couldn't play the speech");
+        if (queue != null)
+        {
+            var queued = queue.Enqueue(Label(text), OpenWhenMadeAsync(made, (float)Math.Clamp(volume, 0, 1), device));
+            if (_waitUntilDone && queued != null) await queued.Done.WaitAsync(context.CancellationToken);
+            return;
+        }
+
+        var (wave, error) = await made;
+        if (wave == null) throw Fail(error);
+        if (AudioHelper.TryOpenWave(wave, (float)Math.Clamp(volume, 0, 1), device) is not { } playback) throw Fail("couldn't play the speech");
+
+        var played = new TaskCompletionSource();
+        playback.Start(() => played.TrySetResult());
+        if (_waitUntilDone) await played.Task.WaitAsync(context.CancellationToken);
     }
+
+
+
+    // the speech, ready to play once it's made (null if it couldn't be: that's logged here, the queue moves on)
+    private async Task<ISoundPlayback?> OpenWhenMadeAsync(Task<(WaveStream? Wave, string Error)> made, float volume, string device)
+    {
+        var (wave, error) = await made;
+        if (wave == null)
+        {
+            AppLog.WriteError($"{Name}: {error}");
+            return null;
+        }
+
+        return AudioHelper.TryOpenWave(wave, volume, device);
+    }
+
+
+
+    // how it shows on a sound dock: what it says on one line (the dock cuts it to its width)
+    private static string Label(string text) => text.Trim().ReplaceLineEndings(" ");
 
 
 

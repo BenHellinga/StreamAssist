@@ -25,7 +25,7 @@ public class GetVoicemeeterGainBlock : ValueBlock<double>
 
 
 
-    private string _channel;
+    private readonly MenuSlot _channel;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -34,16 +34,22 @@ public class GetVoicemeeterGainBlock : ValueBlock<double>
 
 
 
-    [ConfigurableParameter("Channel", ConfiguratorType.Menu)] [JsonPropertyName("channel")]
-    public string Channel
-    {
-        get => _channel;
-        set => SetParameter(ref _channel, value);
-    }
-
     public static List<string> GetChannelMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow());
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("channel")]
+    private ValueSlotData JsonChannel
+    {
+        get => _channel.GetData();
+        set => _channel.LoadData(value);
+    }
 
 
 
@@ -53,8 +59,8 @@ public class GetVoicemeeterGainBlock : ValueBlock<double>
 
     public GetVoicemeeterGainBlock()
     {
-        _channel = "Stereo Input 1";
-        _slots = [];
+        _channel = new("Channel", GetChannelMenuItems, "Stereo Input 1", isFixed: false);
+        _slots = [_channel];
 
         TrackSlots();
     }
@@ -65,10 +71,11 @@ public class GetVoicemeeterGainBlock : ValueBlock<double>
 
 
 
-    protected override Task<double> ComputeAsync(TriggerContext context)
+    protected override async Task<double> ComputeAsync(TriggerContext context)
     {
+        var channel = await _channel.EvaluateAsync(context);
         var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        if (!voicemeeter.TryGetGain(_channel, out var gain)) throw new BlockFailedException("gain not read");
-        return Task.FromResult((double)gain);
+        if (!voicemeeter.TryGetGain(channel, out var gain)) throw new BlockFailedException("gain not read");
+        return (double)gain;
     }
 }

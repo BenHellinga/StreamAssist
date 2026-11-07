@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Avalonia.Threading;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Core.Persistence;
 using StreamAssist.Components.Input.Model;
@@ -18,7 +17,7 @@ public class InputSaveManager : IDisposable
 
 
     private readonly InputComponentModel _model;
-    private IDisposable? _pendingSave;
+    private readonly DelayedSave _save; // a burst of changes (a slider dragged, keys bound) is saved once
 
 
 
@@ -29,9 +28,9 @@ public class InputSaveManager : IDisposable
     public InputSaveManager(InputComponentModel model)
     {
         _model = model;
-        _pendingSave = null;
+        _save = new(() => JsonFileStore.Save(FileName, _model), TimeSpan.FromSeconds(1));
 
-        SubscribeToKeyboardComponentModel(_model);
+        SubscribeToComponentModel(_model);
     }
 
 
@@ -51,7 +50,7 @@ public class InputSaveManager : IDisposable
 
     private void OnSlotAdded(InputSlotModel slot, int _)
     {
-        SubscribeToKeyboardSlotModel(slot);
+        SubscribeToSlotModel(slot);
         Save();
     }
 
@@ -59,7 +58,7 @@ public class InputSaveManager : IDisposable
 
     private void OnSlotRemoved(InputSlotModel slot)
     {
-        UnsubscribeFromKeyboardSlotModel(slot);
+        UnsubscribeFromSlotModel(slot);
         Save();
     }
 
@@ -82,16 +81,7 @@ public class InputSaveManager : IDisposable
 
 
 
-    public void Save()
-    {
-        if (_pendingSave != null) return;
-
-        _pendingSave = DispatcherTimer.RunOnce(() =>
-        {
-            _pendingSave = null;
-            JsonFileStore.Save(FileName, _model);
-        }, TimeSpan.FromSeconds(1));
-    }
+    public void Save() => _save.Request();
 
 
 
@@ -99,21 +89,21 @@ public class InputSaveManager : IDisposable
 
 
 
-    private void SubscribeToKeyboardComponentModel(InputComponentModel component)
+    private void SubscribeToComponentModel(InputComponentModel component)
     {
-        SubscribeToKeyboardListModel(component.ListModel);
+        SubscribeToListModel(component.ListModel);
     }
 
 
 
-    private void UnsubscribeFromKeyboardComponentModel(InputComponentModel component)
+    private void UnsubscribeFromComponentModel(InputComponentModel component)
     {
-        UnsubscribeFromKeyboardListModel(component.ListModel);
+        UnsubscribeFromListModel(component.ListModel);
     }
 
 
 
-    private void SubscribeToKeyboardListModel(InputListModel list)
+    private void SubscribeToListModel(InputListModel list)
     {
         list.SlotCreated += OnSlotAdded;
         list.SlotDeleted += OnSlotRemoved;
@@ -121,12 +111,12 @@ public class InputSaveManager : IDisposable
         list.Changed += OnConfigsChanged;
 
         foreach (var slot in list.Slots)
-            SubscribeToKeyboardSlotModel(slot);
+            SubscribeToSlotModel(slot);
     }
 
 
 
-    private void UnsubscribeFromKeyboardListModel(InputListModel list)
+    private void UnsubscribeFromListModel(InputListModel list)
     {
         list.SlotCreated -= OnSlotAdded;
         list.SlotDeleted -= OnSlotRemoved;
@@ -134,12 +124,12 @@ public class InputSaveManager : IDisposable
         list.Changed -= OnConfigsChanged;
 
         foreach (var slot in list.Slots)
-            UnsubscribeFromKeyboardSlotModel(slot);
+            UnsubscribeFromSlotModel(slot);
     }
 
 
 
-    private void SubscribeToKeyboardSlotModel(InputSlotModel slot)
+    private void SubscribeToSlotModel(InputSlotModel slot)
     {
         slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
         slot.LayoutChanged += OnLayoutChanged;
@@ -150,7 +140,7 @@ public class InputSaveManager : IDisposable
 
 
 
-    private void UnsubscribeFromKeyboardSlotModel(InputSlotModel slot)
+    private void UnsubscribeFromSlotModel(InputSlotModel slot)
     {
         slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         slot.LayoutChanged -= OnLayoutChanged;
@@ -165,10 +155,11 @@ public class InputSaveManager : IDisposable
 
 
 
+    // a save still waiting (the last second's changes) is written now, not dropped (DelayedSave)
     public void Dispose()
     {
-        UnsubscribeFromKeyboardComponentModel(_model);
+        UnsubscribeFromComponentModel(_model);
 
-        _pendingSave?.Dispose();
+        _save.Dispose();
     }
 }

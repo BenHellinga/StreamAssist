@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Dashboard.Model;
+using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Dashboard.UI;
@@ -11,7 +12,7 @@ namespace StreamAssist.Components.Dashboard.UI;
 
 // the Dashboard tab's dock list: one card per kind of dock, dragged onto the dashboard to add one, filtered by the
 // search box (name or description). Hidden with no config (there's nowhere to put them)
-public partial class DockPaletteViewModel : ViewModelBase
+public partial class DockPaletteViewModel : ViewModelBase, IListSearch
 {
     // private
 
@@ -21,7 +22,7 @@ public partial class DockPaletteViewModel : ViewModelBase
 
     [ObservableProperty] private bool _hasConfig;
     [ObservableProperty] private string _searchText;
-    [ObservableProperty] private IReadOnlyList<DockCardViewModel> _shown;
+    [ObservableProperty] private string _selectedTag;
 
 
 
@@ -30,6 +31,8 @@ public partial class DockPaletteViewModel : ViewModelBase
 
 
     public IReadOnlyList<DockCardViewModel> Cards { get; }
+    public IReadOnlyList<string> Tags { get; } = [SlotTags.All, "Dock"]; // its one kind, like the block lists' type filter
+    public PaletteSectionViewModel Section { get; } // its one heading, like the block list's
 
 
 
@@ -43,7 +46,8 @@ public partial class DockPaletteViewModel : ViewModelBase
         _hasConfig = _model.Config != null;
         Cards = Enum.GetValues<DockKind>().Select(k => new DockCardViewModel(k)).ToList();
         _searchText = "";
-        _shown = Cards;
+        _selectedTag = SlotTags.All;
+        Section = new("Docks", "Docks", Cards);
 
         _model.Configs.ListChanged += OnConfigsChanged;
     }
@@ -57,7 +61,8 @@ public partial class DockPaletteViewModel : ViewModelBase
     partial void OnSearchTextChanged(string value)
     {
         var search = value.Trim();
-        Shown = search == "" ? Cards : Cards.Where(c =>
+        Section.IsSearching = search != "";
+        Section.Cards = search == "" ? Cards : Cards.Where(c =>
             c.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || c.Description.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
@@ -78,5 +83,6 @@ public partial class DockPaletteViewModel : ViewModelBase
     public override void Dispose()
     {
         _model.Configs.ListChanged -= OnConfigsChanged;
+        Section.Dispose();
     }
 }

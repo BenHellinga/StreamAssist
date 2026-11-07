@@ -8,7 +8,7 @@ namespace StreamAssist.Components.Blocks.UI;
 
 
 // view model for a single slot: a drop zone when empty, the block's card when filled
-public partial class BlockSlotViewModel : ViewModelBase, IDroppable
+public partial class BlockSlotViewModel : ViewModelBase, IDroppable, ISlotTagSource
 {
     // private
 
@@ -24,6 +24,7 @@ public partial class BlockSlotViewModel : ViewModelBase, IDroppable
 
 
 
+    public BlockSlotBase TagSlot => _slot; // clicked while empty: the lists show what fits
     public string Label => _slot.Label;
     public bool HasLabel => !string.IsNullOrEmpty(_slot.Label);
     public bool IsConditionSlot => typeof(ConditionBlock).IsAssignableFrom(_slot.AcceptedType);

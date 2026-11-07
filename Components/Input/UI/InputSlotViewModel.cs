@@ -114,8 +114,8 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
         RefreshMic();
 
-        SubscribeToKeyboardSlotModel(_slot);
-        SubscribeToKeyboardInputManager(_inputManager);
+        SubscribeToSlotModel(_slot);
+        SubscribeToInputManager(_inputManager);
 
         _callbackBlocker.Unblock();
     }
@@ -288,7 +288,7 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
 
 
-    private void SubscribeToKeyboardSlotModel(InputSlotModel slot)
+    private void SubscribeToSlotModel(InputSlotModel slot)
     {
         slot.SelectedDeviceChanged += OnSelectedDeviceChanged;
         slot.SelectedConfigChanged += OnSelectedConfigChanged;
@@ -302,7 +302,7 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
 
 
-    private void UnsubscribeFromKeyboardSlotModel(InputSlotModel slot)
+    private void UnsubscribeFromSlotModel(InputSlotModel slot)
     {
         slot.SelectedDeviceChanged -= OnSelectedDeviceChanged;
         slot.SelectedConfigChanged -= OnSelectedConfigChanged;
@@ -316,7 +316,7 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
 
 
-    private void SubscribeToKeyboardInputManager(DeviceInputManager manager)
+    private void SubscribeToInputManager(DeviceInputManager manager)
     {
         manager.KeyDown += OnKeyPressed;
         manager.KeyUp += OnKeyReleased;
@@ -324,7 +324,7 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
 
 
-    private void UnsubscribeFromKeyboardInputManager(DeviceInputManager manager)
+    private void UnsubscribeFromInputManager(DeviceInputManager manager)
     {
         manager.KeyDown -= OnKeyPressed;
         manager.KeyUp -= OnKeyReleased;
@@ -365,11 +365,11 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
     private void InitKeys()
     {
-        (var keyData, _baseWidth, _baseHeight) = DeviceDisplayHelper.DisplayData(_slot.Layout, 25, 3);
+        (var keyData, _baseWidth, _baseHeight) = DevicePictures.DisplayData(_slot.Layout, 25, 3);
 
         CurrentWidth = _baseWidth;
         CurrentHeight = _baseHeight;
-        HasBody = DeviceDisplayHelper.BodyPath(_slot.Layout) != null;
+        HasBody = DevicePictures.BodyPath(_slot.Layout) != null;
         SetBody(1, 0);
 
         foreach (var d in keyData)
@@ -395,7 +395,7 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
         var padding = 1;
         var usableWidth = _pendingWidth - padding * 2;
-        var scale = Math.Min(usableWidth / _baseWidth, DeviceDisplayHelper.MaxScale(_slot.Layout));
+        var scale = Math.Min(usableWidth / _baseWidth, DevicePictures.MaxScale(_slot.Layout));
 
         foreach (var key in _keys)
             key.RecomputeSize(scale, padding);
@@ -410,7 +410,7 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
     // the body outline at this size: its path scaled like the keys (a new geometry, so the line stays its own width)
     private void SetBody(double scale, double padding)
     {
-        if (DeviceDisplayHelper.BodyPath(_slot.Layout) is not { } path) return;
+        if (DevicePictures.BodyPath(_slot.Layout) is not { } path) return;
 
         var geometry = Geometry.Parse(path);
         geometry.Transform = new MatrixTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(padding, padding));
@@ -425,8 +425,8 @@ public partial class InputSlotViewModel : ViewModelBase, IEditButtons, ICommitOn
 
     public override void Dispose()
     {
-        UnsubscribeFromKeyboardSlotModel(_slot);
-        UnsubscribeFromKeyboardInputManager(_inputManager);
+        UnsubscribeFromSlotModel(_slot);
+        UnsubscribeFromInputManager(_inputManager);
 
         _pendingResize?.Dispose();
 

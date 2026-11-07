@@ -25,7 +25,7 @@ public class SetModeratorAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _user;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class SetModeratorAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
 
     public static List<string> GetChangeMenuItems() => ["Add", "Remove"];
 
@@ -51,6 +44,13 @@ public class SetModeratorAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("user")]
     private ValueSlotData JsonUser
@@ -67,9 +67,9 @@ public class SetModeratorAction : ActionBlock
 
     public SetModeratorAction()
     {
-        _change = "Add";
+        _change = new("Do", GetChangeMenuItems, "Add");
         _user = new("User");
-        _slots = [_user];
+        _slots = [_change, _user];
         _user.SetText("{userLogin}");
 
         TrackSlots();
@@ -84,9 +84,10 @@ public class SetModeratorAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var change = await _change.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var user = await _user.EvaluateAsync(context);
 
-        if (!await chatbot.TrySetModeratorAsync(user, _change == "Add", context.CancellationToken)) throw new BlockFailedException("moderator not changed");
+        if (!await chatbot.TrySetModeratorAsync(user, change == "Add", context.CancellationToken)) throw new BlockFailedException("moderator not changed");
     }
 }

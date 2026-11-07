@@ -1,4 +1,6 @@
 using Avalonia;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using StreamAssist.Core.Mvvm;
 
 namespace StreamAssist.Components.Blocks.UI;
@@ -25,6 +27,12 @@ public partial class DropZone : ViewBase
     public DropZone()
     {
         InitializeComponent();
+
+        // clicked: the lists show what fits this slot
+        AddHandler(PointerPressedEvent, (_, _) =>
+        {
+            if (DataContext is ISlotTagSource source) SlotTags.Request(source.TagSlot);
+        }, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
 

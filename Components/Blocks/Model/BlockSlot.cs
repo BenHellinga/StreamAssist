@@ -23,6 +23,7 @@ public sealed class BlockSlot : BlockSlotBase
 
 
     public BlockModel? Block => _block;
+    public ValueSlot? ValueSlot { get; internal set; } // the value slot this is the block part of (none for other slots)
     public override IReadOnlyList<BlockModel> Blocks => _block == null ? [] : [_block];
 
 

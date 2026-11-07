@@ -25,8 +25,8 @@ public class VoicemeeterRoutedCondition : ConditionBlock
 
 
 
-    private string _input;
-    private string _bus;
+    private readonly MenuSlot _input;
+    private readonly MenuSlot _bus;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -35,25 +35,32 @@ public class VoicemeeterRoutedCondition : ConditionBlock
 
 
 
-    [ConfigurableParameter("Input", ConfiguratorType.Menu)] [JsonPropertyName("input")]
-    public string Input
-    {
-        get => _input;
-        set => SetParameter(ref _input, value);
-    }
-
     public static List<string> GetInputMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow(), inputs: true);
 
-    [ConfigurableParameter("Bus", ConfiguratorType.Menu)] [JsonPropertyName("bus")]
-    public string Bus
-    {
-        get => _bus;
-        set => SetParameter(ref _bus, value);
-    }
 
     public static List<string> GetBusMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow(), inputs: false);
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("input")]
+    private ValueSlotData JsonInput
+    {
+        get => _input.GetData();
+        set => _input.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("bus")]
+    private ValueSlotData JsonBus
+    {
+        get => _bus.GetData();
+        set => _bus.LoadData(value);
+    }
 
 
 
@@ -63,9 +70,9 @@ public class VoicemeeterRoutedCondition : ConditionBlock
 
     public VoicemeeterRoutedCondition()
     {
-        _input = "Stereo Input 1";
-        _bus = "A1";
-        _slots = [];
+        _input = new("Input", GetInputMenuItems, "Stereo Input 1", isFixed: false);
+        _bus = new("Bus", GetBusMenuItems, "A1", isFixed: false);
+        _slots = [_input, _bus];
 
         TrackSlots();
     }
@@ -76,10 +83,12 @@ public class VoicemeeterRoutedCondition : ConditionBlock
 
 
 
-    protected override Task<bool> CheckAsync(TriggerContext context)
+    protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var input = await _input.EvaluateAsync(context);
+        var bus = await _bus.EvaluateAsync(context);
         var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        if (!voicemeeter.TryGetRoute(_input, _bus, out var routed)) throw new BlockFailedException("route not read");
-        return Task.FromResult(routed);
+        if (!voicemeeter.TryGetRoute(input, bus, out var routed)) throw new BlockFailedException("route not read");
+        return routed;
     }
 }

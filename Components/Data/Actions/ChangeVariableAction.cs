@@ -26,7 +26,7 @@ public class ChangeVariableAction : ActionBlock
 
 
 
-    private string _variable;
+    private readonly MenuSlot _variable;
     private readonly ValueSlot<double> _amount;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -35,16 +35,6 @@ public class ChangeVariableAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Variable", ConfiguratorType.Menu)] [JsonPropertyName("variable")]
-    public string Variable
-    {
-        get => _variable;
-        set
-        {
-            SetParameter(ref _variable, value);
-        }
-    }
 
     public static List<string> GetVariableMenuItems() => GlobalContext.DataModel?.VariableNames() ?? [];
 
@@ -55,6 +45,13 @@ public class ChangeVariableAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("variable")]
+    private ValueSlotData JsonVariable
+    {
+        get => _variable.GetData();
+        set => _variable.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("amount")]
     private ValueSlotData JsonAmount
@@ -71,9 +68,9 @@ public class ChangeVariableAction : ActionBlock
 
     public ChangeVariableAction()
     {
-        _variable = "";
+        _variable = new("Variable", GetVariableMenuItems, "", isFixed: false);
         _amount = new("Amount");
-        _slots = [_amount];
+        _slots = [_variable, _amount];
 
         _amount.SetText("1");
 
@@ -88,9 +85,10 @@ public class ChangeVariableAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var variable = await _variable.EvaluateAsync(context);
         var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var amount = await _amount.EvaluateAsync(context);
 
-        if (!data.TryChangeVariable(_variable, amount, out _)) throw new BlockFailedException("variable not changed");
+        if (!data.TryChangeVariable(variable, amount, out _)) throw new BlockFailedException("variable not changed");
     }
 }

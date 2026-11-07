@@ -36,7 +36,8 @@ public class KeyPressedCondition : ConditionBlock
 
 
 
-    private string _keyboard;
+    private readonly MenuSlot _keyboard;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
     private string _key;
 
 
@@ -44,13 +45,6 @@ public class KeyPressedCondition : ConditionBlock
     // public
 
 
-
-    [ConfigurableParameter("Keyboard", ConfiguratorType.Menu)] [JsonPropertyName("keyboard")]
-    public string Keyboard
-    {
-        get => _keyboard;
-        set => SetParameter(ref _keyboard, value);
-    }
 
     [ConfigurableParameter("Key", ConfiguratorType.Text)] [JsonPropertyName("key")]
     public string Key
@@ -61,14 +55,34 @@ public class KeyPressedCondition : ConditionBlock
 
 
 
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("keyboard")]
+    private ValueSlotData JsonKeyboard
+    {
+        get => _keyboard.GetData();
+        set => _keyboard.LoadData(value);
+    }
+
+
+
     // constructor
 
 
 
     public KeyPressedCondition()
     {
-        _keyboard = AnyKeyboard;
+        _keyboard = new("Keyboard", GetKeyboardMenuItems, AnyKeyboard, isFixed: false);
         _key = "";
+        _slots = [_keyboard];
+
+        TrackSlots();
     }
 
 
@@ -91,31 +105,32 @@ public class KeyPressedCondition : ConditionBlock
 
 
 
-    protected override Task<bool> CheckAsync(TriggerContext context)
+    protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var keyboard = await _keyboard.EvaluateAsync(context);
         var inputManager = GlobalContext.DeviceInputManager;
         if (inputManager == null)
         {
             AppLog.WriteError($"{Name}: keyboard input not set up");
-            return Task.FromResult(false);
+            return false;
         }
 
-        if (!DeviceDisplayHelper.TryParseKeyName(_key, out var vk))
+        if (!KeyNames.TryParse(_key, out var vk))
         {
             AppLog.WriteError($"{Name}: '{_key}' isn't a key");
-            return Task.FromResult(false);
+            return false;
         }
 
-        if (_keyboard == AnyKeyboard)
-            return Task.FromResult(inputManager.IsKeyDown(vk));
+        if (keyboard == AnyKeyboard)
+            return inputManager.IsKeyDown(vk);
 
-        var device = DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Keyboard && d.GetDisplayLabel() == _keyboard);
+        var device = DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Keyboard && d.GetDisplayLabel() == keyboard);
         if (device == null)
         {
-            AppLog.WriteWarning($"{Name}: keyboard '{_keyboard}' not connected");
-            return Task.FromResult(false);
+            AppLog.WriteWarning($"{Name}: keyboard '{keyboard}' not connected");
+            return false;
         }
 
-        return Task.FromResult(inputManager.IsKeyDown(device.DevicePath, vk));
+        return inputManager.IsKeyDown(device.DevicePath, vk);
     }
 }

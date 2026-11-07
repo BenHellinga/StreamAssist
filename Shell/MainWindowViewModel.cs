@@ -177,6 +177,7 @@ public partial class MainWindowViewModel : ViewModelBase
         GlobalContext.SpotifyComponentModel = _spotifyComponentModel;
         GlobalContext.SpotifyManager = _spotifyManager;
         GlobalContext.DashboardComponentModel = _dashboardComponentModel;
+        GlobalContext.ThemeComponentModel = _themeComponentModel;
 
         // the App Started event, once the startup connection attempts are over (set up last, it uses the managers)
 

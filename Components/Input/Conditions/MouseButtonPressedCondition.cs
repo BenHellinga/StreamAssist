@@ -37,8 +37,9 @@ public class MouseButtonPressedCondition : ConditionBlock
 
 
 
-    private string _mouse;
-    private string _button;
+    private readonly MenuSlot _mouse;
+    private readonly MenuSlot _button;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -46,20 +47,26 @@ public class MouseButtonPressedCondition : ConditionBlock
 
 
 
-    [ConfigurableParameter("Mouse", ConfiguratorType.Menu)] [JsonPropertyName("mouse")]
-    public string Mouse
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("mouse")]
+    private ValueSlotData JsonMouse
     {
-        get => _mouse;
-        set => SetParameter(ref _mouse, value);
+        get => _mouse.GetData();
+        set => _mouse.LoadData(value);
     }
 
-
-
-    [ConfigurableParameter("Button", ConfiguratorType.Menu)] [JsonPropertyName("button")]
-    public string Button
+    [JsonInclude] [JsonPropertyName("button")]
+    private ValueSlotData JsonButton
     {
-        get => _button;
-        set => SetParameter(ref _button, value);
+        get => _button.GetData();
+        set => _button.LoadData(value);
     }
 
 
@@ -70,8 +77,11 @@ public class MouseButtonPressedCondition : ConditionBlock
 
     public MouseButtonPressedCondition()
     {
-        _mouse = AnyMouse;
-        _button = InputDevices.MouseButtons[0].Name;
+        _mouse = new("Mouse", GetMouseMenuItems, AnyMouse, isFixed: false);
+        _button = new("Button", GetButtonMenuItems, InputDevices.MouseButtons[0].Name);
+        _slots = [_mouse, _button];
+
+        TrackSlots();
     }
 
 
@@ -91,28 +101,30 @@ public class MouseButtonPressedCondition : ConditionBlock
 
 
 
-    protected override Task<bool> CheckAsync(TriggerContext context)
+    protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var mouseOption = await _mouse.EvaluateAsync(context);
+        var buttonOption = await _button.EvaluateAsync(context);
         if (GlobalContext.DeviceInputManager is not { } input)
         {
             AppLog.WriteError($"{Name}: input not set up");
-            return Task.FromResult(false);
+            return false;
         }
 
-        if (InputDevices.MouseButtons.FirstOrDefault(b => b.Name == _button) is not { Name: not null } button)
+        if (InputDevices.MouseButtons.FirstOrDefault(b => b.Name == buttonOption) is not { Name: not null } button)
         {
-            AppLog.WriteError($"{Name}: no mouse button '{_button}'");
-            return Task.FromResult(false);
+            AppLog.WriteError($"{Name}: no mouse button '{buttonOption}'");
+            return false;
         }
 
-        if (_mouse == AnyMouse) return Task.FromResult(input.IsKeyDown(button.Code));
+        if (mouseOption == AnyMouse) return input.IsKeyDown(button.Code);
 
-        if (DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Mouse && d.GetDisplayLabel() == _mouse) is not { } mouse)
+        if (DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Mouse && d.GetDisplayLabel() == mouseOption) is not { } mouse)
         {
-            AppLog.WriteWarning($"{Name}: mouse '{_mouse}' not connected");
-            return Task.FromResult(false);
+            AppLog.WriteWarning($"{Name}: mouse '{mouseOption}' not connected");
+            return false;
         }
 
-        return Task.FromResult(input.IsKeyDown(mouse.DevicePath, button.Code));
+        return input.IsKeyDown(mouse.DevicePath, button.Code);
     }
 }

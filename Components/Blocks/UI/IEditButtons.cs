@@ -16,5 +16,6 @@ public interface IEditButtons : IDraggable
     bool CanCollapse { get; }
     bool CanCopy { get; }
     bool CanToggle { get; }
+    bool IsCollapsed { get; } // the collapse button shows ▴ (collapse) while open, ▾ (open) while collapsed
     bool IsDisabled { get; } // the toggle shows － while it's on, ＋ while it's off
 }

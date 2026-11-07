@@ -25,7 +25,7 @@ public class EndPredictionAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _winner;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class EndPredictionAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
 
     public static List<string> GetChangeMenuItems() => ["Lock", "Resolve", "Cancel"];
 
@@ -51,6 +44,13 @@ public class EndPredictionAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("winner")]
     private ValueSlotData JsonWinner
@@ -67,9 +67,9 @@ public class EndPredictionAction : ActionBlock
 
     public EndPredictionAction()
     {
-        _change = "Resolve";
+        _change = new("Do", GetChangeMenuItems, "Resolve");
         _winner = new("Winner");
-        _slots = [_winner];
+        _slots = [_change, _winner];
 
         TrackSlots();
     }
@@ -83,10 +83,11 @@ public class EndPredictionAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var change = await _change.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var winner = await _winner.EvaluateAsync(context);
-        if (_change == "Resolve" && winner.Trim() == "") throw Fail("Resolve needs a Winner");
+        if (change == "Resolve" && winner.Trim() == "") throw Fail("Resolve needs a Winner");
 
-        if (!await chatbot.TryEndPredictionAsync(_change, winner, context.CancellationToken)) throw new BlockFailedException("prediction not ended");
+        if (!await chatbot.TryEndPredictionAsync(change, winner, context.CancellationToken)) throw new BlockFailedException("prediction not ended");
     }
 }

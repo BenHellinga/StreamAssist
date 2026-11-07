@@ -13,11 +13,7 @@
         <!-- search (filters as you type, after a short pause), a header row like a tab strip so its divider lines up
              with the one beside it -->
 
-        <TextBox DockPanel.Dock="Top"
-                 Margin="{s:Gap PadAll}"
-                 Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
-                 Text="{Binding SearchText}"
-                 PlaceholderText="Search blocks…"/>
+        <ui:ListSearchView DockPanel.Dock="Top" Margin="{s:Gap PadAll}"/>
 
         <Border DockPanel.Dock="Top" Classes="Divider"/>
 

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Core.Dragging;
@@ -9,7 +10,7 @@ namespace StreamAssist.Components.Blocks.UI;
 
 // view model for a value slot: a text box to type the value in (its placeholder says the type, e.g. "+ int"),
 // or the card of the value block placed in it, dropping a block on the text box places it
-public partial class ValueSlotViewModel : ViewModelBase, IDroppable
+public partial class ValueSlotViewModel : ViewModelBase, IDroppable, ISlotTagSource
 {
     // private
 
@@ -30,11 +31,17 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
 
 
+    public BlockSlotBase TagSlot => _slot; // clicked while empty: the lists show what fits
     public string Label => _slot.Label + ":";
     public bool HasLabel => !string.IsNullOrEmpty(_slot.Label);
     public bool HasConnector => Connector != "";
     public string Placeholder => _placeholder ?? ValueTypes.Placeholder(_slot.Kind);
-    public bool IsText => _slot.Kind is ValueKind.Text or null; // text can be several lines
+    public bool IsText => _slot.Kind is ValueKind.Text or null && !IsMenu; // text can be several lines
+    public bool IsMenu => _slot is MenuSlot; // a dropdown instead of a text box
+
+    // a dropdown's options, listed when the slot is shown (a saved option that isn't there now, e.g. an unplugged
+    // device, is kept in the list so it still shows and isn't lost)
+    public IReadOnlyList<string> Options { get; }
 
     // the empty slot at the end of a growing list (typing in it adds the next): shown with a dim border
     public bool IsNewEntry => _isInList && string.IsNullOrEmpty(Text) && Block == null;
@@ -54,6 +61,7 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
         _text = _slot.Text;
         _block = null;
         _connector = _slot.Connector;
+        Options = _slot is MenuSlot menu ? WithCurrent(menu.Options, _slot.Text) : [];
 
         SetBlockViewModel(_slot.BlockSlot.Block);
         SubscribeToValueSlot(_slot);
@@ -73,8 +81,12 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
 
 
-    // typing goes straight to the model
-    partial void OnTextChanged(string value) => _slot.SetText(value ?? "");
+    // typing (or picking) goes straight to the model; a dropdown clearing itself (its list changed) isn't a pick
+    partial void OnTextChanged(string value)
+    {
+        if (value == null && IsMenu) return;
+        _slot.SetText(value ?? "");
+    }
 
 
 
@@ -131,6 +143,11 @@ public partial class ValueSlotViewModel : ViewModelBase, IDroppable
 
 
     // helpers
+
+
+
+    private static List<string> WithCurrent(List<string> options, string current) =>
+        current == "" || options.Contains(current) ? options : [.. options, current];
 
 
 

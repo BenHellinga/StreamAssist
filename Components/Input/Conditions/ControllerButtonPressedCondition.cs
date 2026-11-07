@@ -37,8 +37,9 @@ public class ControllerButtonPressedCondition : ConditionBlock
 
 
 
-    private string _controller;
-    private string _button;
+    private readonly MenuSlot _controller;
+    private readonly MenuSlot _button;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -46,20 +47,26 @@ public class ControllerButtonPressedCondition : ConditionBlock
 
 
 
-    [ConfigurableParameter("Controller", ConfiguratorType.Menu)] [JsonPropertyName("controller")]
-    public string Controller
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("controller")]
+    private ValueSlotData JsonController
     {
-        get => _controller;
-        set => SetParameter(ref _controller, value);
+        get => _controller.GetData();
+        set => _controller.LoadData(value);
     }
 
-
-
-    [ConfigurableParameter("Button", ConfiguratorType.Menu)] [JsonPropertyName("button")]
-    public string Button
+    [JsonInclude] [JsonPropertyName("button")]
+    private ValueSlotData JsonButton
     {
-        get => _button;
-        set => SetParameter(ref _button, value);
+        get => _button.GetData();
+        set => _button.LoadData(value);
     }
 
 
@@ -70,8 +77,11 @@ public class ControllerButtonPressedCondition : ConditionBlock
 
     public ControllerButtonPressedCondition()
     {
-        _controller = AnyController;
-        _button = InputDevices.ControllerButtons[0].Name;
+        _controller = new("Controller", GetControllerMenuItems, AnyController, isFixed: false);
+        _button = new("Button", GetButtonMenuItems, InputDevices.ControllerButtons[0].Name);
+        _slots = [_controller, _button];
+
+        TrackSlots();
     }
 
 
@@ -91,28 +101,30 @@ public class ControllerButtonPressedCondition : ConditionBlock
 
 
 
-    protected override Task<bool> CheckAsync(TriggerContext context)
+    protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var controllerOption = await _controller.EvaluateAsync(context);
+        var buttonOption = await _button.EvaluateAsync(context);
         if (GlobalContext.DeviceInputManager is not { } input)
         {
             AppLog.WriteError($"{Name}: input not set up");
-            return Task.FromResult(false);
+            return false;
         }
 
-        if (InputDevices.ControllerButtons.FirstOrDefault(b => b.Name == _button) is not { Name: not null } button)
+        if (InputDevices.ControllerButtons.FirstOrDefault(b => b.Name == buttonOption) is not { Name: not null } button)
         {
-            AppLog.WriteError($"{Name}: no controller button '{_button}'");
-            return Task.FromResult(false);
+            AppLog.WriteError($"{Name}: no controller button '{buttonOption}'");
+            return false;
         }
 
-        if (_controller == AnyController) return Task.FromResult(input.IsKeyDown(button.Code));
+        if (controllerOption == AnyController) return input.IsKeyDown(button.Code);
 
-        if (DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Controller && d.GetDisplayLabel() == _controller) is not { } controller)
+        if (DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Controller && d.GetDisplayLabel() == controllerOption) is not { } controller)
         {
-            AppLog.WriteWarning($"{Name}: controller '{_controller}' not connected");
-            return Task.FromResult(false);
+            AppLog.WriteWarning($"{Name}: controller '{controllerOption}' not connected");
+            return false;
         }
 
-        return Task.FromResult(input.IsKeyDown(controller.DevicePath, button.Code));
+        return input.IsKeyDown(controller.DevicePath, button.Code);
     }
 }

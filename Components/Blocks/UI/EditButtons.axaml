@@ -22,12 +22,16 @@
             <Path Classes="Icon Line" Data="{StaticResource CopyIcon}"/>
         </Button>
 
-        <!-- collapse (blocks only) -->
+        <!-- collapse (▴ while open) / open again (▾ while collapsed): blocks and input device boxes -->
 
         <Button Classes="Square Small Collapse" controls:PriorityStackPanel.Priority="1"
-                Content="▴"
                 Command="{Binding CollapseButtonPressedCommand}"
-                IsVisible="{Binding CanCollapse}"/>
+                IsVisible="{Binding CanCollapse}">
+            <Panel>
+                <TextBlock Text="▴" IsVisible="{Binding !IsCollapsed}"/>
+                <TextBlock Text="▾" IsVisible="{Binding IsCollapsed}"/>
+            </Panel>
+        </Button>
 
         <!-- switch off (－, while it's on) / back on (＋, while it's off), not on docks -->
 

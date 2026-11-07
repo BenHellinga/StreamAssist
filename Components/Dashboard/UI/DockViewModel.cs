@@ -1,8 +1,11 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.UI;
 using StreamAssist.Components.Dashboard.Model;
+using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Mvvm;
+using StreamAssist.Core.Persistence;
 using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.UI;
@@ -21,9 +24,11 @@ public partial class DockViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
     private readonly DashboardConfigModel _config;
     private readonly DockModel _dock;
     private readonly ViewModelBase _body;
+    private readonly Flash _savedFlash; // the Download button says "Saved" for a moment
 
     [ObservableProperty] private string _nameInput;
     [ObservableProperty] private bool _isDisabled; // red, nothing changes it
+    [ObservableProperty] private bool _justSaved;
 
 
 
@@ -33,11 +38,13 @@ public partial class DockViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
 
     public ViewModelBase Body => _body;
     public TimerDockViewModel? Timers => _body as TimerDockViewModel; // the header's buttons for all timers
+    public SoundDockViewModel? Sounds => _body as SoundDockViewModel; // the header's skip and stop all
     public ButtonDockViewModel? Buttons => _body as ButtonDockViewModel; // the header's press all
     public IndicatorDockViewModel? Indicators => _body as IndicatorDockViewModel; // the header's toggle all
     public bool IsConsole => _dock.Kind == DockKind.Console;
     public bool IsBlank => _dock.Kind == DockKind.Blank; // a grey box with no header, a copied dock is pasted into it
     public bool CanCollapse => false; // the collapse button is hidden
+    public bool IsCollapsed => false;
     public bool CanCopy => !IsBlank;
     public bool CanToggle => _dock.CanDisable;
 
@@ -54,6 +61,7 @@ public partial class DockViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
         _body = dock.Kind switch
         {
             DockKind.Timer => new TimerDockViewModel(dock.Timers),
+            DockKind.Sound => new SoundDockViewModel(dock.Sounds),
             DockKind.Button => new ButtonDockViewModel(dock),
             DockKind.Indicator => new IndicatorDockViewModel(dock),
             DockKind.Variable => new VariableDockViewModel(dock, GlobalContext.DataModel),
@@ -61,6 +69,7 @@ public partial class DockViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
             _ => new ConsoleDockViewModel(dock),
         };
 
+        _savedFlash = new(on => JustSaved = on, TimeSpan.FromSeconds(1.5));
         _nameInput = _dock.Name;
         _isDisabled = _dock.IsDisabled;
 
@@ -122,6 +131,17 @@ public partial class DockViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
 
 
 
+    // a console's lines to a .txt in Downloads (works while the dock is off too: it only reads)
+    [RelayCommand]
+    private void OnDownloadPressed()
+    {
+        if (TextExport.TrySaveToDownloads(_dock.Name, _dock.Lines, out var error) == null)
+            AppLog.WriteError($"can't download dock '{_dock.Name}' ({error})");
+        else _savedFlash.Trigger();
+    }
+
+
+
     // model events
 
 
@@ -143,5 +163,6 @@ public partial class DockViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
         _dock.NameChanged -= OnDockNameChanged;
         _dock.IsDisabledChanged -= OnDockIsDisabledChanged;
         _body.Dispose();
+        _savedFlash.Dispose();
     }
 }

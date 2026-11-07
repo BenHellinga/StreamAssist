@@ -36,6 +36,12 @@
         <Style Selector="ItemsControl.Settings.PadBelow">
             <Setter Property="Margin" Value="{s:Gap PadBelow}"/>
         </Style>
+        <Style Selector="ItemsControl.Settings.AfterLead">
+            <Setter Property="Margin" Value="{s:Gap BlockSlotsMargin}"/>
+        </Style>
+        <Style Selector="ItemsControl.Settings.AfterLead.PadBelow">
+            <Setter Property="Margin" Value="{s:Gap BlockSlotsPadBelowMargin}"/>
+        </Style>
         <Style Selector="ItemsControl.Slots.AfterSettings">
             <Setter Property="Margin" Value="{s:Gap BlockSlotsMargin}"/>
         </Style>
@@ -86,12 +92,22 @@
                 <!-- settings, then the slots under them (or beside them, for blocks that ask), MediumVerticalGap under the
                      title, rows SmallVerticalGap apart -->
 
-                <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" Margin="{s:Gap BlockBodyTop}" IsVisible="{Binding HasBody}">
+                <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto" Margin="{s:Gap BlockBodyTop}" IsVisible="{Binding HasBody}">
+
+                    <!-- its first dropdowns, above the fixed settings (they were settings themselves) -->
+
+                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding LeadSlots}" IsVisible="{Binding HasLeadSlots}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
 
                     <!-- one row per configurable parameter, template picked by ConfiguratorTemplateSelector -->
 
-                    <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding Configurators}"
-                                  Classes="Settings" Classes.PadBelow="{Binding SettingsPadBelow}">
+                    <ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Configurators}"
+                                  Classes="Settings" Classes.PadBelow="{Binding SettingsPadBelow}" Classes.AfterLead="{Binding HasLeadSlots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>

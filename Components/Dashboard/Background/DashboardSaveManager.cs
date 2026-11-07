@@ -1,5 +1,4 @@
 using System;
-using Avalonia.Threading;
 using StreamAssist.Components.Dashboard.Model;
 using StreamAssist.Core.Persistence;
 
@@ -18,7 +17,7 @@ public class DashboardSaveManager : IDisposable
     public const string FileName = "dashboard";
 
     private readonly DashboardComponentModel _model;
-    private IDisposable? _pendingSave;
+    private readonly DelayedSave _save; // dragging a splitter or typing a name changes the model many times, so wait for it to settle
 
 
 
@@ -29,7 +28,7 @@ public class DashboardSaveManager : IDisposable
     public DashboardSaveManager(DashboardComponentModel model)
     {
         _model = model;
-        _pendingSave = null;
+        _save = new(Write, TimeSpan.FromSeconds(1));
 
         _model.Changed += OnModelChanged;
     }
@@ -40,12 +39,7 @@ public class DashboardSaveManager : IDisposable
 
 
 
-    // dragging a splitter or typing a name changes the model many times, so wait for it to settle
-    private void OnModelChanged()
-    {
-        _pendingSave?.Dispose();
-        _pendingSave = DispatcherTimer.RunOnce(SaveNow, TimeSpan.FromSeconds(1));
-    }
+    private void OnModelChanged() => _save.Request();
 
 
 
@@ -57,13 +51,11 @@ public class DashboardSaveManager : IDisposable
 
 
 
-    public void SaveNow()
-    {
-        _pendingSave?.Dispose();
-        _pendingSave = null;
+    public void SaveNow() => _save.Now();
 
-        JsonFileStore.Save(FileName, _model);
-    }
+
+
+    private void Write() => JsonFileStore.Save(FileName, _model);
 
 
 
@@ -75,7 +67,6 @@ public class DashboardSaveManager : IDisposable
     {
         _model.Changed -= OnModelChanged;
 
-        // the app is closing, write the final state instead of dropping a pending save
-        if (_pendingSave != null) SaveNow();
+        _save.Dispose(); // the app is closing: a waiting save is written now
     }
 }

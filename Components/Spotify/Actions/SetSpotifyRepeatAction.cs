@@ -24,7 +24,7 @@ public class SetSpotifyRepeatAction : ActionBlock
 
 
 
-    private string _repeat;
+    private readonly MenuSlot _repeat;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -33,16 +33,22 @@ public class SetSpotifyRepeatAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Repeat", ConfiguratorType.Menu)] [JsonPropertyName("repeat")]
-    public string Repeat
-    {
-        get => _repeat;
-        set => SetParameter(ref _repeat, value);
-    }
-
     public static List<string> GetRepeatMenuItems() => ["Off", "Song", "Playlist"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("repeat")]
+    private ValueSlotData JsonRepeat
+    {
+        get => _repeat.GetData();
+        set => _repeat.LoadData(value);
+    }
 
 
 
@@ -52,8 +58,8 @@ public class SetSpotifyRepeatAction : ActionBlock
 
     public SetSpotifyRepeatAction()
     {
-        _repeat = "Off";
-        _slots = [];
+        _repeat = new("Repeat", GetRepeatMenuItems, "Off");
+        _slots = [_repeat];
 
         TrackSlots();
     }
@@ -67,7 +73,8 @@ public class SetSpotifyRepeatAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var repeat = await _repeat.EvaluateAsync(context);
         var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        if (!await spotify.TrySetRepeatAsync(_repeat, context.CancellationToken)) throw new BlockFailedException("repeat not set");
+        if (!await spotify.TrySetRepeatAsync(repeat, context.CancellationToken)) throw new BlockFailedException("repeat not set");
     }
 }

@@ -24,7 +24,7 @@ public class SetSpotifyShuffleAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -33,16 +33,22 @@ public class SetSpotifyShuffleAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
-
     public static List<string> GetChangeMenuItems() => ["On", "Off", "Toggle"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
 
 
@@ -52,8 +58,8 @@ public class SetSpotifyShuffleAction : ActionBlock
 
     public SetSpotifyShuffleAction()
     {
-        _change = "Toggle";
-        _slots = [];
+        _change = new("Do", GetChangeMenuItems, "Toggle");
+        _slots = [_change];
 
         TrackSlots();
     }
@@ -67,8 +73,9 @@ public class SetSpotifyShuffleAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var change = await _change.EvaluateAsync(context);
         var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        bool? on = _change == "On" ? true : _change == "Off" ? false : null;
+        bool? on = change == "On" ? true : change == "Off" ? false : null;
 
         if (!await spotify.TrySetShuffleAsync(on, context.CancellationToken)) throw new BlockFailedException("shuffle not set");
     }

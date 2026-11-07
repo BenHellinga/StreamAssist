@@ -37,7 +37,8 @@ public class IsTalkingCondition : ConditionBlock
 
 
 
-    private string _microphone;
+    private readonly MenuSlot _microphone;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -45,11 +46,19 @@ public class IsTalkingCondition : ConditionBlock
 
 
 
-    [ConfigurableParameter("Microphone", ConfiguratorType.Menu)] [JsonPropertyName("microphone")]
-    public string Microphone
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("microphone")]
+    private ValueSlotData JsonMicrophone
     {
-        get => _microphone;
-        set => SetParameter(ref _microphone, value);
+        get => _microphone.GetData();
+        set => _microphone.LoadData(value);
     }
 
 
@@ -60,7 +69,10 @@ public class IsTalkingCondition : ConditionBlock
 
     public IsTalkingCondition()
     {
-        _microphone = AnyMicrophone;
+        _microphone = new("Microphone", GetMicrophoneMenuItems, AnyMicrophone, isFixed: false);
+        _slots = [_microphone];
+
+        TrackSlots();
     }
 
 
@@ -78,25 +90,26 @@ public class IsTalkingCondition : ConditionBlock
 
 
 
-    protected override Task<bool> CheckAsync(TriggerContext context)
+    protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var microphone = await _microphone.EvaluateAsync(context);
         if (GlobalContext.InputComponentModel is not { } input)
         {
             AppLog.WriteError($"{Name}: input not set up");
-            return Task.FromResult(false);
+            return false;
         }
 
         var boxes = input.ListModel.Slots.Where(s => s.Layout == InputSlotModel.MicrophoneLayout && s.SelectedDevice != null).ToList();
-        if (_microphone != AnyMicrophone)
+        if (microphone != AnyMicrophone)
         {
-            boxes = boxes.Where(s => s.SelectedDevice!.GetDisplayLabel() == _microphone).ToList();
+            boxes = boxes.Where(s => s.SelectedDevice!.GetDisplayLabel() == microphone).ToList();
             if (boxes.Count == 0)
             {
-                AppLog.WriteWarning($"{Name}: no Microphone box listens to '{_microphone}'");
-                return Task.FromResult(false);
+                AppLog.WriteWarning($"{Name}: no Microphone box listens to '{microphone}'");
+                return false;
             }
         }
 
-        return Task.FromResult(boxes.Any(s => s.IsTalking));
+        return boxes.Any(s => s.IsTalking);
     }
 }

@@ -67,7 +67,7 @@ public static class BlockClipboard
 
 
 
-    // a component's own kind of copy (e.g. the Keyboard tab's input device boxes): read gives its payload, which its
+    // a component's own kind of copy (e.g. the Input tab's input device boxes): read gives its payload, which its
     // drop targets accept
     public static void RegisterKind(string kind, Func<JsonElement, object?> read)
     {

@@ -25,7 +25,7 @@ public class GetSpotifyPlaybackBlock : AdaptableValueBlock
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -35,17 +35,6 @@ public class GetSpotifyPlaybackBlock : AdaptableValueBlock
 
 
     // picking a setting also picks its type below (when the slot it's in can take it)
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set
-        {
-            SetParameter(ref _setting, value);
-            if (SpotifyInfos.Find(SpotifyInfos.Playback, value) is { } info && Kind != info.Kind) TrySetKind(info.Kind);
-        }
-    }
-
     public static List<string> GetSettingMenuItems() => SpotifyInfos.Names(SpotifyInfos.Playback);
 
     // what it's read as, placing it in a slot picks the slot's type (saved after the setting, so a loaded block keeps it)
@@ -63,15 +52,42 @@ public class GetSpotifyPlaybackBlock : AdaptableValueBlock
 
 
 
+    // menu events
+
+
+
+    // picking an option in the dropdown (not a block in it: that's only known when it runs)
+    private void OnSettingPicked()
+    {
+        var value = _setting.Text;
+        if (SpotifyInfos.Find(SpotifyInfos.Playback, value) is { } info && Kind != info.Kind) TrySetKind(info.Kind);
+    }
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
+
+
+
     // constructor
 
 
 
     public GetSpotifyPlaybackBlock() : base(ValueKind.Text)
     {
-        _setting = "Title";
-        _slots = [];
+        _setting = new("Setting", GetSettingMenuItems, "Title");
+        _slots = [_setting];
 
+        _setting.TextChanged += OnSettingPicked;
         TrackSlots();
     }
 
@@ -83,8 +99,9 @@ public class GetSpotifyPlaybackBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
+        var setting = await _setting.EvaluateAsync(context);
         var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        var info = SpotifyInfos.Find(SpotifyInfos.Playback, _setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var info = SpotifyInfos.Find(SpotifyInfos.Playback, setting) ?? throw Fail($"unknown setting '{setting}'");
         var (ok, value) = await spotify.TryGetPlaybackAsync(info, context.CancellationToken);
         if (!ok) throw new BlockFailedException("playback not read");
 

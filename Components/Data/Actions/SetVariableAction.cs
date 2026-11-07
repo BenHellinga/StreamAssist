@@ -26,7 +26,7 @@ public class SetVariableAction : ActionBlock
 
 
 
-    private string _variable;
+    private readonly MenuSlot _variable;
     private readonly AnyValueSlot _value;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -35,16 +35,6 @@ public class SetVariableAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Variable", ConfiguratorType.Menu)] [JsonPropertyName("variable")]
-    public string Variable
-    {
-        get => _variable;
-        set
-        {
-            SetParameter(ref _variable, value);
-        }
-    }
 
     public static List<string> GetVariableMenuItems() => GlobalContext.DataModel?.VariableNames() ?? [];
 
@@ -55,6 +45,13 @@ public class SetVariableAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("variable")]
+    private ValueSlotData JsonVariable
+    {
+        get => _variable.GetData();
+        set => _variable.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("value")]
     private ValueSlotData JsonValue
@@ -71,9 +68,9 @@ public class SetVariableAction : ActionBlock
 
     public SetVariableAction()
     {
-        _variable = "";
+        _variable = new("Variable", GetVariableMenuItems, "", isFixed: false);
         _value = new("Value");
-        _slots = [_value];
+        _slots = [_variable, _value];
 
         TrackSlots();
     }
@@ -87,9 +84,10 @@ public class SetVariableAction : ActionBlock
     // the model logs why when it refuses, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var variable = await _variable.EvaluateAsync(context);
         var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var (kind, value) = await _value.EvaluateRawAsync(context);
 
-        if (!data.TrySetVariable(_variable, value, kind)) throw new BlockFailedException("variable not set");
+        if (!data.TrySetVariable(variable, value, kind)) throw new BlockFailedException("variable not set");
     }
 }

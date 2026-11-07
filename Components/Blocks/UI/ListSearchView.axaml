@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Blocks.UI.ListSearchView"
+             x:DataType="ui:IListSearch"
+
+             xmlns:ui="using:StreamAssist.Components.Blocks.UI"
+             xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a card list's search row: the name search (SearchBoxWidth), then the type dropdown (ControlMinWidth). They don't
+         stretch: a list narrower than the row cuts them off (widen the list to search) -->
+
+    <Panel ClipToBounds="True">
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
+            <TextBox Width="{s:Gap SearchBoxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0"
+                     VerticalContentAlignment="Center" Text="{Binding SearchText}" PlaceholderText="Search…"/>
+            <ComboBox Width="{DynamicResource ControlMinWidth}" ItemsSource="{Binding Tags}" SelectedItem="{Binding SelectedTag}"/>
+        </StackPanel>
+    </Panel>
+
+</UserControl>

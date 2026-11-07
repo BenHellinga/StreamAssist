@@ -26,7 +26,7 @@ public class GetVariableBlock : AdaptableValueBlock
 
 
 
-    private string _variable;
+    private readonly MenuSlot _variable;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -34,17 +34,6 @@ public class GetVariableBlock : AdaptableValueBlock
     // public
 
 
-
-    [ConfigurableParameter("Variable", ConfiguratorType.Menu)] [JsonPropertyName("variable")]
-    public string Variable
-    {
-        get => _variable;
-        set
-        {
-            SetParameter(ref _variable, value);
-            if (GlobalContext.DataModel?.VariableKind(value) is { } kind && Kind != kind) TrySetKind(kind);
-        }
-    }
 
     public static List<string> GetVariableMenuItems() => GlobalContext.DataModel?.VariableNames() ?? [];
 
@@ -63,15 +52,42 @@ public class GetVariableBlock : AdaptableValueBlock
 
 
 
+    // menu events
+
+
+
+    // picking an option in the dropdown (not a block in it: that's only known when it runs)
+    private void OnVariablePicked()
+    {
+        var value = _variable.Text;
+        if (GlobalContext.DataModel?.VariableKind(value) is { } kind && Kind != kind) TrySetKind(kind);
+    }
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("variable")]
+    private ValueSlotData JsonVariable
+    {
+        get => _variable.GetData();
+        set => _variable.LoadData(value);
+    }
+
+
+
     // constructor
 
 
 
     public GetVariableBlock() : base(ValueKind.Text)
     {
-        _variable = "";
-        _slots = [];
+        _variable = new("Variable", GetVariableMenuItems, "", isFixed: false);
+        _slots = [_variable];
 
+        _variable.TextChanged += OnVariablePicked;
         TrackSlots();
     }
 
@@ -81,12 +97,13 @@ public class GetVariableBlock : AdaptableValueBlock
 
 
 
-    protected override Task<object> ComputeAsync(TriggerContext context)
+    protected override async Task<object> ComputeAsync(TriggerContext context)
     {
+        var variable = await _variable.EvaluateAsync(context);
         var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        if (!data.TryGetVariable(_variable, out var kind, out var value)) throw new BlockFailedException("no variable");
+        if (!data.TryGetVariable(variable, out var kind, out var value)) throw new BlockFailedException("no variable");
 
         if (!ValueTypes.TryConvert(value, kind, Kind, out var result, out var error)) throw Fail(error);
-        return Task.FromResult(result);
+        return result;
     }
 }

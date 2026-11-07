@@ -17,7 +17,7 @@ public class StartTimerBlock : ContainerBlock
 
 
     [JsonIgnore] public override string Name => "Start Timer";
-    [JsonIgnore] public override string Description => "Starts a timer and carries on straight away. When it runs out, the blocks in When Done run with this run's parameters as they were at the start. The timer lives on the timer dock named in Dock (in the dashboard config in use), found there by name, and only lasts while the app runs. If Running says what happens when one with that name is already going. Repeat starts it again each time it runs out (When Done runs each time) until it's stopped, cancelled or the app closes.";
+    [JsonIgnore] public override string Description => "Starts a timer and carries on straight away. When it runs out, the blocks in When Done run with this run's parameters as they were at the start. With no Dock it runs in the background, where nothing can see, pause or stop it; naming a timer dock (in the dashboard config in use) puts it there, to watch and control, found by its name. It only lasts while the app runs. If Running says what happens when one with that name is already going. Repeat starts it again each time it runs out (When Done runs each time) until it's stopped, cancelled or the app closes (with no Dock: until the app closes or this block is removed).";
 
 
 
@@ -25,7 +25,7 @@ public class StartTimerBlock : ContainerBlock
 
 
 
-    private string _ifRunning;
+    private readonly MenuSlot _ifRunning;
     private bool _repeat;
     private readonly ValueSlot<string> _dock;
     private readonly ValueSlot<string> _timerName;
@@ -38,13 +38,6 @@ public class StartTimerBlock : ContainerBlock
     // public
 
 
-
-    [ConfigurableParameter("If Running", ConfiguratorType.Menu)] [JsonPropertyName("ifRunning")]
-    public string IfRunning
-    {
-        get => _ifRunning;
-        set => SetParameter(ref _ifRunning, value);
-    }
 
     public static List<string> GetIfRunningMenuItems() => ["Restart", "Add Time", "Ignore", "Run Another"];
 
@@ -63,6 +56,13 @@ public class StartTimerBlock : ContainerBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("ifRunning")]
+    private ValueSlotData JsonIfRunning
+    {
+        get => _ifRunning.GetData();
+        set => _ifRunning.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("dock")]
     private ValueSlotData JsonDock
@@ -100,13 +100,13 @@ public class StartTimerBlock : ContainerBlock
 
     public StartTimerBlock()
     {
-        _ifRunning = "Restart";
+        _ifRunning = new("If Running", GetIfRunningMenuItems, "Restart");
         _repeat = false;
         _dock = new("Dock");
         _timerName = new("Timer");
         _seconds = new("Seconds");
         _whenDone = new("When Done", typeof(ExecutableBlock));
-        _slots = [_dock, _timerName, _seconds, _whenDone];
+        _slots = [_ifRunning, _dock, _timerName, _seconds, _whenDone];
 
         _seconds.SetText("60");
 
@@ -121,14 +121,18 @@ public class StartTimerBlock : ContainerBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var ifRunning = await _ifRunning.EvaluateAsync(context);
         var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Timer, out var dock, out var dockError)) throw Fail(dockError);
-        var timers = dock.Timers;
+        var dockName = await _dock.EvaluateAsync(context);
+        TimersModel timers;
+        if (dockName.Trim() == "") timers = dashboard.BackgroundTimers;
+        else if (dashboard.TryFindDock(dockName, DockKind.Timer, out var dock, out var dockError)) timers = dock.Timers;
+        else throw Fail(dockError);
         var name = await _timerName.EvaluateAsync(context);
         var seconds = await _seconds.EvaluateAsync(context);
         if (double.IsNaN(seconds) || seconds > 1e9) throw Fail($"can't time {seconds} seconds");
 
-        var repeat = _ifRunning switch
+        var repeat = ifRunning switch
         {
             "Add Time" => TimerRepeat.AddTime,
             "Ignore" => TimerRepeat.Ignore,

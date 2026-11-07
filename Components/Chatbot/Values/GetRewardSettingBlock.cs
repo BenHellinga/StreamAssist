@@ -25,7 +25,7 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly ValueSlot<string> _reward;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -36,17 +36,6 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
 
     // picking a setting also picks its type below (when the slot it's in can take it)
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set
-        {
-            SetParameter(ref _setting, value);
-            if (RewardSettings.Find(value) is { } setting && Kind != setting.Kind) TrySetKind(setting.Kind);
-        }
-    }
-
     public static List<string> GetSettingMenuItems() => RewardSettings.Names.ToList();
 
     // what it's read as, placing it in a slot picks the slot's type (saved after the setting, so a loaded block keeps it)
@@ -64,9 +53,29 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
 
 
+    // menu events
+
+
+
+    // picking an option in the dropdown (not a block in it: that's only known when it runs)
+    private void OnSettingPicked()
+    {
+        var value = _setting.Text;
+        if (RewardSettings.Find(value) is { } setting && Kind != setting.Kind) TrySetKind(setting.Kind);
+    }
+
+
+
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("reward")]
     private ValueSlotData JsonReward
@@ -83,13 +92,14 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
     public GetRewardSettingBlock() : base(ValueKind.Int)
     {
-        _setting = "Cost";
+        _setting = new("Setting", GetSettingMenuItems, "Cost");
         _reward = new("Reward");
-        _slots = [_reward];
+        _slots = [_setting, _reward];
 
         // the reward that was just redeemed (a new block starts with this, a saved one loads its own)
         _reward.SetText("{reward}");
 
+        _setting.TextChanged += OnSettingPicked;
         TrackSlots();
     }
 
@@ -101,8 +111,9 @@ public class GetRewardSettingBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
+        var settingOption = await _setting.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var setting = RewardSettings.Find(_setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var setting = RewardSettings.Find(settingOption) ?? throw Fail($"unknown setting '{settingOption}'");
         var reward = await _reward.EvaluateAsync(context);
 
         // waits its turn in the twitch action queue, a failure is already logged there

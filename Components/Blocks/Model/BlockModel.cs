@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.OutputConsole.Model;
@@ -39,6 +40,10 @@ public abstract class BlockModel : ModelBase
     [JsonIgnore] public virtual BlockGroup Group => ComponentGroup(GetType().Namespace) ?? KindGroup;
     [JsonIgnore] public virtual IReadOnlyList<BlockSlotBase> Slots => [];
     [JsonIgnore] public virtual bool SlotsBesideSettings => false; // the editor shows the slots to the right of the settings, not under them
+
+    // how many of its first slots the editor shows above its fixed settings: its leading dropdowns, which were settings
+    // themselves (e.g. Set Type and Channel above Mute Sound), unless a block wants its settings first
+    [JsonIgnore] public virtual int SlotsBeforeSettings => Slots.TakeWhile(s => s is MenuSlot).Count();
     [JsonIgnore] public bool IsDisabled => _isDisabled;
     [JsonIgnore] public bool IsCollapsed => _isCollapsed; // shown as a small box in the editor
     [JsonIgnore] public BlockSlotBase? ParentSlot { get; internal set; } // the slot it's placed in (set by the slot)

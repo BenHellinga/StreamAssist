@@ -1,5 +1,4 @@
 using System;
-using Avalonia.Threading;
 using StreamAssist.Core.Persistence;
 
 namespace StreamAssist.Shell;
@@ -16,7 +15,7 @@ public class WindowLayoutSaveManager : IDisposable
     private const string FileName = "window";
 
     private readonly WindowLayoutModel _model;
-    private IDisposable? _pendingSave;
+    private readonly DelayedSave _save; // dragging a splitter changes the layout many times a second, so wait for it to settle
 
 
 
@@ -27,7 +26,7 @@ public class WindowLayoutSaveManager : IDisposable
     public WindowLayoutSaveManager(WindowLayoutModel model)
     {
         _model = model;
-        _pendingSave = null;
+        _save = new(Write, TimeSpan.FromMilliseconds(500));
 
         _model.Changed += OnLayoutChanged;
     }
@@ -38,12 +37,7 @@ public class WindowLayoutSaveManager : IDisposable
 
 
 
-    // dragging a splitter changes the layout many times a second, so wait for it to settle
-    private void OnLayoutChanged()
-    {
-        _pendingSave?.Dispose();
-        _pendingSave = DispatcherTimer.RunOnce(SaveNow, TimeSpan.FromMilliseconds(500));
-    }
+    private void OnLayoutChanged() => _save.Request();
 
 
 
@@ -55,13 +49,11 @@ public class WindowLayoutSaveManager : IDisposable
 
 
 
-    public void SaveNow()
-    {
-        _pendingSave?.Dispose();
-        _pendingSave = null;
+    public void SaveNow() => _save.Now();
 
-        JsonFileStore.Save(FileName, _model);
-    }
+
+
+    private void Write() => JsonFileStore.Save(FileName, _model);
 
 
 
@@ -73,7 +65,6 @@ public class WindowLayoutSaveManager : IDisposable
     {
         _model.Changed -= OnLayoutChanged;
 
-        // the window is closing, write the final layout instead of dropping a pending save
-        if (_pendingSave != null) SaveNow();
+        _save.Dispose(); // the window is closing: a waiting save is written now
     }
 }

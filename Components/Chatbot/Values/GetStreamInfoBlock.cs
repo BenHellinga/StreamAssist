@@ -17,7 +17,7 @@ public class GetStreamInfoBlock : AdaptableValueBlock
 
 
     [JsonIgnore] public override string Name => "Get Stream Info";
-    [JsonIgnore] public override string Description => "Reads your stream from Twitch: Title, Category, Live, Viewers, Uptime Minutes or Followers. Picking a setting picks its type. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string Description => "Reads your stream from Twitch: Title, Category, Live, Viewers, Uptime (h:mm:ss, e.g. 2:00:00), Uptime Minutes or Followers. Picking a setting picks its type. Twitch actions wait their turn, one per second.";
 
 
 
@@ -25,7 +25,7 @@ public class GetStreamInfoBlock : AdaptableValueBlock
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -35,17 +35,6 @@ public class GetStreamInfoBlock : AdaptableValueBlock
 
 
     // picking a setting also picks its type below (when the slot it's in can take it)
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set
-        {
-            SetParameter(ref _setting, value);
-            if (TwitchInfos.Find(TwitchInfos.Stream, value) is { } info && Kind != info.Kind) TrySetKind(info.Kind);
-        }
-    }
-
     public static List<string> GetSettingMenuItems() => TwitchInfos.Names(TwitchInfos.Stream);
 
     // what it's read as, placing it in a slot picks the slot's type (saved after the setting, so a loaded block keeps it)
@@ -63,15 +52,42 @@ public class GetStreamInfoBlock : AdaptableValueBlock
 
 
 
+    // menu events
+
+
+
+    // picking an option in the dropdown (not a block in it: that's only known when it runs)
+    private void OnSettingPicked()
+    {
+        var value = _setting.Text;
+        if (TwitchInfos.Find(TwitchInfos.Stream, value) is { } info && Kind != info.Kind) TrySetKind(info.Kind);
+    }
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
+
+
+
     // constructor
 
 
 
     public GetStreamInfoBlock() : base(ValueKind.Text)
     {
-        _setting = "Title";
-        _slots = [];
+        _setting = new("Setting", GetSettingMenuItems, "Title");
+        _slots = [_setting];
 
+        _setting.TextChanged += OnSettingPicked;
         TrackSlots();
     }
 
@@ -83,8 +99,9 @@ public class GetStreamInfoBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
+        var setting = await _setting.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var info = TwitchInfos.Find(TwitchInfos.Stream, _setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var info = TwitchInfos.Find(TwitchInfos.Stream, setting) ?? throw Fail($"unknown setting '{setting}'");
 
         var (ok, value) = await chatbot.TryGetStreamInfoAsync(info, context.CancellationToken);
         if (!ok) throw new BlockFailedException("stream info not read");

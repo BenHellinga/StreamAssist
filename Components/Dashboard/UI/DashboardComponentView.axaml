@@ -23,7 +23,7 @@
                 <ColumnDefinition Width="{Binding DockListWidth, Mode=TwoWay}" MinWidth="100"/>
             </Grid.ColumnDefinitions>
 
-            <Panel x:Name="Regions" Grid.Column="0" Margin="0" Background="{StaticResource PanelFill}" DragDrop.AllowDrop="True">
+            <Panel x:Name="Regions" Grid.Column="0" Background="{StaticResource PanelFill}" DragDrop.AllowDrop="True">
                 <ContentControl Content="{Binding Regions}"/>
             </Panel>
 

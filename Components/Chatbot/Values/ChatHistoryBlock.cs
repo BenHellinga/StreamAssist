@@ -25,8 +25,8 @@ public class ChatHistoryBlock : ValueBlock<string>
 
 
 
-    private string _find;
-    private string _give;
+    private readonly MenuSlot _find;
+    private readonly MenuSlot _give;
     private readonly ValueSlot<string> _messageId;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -36,21 +36,8 @@ public class ChatHistoryBlock : ValueBlock<string>
 
 
 
-    [ConfigurableParameter("Find", ConfiguratorType.Menu)] [JsonPropertyName("find")]
-    public string Find
-    {
-        get => _find;
-        set => SetParameter(ref _find, value);
-    }
-
     public static List<string> GetFindMenuItems() => ["Newest", "This", "Older", "Newer"];
 
-    [ConfigurableParameter("Give", ConfiguratorType.Menu)] [JsonPropertyName("give")]
-    public string Give
-    {
-        get => _give;
-        set => SetParameter(ref _give, value);
-    }
 
     public static List<string> GetGiveMenuItems() => ChatEvents.Chat.Select(p => p.Name).ToList();
 
@@ -61,6 +48,20 @@ public class ChatHistoryBlock : ValueBlock<string>
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("find")]
+    private ValueSlotData JsonFind
+    {
+        get => _find.GetData();
+        set => _find.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("give")]
+    private ValueSlotData JsonGive
+    {
+        get => _give.GetData();
+        set => _give.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("messageId")]
     private ValueSlotData JsonMessageId
@@ -77,10 +78,10 @@ public class ChatHistoryBlock : ValueBlock<string>
 
     public ChatHistoryBlock()
     {
-        _find = "Newest";
-        _give = "message";
+        _find = new("Find", GetFindMenuItems, "Newest");
+        _give = new("Give", GetGiveMenuItems, "message");
         _messageId = new("Message Id");
-        _slots = [_messageId];
+        _slots = [_find, _give, _messageId];
 
         TrackSlots();
     }
@@ -93,9 +94,11 @@ public class ChatHistoryBlock : ValueBlock<string>
 
     protected override async Task<string> ComputeAsync(TriggerContext context)
     {
+        var find = await _find.EvaluateAsync(context);
+        var give = await _give.EvaluateAsync(context);
         var history = GlobalContext.ChatbotComponentModel?.ChatHistory ?? throw Fail("no chatbot");
 
-        var step = _find switch
+        var step = find switch
         {
             "This" => ChatHistoryStep.This,
             "Older" => ChatHistoryStep.Older,
@@ -107,6 +110,6 @@ public class ChatHistoryBlock : ValueBlock<string>
         var id = step == ChatHistoryStep.Newest ? "" : await _messageId.EvaluateAsync(context);
         if (!history.TryFind(step, id, out var message, out var error)) throw Fail(error);
 
-        return message.TryGetValue(_give, out var value) ? value : "";
+        return message.TryGetValue(give, out var value) ? value : "";
     }
 }

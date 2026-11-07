@@ -28,7 +28,10 @@
                 DragDrop.Drop="OnDrop">
             <!-- room on the right for the paste button (PasteBoxPadding), like a bind box keeps for its buttons -->
             <Panel>
-            <TextBox HorizontalAlignment="Left" Padding="{s:Gap PasteBoxPadding}" Text="{Binding Text}" PlaceholderText="{Binding Placeholder}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Classes.New="{Binding IsNewEntry}"
+            <!-- a dropdown setting: its options (a value block dropped on it gives the option instead) -->
+            <ComboBox HorizontalAlignment="Left" ItemsSource="{Binding Options}" SelectedItem="{Binding Text}" IsVisible="{Binding IsMenu}"
+                      MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+            <TextBox HorizontalAlignment="Left" Padding="{s:Gap PasteBoxPadding}" Text="{Binding Text}" IsVisible="{Binding !IsMenu}" PlaceholderText="{Binding Placeholder}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Classes.New="{Binding IsNewEntry}"
                      AcceptsReturn="{Binding IsText}" AcceptsTab="False" TextWrapping="Wrap"/>
             <ui:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap PasteInBoxMargin}"/>
             </Panel>

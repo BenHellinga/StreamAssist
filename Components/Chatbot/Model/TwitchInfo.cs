@@ -21,6 +21,7 @@ public static class TwitchInfos
         new("Category", ValueKind.Text, "the category (game) name"),
         new("Live", ValueKind.Bool, "whether you're live right now"),
         new("Viewers", ValueKind.Int, "viewers right now (0 while offline)"),
+        new("Uptime", ValueKind.Text, "time since the stream started as h:mm:ss, e.g. 2:00:00, like the VOD's timestamps (empty while offline)"),
         new("Uptime Minutes", ValueKind.Int, "minutes since the stream started (0 while offline)"),
         new("Followers", ValueKind.Int, "how many followers the channel has"),
     ];

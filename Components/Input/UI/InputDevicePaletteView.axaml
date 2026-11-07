@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="StreamAssist.Components.Input.UI.InputDevicePaletteView"
              x:DataType="ui:InputDevicePaletteViewModel"
@@ -11,22 +12,29 @@
 
     <DockPanel>
 
-        <TextBox DockPanel.Dock="Top"
-                 Margin="{s:Gap PadAll}"
-                 Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"
-                 Text="{Binding SearchText}"
-                 PlaceholderText="Search input devices…"/>
+        <blocks:ListSearchView DockPanel.Dock="Top" Margin="{s:Gap PadAll}"/>
 
         <Border DockPanel.Dock="Top" Classes="Divider"/>
 
         <ScrollViewer Classes="Gapped">
-            <ItemsControl ItemsSource="{Binding Shown}" Margin="{s:Gap ScrollInset}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
+            <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}">
+
+                <!-- one heading like the block list's: the title, then the arrow (a small button) that collapses / expands -->
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBlock Classes="Label" Text="{Binding Section.HeadingText}" VerticalAlignment="Center"/>
+                    <Button Classes="Square Small" Content="{Binding Section.Arrow}" Command="{Binding Section.HeadingPressedCommand}"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding Section.Cards}" IsVisible="{Binding Section.ShowCards}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+            </StackPanel>
         </ScrollViewer>
 
     </DockPanel>

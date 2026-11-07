@@ -25,7 +25,7 @@ public class EndPollAction : ActionBlock
 
 
 
-    private string _results;
+    private readonly MenuSlot _results;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -34,16 +34,22 @@ public class EndPollAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Results", ConfiguratorType.Menu)] [JsonPropertyName("results")]
-    public string Results
-    {
-        get => _results;
-        set => SetParameter(ref _results, value);
-    }
-
     public static List<string> GetResultsMenuItems() => ["Show", "Hide"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("results")]
+    private ValueSlotData JsonResults
+    {
+        get => _results.GetData();
+        set => _results.LoadData(value);
+    }
 
 
 
@@ -53,8 +59,8 @@ public class EndPollAction : ActionBlock
 
     public EndPollAction()
     {
-        _results = "Show";
-        _slots = [];
+        _results = new("Results", GetResultsMenuItems, "Show");
+        _slots = [_results];
 
         TrackSlots();
     }
@@ -68,8 +74,9 @@ public class EndPollAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var results = await _results.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         // a failure (e.g. no poll is running) is already logged by the manager
-        if (!await chatbot.TryEndPollAsync(_results == "Show", context.CancellationToken)) throw new BlockFailedException("poll not ended");
+        if (!await chatbot.TryEndPollAsync(results == "Show", context.CancellationToken)) throw new BlockFailedException("poll not ended");
     }
 }

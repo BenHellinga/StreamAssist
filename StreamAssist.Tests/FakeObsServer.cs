@@ -45,6 +45,9 @@ public sealed class FakeObsServer : IDisposable
     public string CurrentScene = "Gaming";
     public readonly Dictionary<string, bool> Filters = []; // "source/filter" -> on
     public bool Recording;
+    public bool Streaming;
+    public double StreamMs; // how long each has been going (OBS's outputDuration)
+    public double RecordMs;
     public int ReplaysSaved;
     public readonly List<string> SceneOrder = ["Gaming", "Just Chatting"]; // top to bottom, like OBS's Scenes list
     public readonly Dictionary<string, List<Item>> Scenes = new()
@@ -175,7 +178,8 @@ public sealed class FakeObsServer : IDisposable
                 return new();
             case "GetSourceFilter": return new() { ["filterEnabled"] = Filters.GetValueOrDefault(Str("sourceName") + "/" + Str("filterName"), true) };
             case "SetSourceFilterEnabled": Filters[Str("sourceName") + "/" + Str("filterName")] = data["filterEnabled"]!.GetValue<bool>(); return new();
-            case "GetRecordStatus": return new() { ["outputActive"] = Recording };
+            case "GetRecordStatus": return new() { ["outputActive"] = Recording, ["outputDuration"] = Recording ? RecordMs : 0 };
+            case "GetStreamStatus": return new() { ["outputActive"] = Streaming, ["outputDuration"] = Streaming ? StreamMs : 0 };
             case "StartRecord": if (Recording) throw new InvalidOperationException("output already active"); Recording = true; return new();
             case "StopRecord": if (!Recording) throw new InvalidOperationException("output not active"); Recording = false; return new();
             case "ToggleRecord": Recording = !Recording; return new();

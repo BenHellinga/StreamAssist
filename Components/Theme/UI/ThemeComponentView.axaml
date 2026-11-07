@@ -82,7 +82,7 @@
                         <!-- colors: a swatch (not clickable, outlined so a dark one still shows) and its value as text -->
 
                         <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                            <TextBlock Classes="Title" Text="Colors" Margin="{s:Gap BigTitleMargin}"/>
+                            <TextBlock Classes="Title UnderLine" Text="Colors"/>
 
                             <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                                 <ItemsControl ItemsSource="{Binding Colors}">
@@ -102,7 +102,7 @@
                         <!-- styles: font sizes, control sizes, borders, line widths -->
 
                         <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                            <TextBlock Classes="Title" Text="Styles" Margin="{s:Gap BigTitleMargin}"/>
+                            <TextBlock Classes="Title UnderLine" Text="Styles"/>
 
                             <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                                 <ItemsControl ItemsSource="{Binding Styles}">
@@ -122,7 +122,7 @@
                         <!-- spacing: only the base values, everything else is worked out from them (Styles/Gap.cs) -->
 
                         <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                            <TextBlock Classes="Title" Text="Spacing" Margin="{s:Gap BigTitleMargin}"/>
+                            <TextBlock Classes="Title UnderLine" Text="Spacing"/>
 
                             <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                                 <ItemsControl ItemsSource="{Binding Spacing}">
@@ -142,7 +142,7 @@
                         <!-- components: their own sizes, a subsection each -->
 
                         <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                            <TextBlock Classes="Title" Text="Components" Margin="{s:Gap BigTitleMargin}"/>
+                            <TextBlock Classes="Title UnderLine" Text="Components"/>
 
                             <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
                                 <ItemsControl ItemsSource="{Binding Components}">

@@ -25,7 +25,7 @@ public class TextLengthBlock : ValueBlock<int>
 
 
 
-    private string _count;
+    private readonly MenuSlot _count;
     private readonly ValueSlot<string> _text;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class TextLengthBlock : ValueBlock<int>
     // public
 
 
-
-    [ConfigurableParameter("Count", ConfiguratorType.Menu)] [JsonPropertyName("count")]
-    public string Count
-    {
-        get => _count;
-        set => SetParameter(ref _count, value);
-    }
 
     public static List<string> GetCountMenuItems() => ["Characters", "Words"];
 
@@ -51,6 +44,13 @@ public class TextLengthBlock : ValueBlock<int>
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("count")]
+    private ValueSlotData JsonCount
+    {
+        get => _count.GetData();
+        set => _count.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("text")]
     private ValueSlotData JsonText
@@ -67,9 +67,9 @@ public class TextLengthBlock : ValueBlock<int>
 
     public TextLengthBlock()
     {
-        _count = "Characters";
+        _count = new("Count", GetCountMenuItems, "Characters");
         _text = new("Text");
-        _slots = [_text];
+        _slots = [_count, _text];
 
         TrackSlots();
     }
@@ -82,7 +82,8 @@ public class TextLengthBlock : ValueBlock<int>
 
     protected override async Task<int> ComputeAsync(TriggerContext context)
     {
+        var count = await _count.EvaluateAsync(context);
         var text = await _text.EvaluateAsync(context);
-        return _count == "Words" ? TextParts.Split(text, "").Count : text.Length;
+        return count == "Words" ? TextParts.Split(text, "").Count : text.Length;
     }
 }

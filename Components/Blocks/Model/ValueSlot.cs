@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.OutputConsole.Model;
@@ -59,7 +60,7 @@ public abstract class ValueSlot : BlockSlotBase
 
         Filter = FitsKind;
         WantedKind = kind;
-        _block = new(label, typeof(ValueBlock)) { Filter = FitsKind, WantedKind = kind };
+        _block = new(label, typeof(ValueBlock)) { Filter = FitsKind, WantedKind = kind, ValueSlot = this };
         _block.Changed += RaiseChanged;
     }
 
@@ -130,8 +131,10 @@ public abstract class ValueSlot : BlockSlotBase
 
 
 
+    // a block that only picks a dropdown's option (Random Option) fits a dropdown, nowhere else
     private bool FitsKind(BlockModel block) =>
-        block is ValueBlock value && (_kind == null || ValueTypes.CanConvert(value.Kind, _kind.Value));
+        block is ValueBlock value && (_kind == null || ValueTypes.CanConvert(value.Kind, _kind.Value))
+        && (block is not IMenuOptionBlock || this is MenuSlot);
 
 
 
@@ -206,6 +209,71 @@ public sealed class AnyValueSlot : ValueSlot
         return (null, context.Format(Text));
     }
 }
+
+
+
+// a dropdown setting (e.g. On / Off / Toggle): one of its options picked, or a value block placed in it giving the
+// option as text (case ignored, e.g. a variable holding "Toggle", or Random Option). Its options are asked for each
+// time they're needed, so a list that changes (audio devices, Voicemeeter channels, variables) is always current. A
+// fixed list refuses anything else when it runs; a changing one passes it on (the block says if it isn't there)
+public sealed class MenuSlot : ValueSlot
+{
+    private readonly Func<List<string>> _options;
+    private readonly bool _isFixed;
+
+
+
+    public MenuSlot(string label, Func<List<string>> options, string option, bool isFixed = true) : base(label, ValueKind.Text)
+    {
+        _options = options;
+        _isFixed = isFixed;
+        SetText(option);
+    }
+
+
+
+    // the options right now (none if they can't be listed, e.g. Voicemeeter isn't running)
+    public List<string> Options
+    {
+        get
+        {
+            try
+            {
+                return _options();
+            }
+            catch (Exception)
+            {
+                return [];
+            }
+        }
+    }
+
+
+
+    // what Random Option picks from: every option but a "nothing in particular" one (Default, None)
+    public List<string> RandomOptions => Options.Where(o => o is not ("Default" or "None")).ToList();
+
+
+
+    // the picked option, spelled as in the list (a fixed list refuses anything else)
+    public async Task<string> EvaluateAsync(TriggerContext context)
+    {
+        var value = (await EvaluateBlockAsync(context) is { } fromBlock
+            ? (string)ValueTypes.Convert(fromBlock.Value, fromBlock.Kind, ValueKind.Text)
+            : Text).Trim();
+
+        var options = Options;
+        if (options.FirstOrDefault(o => string.Equals(o, value, StringComparison.OrdinalIgnoreCase)) is { } option) return option;
+        if (!_isFixed) return value;
+
+        throw Fail(value == "" ? "nothing picked" : $"'{value}' isn't one of its options ({string.Join(", ", options)})");
+    }
+}
+
+
+
+// a value block that only fits a dropdown (MenuSlot), e.g. Random Option
+public interface IMenuOptionBlock;
 
 
 

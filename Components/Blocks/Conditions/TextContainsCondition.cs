@@ -25,8 +25,8 @@ public class TextContainsCondition : ConditionBlock
 
 
 
-    private string _check;
-    private string _case;
+    private readonly MenuSlot _check;
+    private readonly MenuSlot _case;
     private readonly ValueSlot<string> _text;
     private readonly ValueSlot<string> _find;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -37,21 +37,8 @@ public class TextContainsCondition : ConditionBlock
 
 
 
-    [ConfigurableParameter("Check", ConfiguratorType.Menu)] [JsonPropertyName("check")]
-    public string Check
-    {
-        get => _check;
-        set => SetParameter(ref _check, value);
-    }
-
     public static List<string> GetCheckMenuItems() => ["Contains", "Starts With", "Ends With"];
 
-    [ConfigurableParameter("Case", ConfiguratorType.Menu)] [JsonPropertyName("case")]
-    public string Case
-    {
-        get => _case;
-        set => SetParameter(ref _case, value);
-    }
 
     public static List<string> GetCaseMenuItems() => ["Ignore Case", "Match Case"];
 
@@ -62,6 +49,20 @@ public class TextContainsCondition : ConditionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("check")]
+    private ValueSlotData JsonCheck
+    {
+        get => _check.GetData();
+        set => _check.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("case")]
+    private ValueSlotData JsonCase
+    {
+        get => _case.GetData();
+        set => _case.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("text")]
     private ValueSlotData JsonText
@@ -85,11 +86,11 @@ public class TextContainsCondition : ConditionBlock
 
     public TextContainsCondition()
     {
-        _check = "Contains";
-        _case = "Ignore Case";
+        _check = new("Check", GetCheckMenuItems, "Contains");
+        _case = new("Case", GetCaseMenuItems, "Ignore Case");
         _text = new("Text");
         _find = new("Find");
-        _slots = [_text, _find];
+        _slots = [_check, _case, _text, _find];
 
         TrackSlots();
     }
@@ -102,11 +103,13 @@ public class TextContainsCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var check = await _check.EvaluateAsync(context);
+        var caseOption = await _case.EvaluateAsync(context);
         var text = await _text.EvaluateAsync(context);
         var find = await _find.EvaluateAsync(context);
-        var comparison = _case == "Match Case" ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var comparison = caseOption == "Match Case" ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
-        return _check switch
+        return check switch
         {
             "Starts With" => text.StartsWith(find, comparison),
             "Ends With" => text.EndsWith(find, comparison),

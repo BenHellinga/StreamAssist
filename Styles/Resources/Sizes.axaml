@@ -41,6 +41,6 @@
 
     <!-- the input device boxes never get narrower than this: a smaller window scrolls them sideways instead, so the
          keyboard picture stays usable -->
-    <x:Double x:Key="KeyboardMinWidth">1000</x:Double>
+    <x:Double x:Key="InputBoxMinWidth">1000</x:Double>
 
 </ResourceDictionary>

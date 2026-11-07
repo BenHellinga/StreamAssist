@@ -25,7 +25,7 @@ public class SetRewardSettingAction : ActionBlock
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly ValueSlot<string> _reward;
     private readonly AnyValueSlot _value;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -36,13 +36,6 @@ public class SetRewardSettingAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set => SetParameter(ref _setting, value);
-    }
-
     public static List<string> GetSettingMenuItems() => RewardSettings.Names.ToList();
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -52,6 +45,13 @@ public class SetRewardSettingAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("reward")]
     private ValueSlotData JsonReward
@@ -75,10 +75,10 @@ public class SetRewardSettingAction : ActionBlock
 
     public SetRewardSettingAction()
     {
-        _setting = "Cost";
+        _setting = new("Setting", GetSettingMenuItems, "Cost");
         _reward = new("Reward");
         _value = new("Value");
-        _slots = [_reward, _value];
+        _slots = [_setting, _reward, _value];
 
         // the reward that was just redeemed (a new block starts with this, a saved one loads its own)
         _reward.SetText("{reward}");
@@ -94,8 +94,9 @@ public class SetRewardSettingAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var settingOption = await _setting.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var setting = RewardSettings.Find(_setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var setting = RewardSettings.Find(settingOption) ?? throw Fail($"unknown setting '{settingOption}'");
         var reward = await _reward.EvaluateAsync(context);
 
         // typed text or any block, turned into what the setting needs (e.g. a whole number for Cost)

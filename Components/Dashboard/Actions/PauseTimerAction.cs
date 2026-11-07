@@ -25,7 +25,7 @@ public class PauseTimerAction : ActionBlock
 
 
 
-    private string _setType;
+    private readonly MenuSlot _setType;
     private readonly ValueSlot<string> _dock;
     private readonly ValueSlot<string> _timerName;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -36,13 +36,6 @@ public class PauseTimerAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Set Type", ConfiguratorType.Menu)] [JsonPropertyName("setType")]
-    public string SetType
-    {
-        get => _setType;
-        set => SetParameter(ref _setType, value);
-    }
-
     public static List<string> GetSetTypeMenuItems() => ["Pause", "Resume", "Toggle"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -52,6 +45,13 @@ public class PauseTimerAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("setType")]
+    private ValueSlotData JsonSetType
+    {
+        get => _setType.GetData();
+        set => _setType.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("dock")]
     private ValueSlotData JsonDock
@@ -75,10 +75,10 @@ public class PauseTimerAction : ActionBlock
 
     public PauseTimerAction()
     {
-        _setType = "Toggle";
+        _setType = new("Set Type", GetSetTypeMenuItems, "Toggle");
         _dock = new("Dock");
         _timerName = new("Timer");
-        _slots = [_dock, _timerName];
+        _slots = [_setType, _dock, _timerName];
 
         TrackSlots();
     }
@@ -91,12 +91,13 @@ public class PauseTimerAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var setType = await _setType.EvaluateAsync(context);
         var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
         if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Timer, out var dock, out var dockError)) throw Fail(dockError);
         var timers = dock.Timers;
         var name = await _timerName.EvaluateAsync(context);
 
         foreach (var timer in timers.Find(name).ToList())
-            timers.SetIsPaused(timer, _setType switch { "Pause" => true, "Resume" => false, _ => !timer.IsPaused });
+            timers.SetIsPaused(timer, setType switch { "Pause" => true, "Resume" => false, _ => !timer.IsPaused });
     }
 }

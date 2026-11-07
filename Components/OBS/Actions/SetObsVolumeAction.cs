@@ -26,7 +26,7 @@ public class SetObsVolumeAction : ActionBlock
 
 
     private readonly ValueSlot<string> _source;
-    private string _mode;
+    private readonly MenuSlot _mode;
     private readonly ValueSlot<double> _volume;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -37,13 +37,6 @@ public class SetObsVolumeAction : ActionBlock
 
 
     // Set to the value, or Change by it (added to what it is now, e.g. -2 for a step down)
-    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
-    public string Mode
-    {
-        get => _mode;
-        set => SetParameter(ref _mode, value);
-    }
-
     public static List<string> GetModeMenuItems() => ["Set to", "Change by"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -53,6 +46,13 @@ public class SetObsVolumeAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("mode")]
+    private ValueSlotData JsonMode
+    {
+        get => _mode.GetData();
+        set => _mode.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("source")]
     private ValueSlotData JsonSource
@@ -77,9 +77,9 @@ public class SetObsVolumeAction : ActionBlock
     public SetObsVolumeAction()
     {
         _source = new("Source");
-        _mode = "Set to";
+        _mode = new("Mode", GetModeMenuItems, "Set to");
         _volume = new("Volume dB");
-        _slots = [_source, _volume];
+        _slots = [_mode, _source, _volume];
         _volume.SetText("0");
 
         TrackSlots();
@@ -94,11 +94,12 @@ public class SetObsVolumeAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var mode = await _mode.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
         var volume = await _volume.EvaluateAsync(context);
 
-        if (_mode == "Change by")
+        if (mode == "Change by")
         {
             var (ok, now) = await obs.TryGetVolumeAsync(source);
             if (!ok) throw new BlockFailedException("volume not read");

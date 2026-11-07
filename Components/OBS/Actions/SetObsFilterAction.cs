@@ -24,7 +24,7 @@ public class SetObsFilterAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _source;
     private readonly ValueSlot<string> _filter;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -35,13 +35,6 @@ public class SetObsFilterAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Change", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
-
     public static List<string> GetChangeMenuItems() => ["On", "Off", "Toggle"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -51,6 +44,13 @@ public class SetObsFilterAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("source")]
     private ValueSlotData JsonSource
@@ -74,10 +74,10 @@ public class SetObsFilterAction : ActionBlock
 
     public SetObsFilterAction()
     {
-        _change = "Toggle";
+        _change = new("Change", GetChangeMenuItems, "Toggle");
         _source = new("Source");
         _filter = new("Filter");
-        _slots = [_source, _filter];
+        _slots = [_change, _source, _filter];
 
         TrackSlots();
     }
@@ -91,10 +91,11 @@ public class SetObsFilterAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var changeOption = await _change.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
         var filter = await _filter.EvaluateAsync(context);
-        var change = _change == "On" ? ObsToggle.On : _change == "Off" ? ObsToggle.Off : ObsToggle.Toggle;
+        var change = changeOption == "On" ? ObsToggle.On : changeOption == "Off" ? ObsToggle.Off : ObsToggle.Toggle;
 
         if (!(await obs.TrySetFilterEnabledAsync(source, filter, change)).Ok) throw new BlockFailedException("filter not changed");
     }

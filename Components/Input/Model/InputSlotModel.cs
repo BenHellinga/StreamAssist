@@ -400,8 +400,6 @@ public class InputSlotModel : ModelBase
 
 
 
-    public override void Dispose()
-    {
-        _selectedDevice?.Dispose();
-    }
+    // the device isn't the box's (the input manager's list owns it, other boxes may use it too)
+    public override void Dispose() { }
 }

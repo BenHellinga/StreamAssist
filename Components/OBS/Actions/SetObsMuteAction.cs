@@ -25,7 +25,7 @@ public class SetObsMuteAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _source;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class SetObsMuteAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
 
     public static List<string> GetChangeMenuItems() => ["Mute", "Unmute", "Toggle"];
 
@@ -51,6 +44,13 @@ public class SetObsMuteAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("source")]
     private ValueSlotData JsonSource
@@ -67,9 +67,9 @@ public class SetObsMuteAction : ActionBlock
 
     public SetObsMuteAction()
     {
-        _change = "Toggle";
+        _change = new("Do", GetChangeMenuItems, "Toggle");
         _source = new("Source");
-        _slots = [_source];
+        _slots = [_change, _source];
 
         TrackSlots();
     }
@@ -83,9 +83,10 @@ public class SetObsMuteAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var changeOption = await _change.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
-        var change = _change == "Mute" ? ObsToggle.On : _change == "Unmute" ? ObsToggle.Off : ObsToggle.Toggle;
+        var change = changeOption == "Mute" ? ObsToggle.On : changeOption == "Unmute" ? ObsToggle.Off : ObsToggle.Toggle;
 
         if (!(await obs.TrySetMutedAsync(source, change)).Ok) throw new BlockFailedException("mute not changed");
     }

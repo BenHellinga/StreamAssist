@@ -26,7 +26,7 @@ public class GetObsTransformBlock : ValueBlock<double>
 
 
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly ValueSlot<string> _scene;
     private readonly ValueSlot<string> _source;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -37,13 +37,6 @@ public class GetObsTransformBlock : ValueBlock<double>
 
 
 
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set => SetParameter(ref _setting, value);
-    }
-
     public static List<string> GetSettingMenuItems() => ObsTransforms.Names.ToList();
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -53,6 +46,13 @@ public class GetObsTransformBlock : ValueBlock<double>
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("scene")]
     private ValueSlotData JsonScene
@@ -76,10 +76,10 @@ public class GetObsTransformBlock : ValueBlock<double>
 
     public GetObsTransformBlock()
     {
-        _setting = "Position X";
+        _setting = new("Setting", GetSettingMenuItems, "Position X");
         _scene = new("Scene");
         _source = new("Source");
-        _slots = [_scene, _source];
+        _slots = [_setting, _scene, _source];
 
         TrackSlots();
     }
@@ -92,8 +92,9 @@ public class GetObsTransformBlock : ValueBlock<double>
 
     protected override async Task<double> ComputeAsync(TriggerContext context)
     {
+        var setting = await _setting.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var transform = ObsTransforms.Find(_setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var transform = ObsTransforms.Find(setting) ?? throw Fail($"unknown setting '{setting}'");
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
 

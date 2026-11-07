@@ -25,7 +25,7 @@ public class SendAnnouncementAction : ActionBlock
 
 
 
-    private string _color;
+    private readonly MenuSlot _color;
     private readonly ValueSlot<string> _message;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class SendAnnouncementAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Color", ConfiguratorType.Menu)] [JsonPropertyName("color")]
-    public string Color
-    {
-        get => _color;
-        set => SetParameter(ref _color, value);
-    }
 
     public static List<string> GetColorMenuItems() => TwitchInfos.AnnouncementColors.ToList();
 
@@ -51,6 +44,13 @@ public class SendAnnouncementAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("color")]
+    private ValueSlotData JsonColor
+    {
+        get => _color.GetData();
+        set => _color.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("message")]
     private ValueSlotData JsonMessage
@@ -67,9 +67,9 @@ public class SendAnnouncementAction : ActionBlock
 
     public SendAnnouncementAction()
     {
-        _color = "Primary";
+        _color = new("Color", GetColorMenuItems, "Primary");
         _message = new("Message");
-        _slots = [_message];
+        _slots = [_color, _message];
 
         TrackSlots();
     }
@@ -83,10 +83,11 @@ public class SendAnnouncementAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var color = await _color.EvaluateAsync(context);
         var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var message = await _message.EvaluateAsync(context);
         if (string.IsNullOrWhiteSpace(message)) return;
 
-        if (!await chatbot.TrySendAnnouncementAsync(message, _color, context.CancellationToken)) throw new BlockFailedException("announcement not sent");
+        if (!await chatbot.TrySendAnnouncementAsync(message, color, context.CancellationToken)) throw new BlockFailedException("announcement not sent");
     }
 }

@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="StreamAssist.Components.Input.UI.InputComponentView"
-             x:DataType="keyboard:InputComponentViewModel"
+             x:DataType="input:InputComponentViewModel"
 
-             xmlns:keyboard="using:StreamAssist.Components.Input.UI"
+             xmlns:input="using:StreamAssist.Components.Input.UI"
         xmlns:s="using:StreamAssist.Styles">
 
     <!-- the config bar (every keyboard's keys switch with it), a divider, then the input device boxes | the input device
@@ -11,7 +11,7 @@
 
     <DockPanel>
 
-        <ContentControl DockPanel.Dock="Top" Content="{Binding KeyboardList.ConfigBar}" Margin="{s:Gap PadAll}"/>
+        <ContentControl DockPanel.Dock="Top" Content="{Binding InputList.ConfigBar}" Margin="{s:Gap PadAll}"/>
 
         <Border DockPanel.Dock="Top" Classes="Divider"/>
 
@@ -22,11 +22,11 @@
                 <ColumnDefinition Width="{Binding InputDeviceListWidth, Mode=TwoWay}" MinWidth="100"/>
             </Grid.ColumnDefinitions>
 
-            <keyboard:InputListView Grid.Column="0" DataContext="{Binding KeyboardList}"/>
+            <input:InputListView Grid.Column="0" DataContext="{Binding InputList}"/>
 
             <GridSplitter Grid.Column="1" Classes="ColumnSplitter"/>
 
-            <keyboard:InputDevicePaletteView Grid.Column="2" DataContext="{Binding Palette}"/>
+            <input:InputDevicePaletteView Grid.Column="2" DataContext="{Binding Palette}"/>
         </Grid>
 
     </DockPanel>

@@ -21,6 +21,7 @@ public sealed class BlockCardViewModel : ViewModelBase, IDraggable
 
 
 
+    public BlockModel Block => _block;
     public string Name => _block.Name;
     public string Description => _block.Description;
 

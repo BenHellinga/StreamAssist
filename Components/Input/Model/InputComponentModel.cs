@@ -28,7 +28,7 @@ public class InputComponentModel : ModelBase
 
 
 
-    [JsonInclude] [JsonPropertyName("keyboardList")]
+    [JsonInclude] [JsonPropertyName("inputList")]
     private InputListModel JsonListModel
     {
         get => _listModel;

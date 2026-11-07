@@ -43,7 +43,7 @@ public class GetTimeBlock : AdaptableValueBlock
         ("Unix Seconds", ValueKind.Int, now => (int)Math.Min(int.MaxValue, new DateTimeOffset(now).ToUnixTimeSeconds())),
     ];
 
-    private string _setting;
+    private readonly MenuSlot _setting;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -53,17 +53,6 @@ public class GetTimeBlock : AdaptableValueBlock
 
 
     // picking a setting also picks its type below (when the slot it's in can take it)
-    [ConfigurableParameter("Setting", ConfiguratorType.Menu)] [JsonPropertyName("setting")]
-    public string Setting
-    {
-        get => _setting;
-        set
-        {
-            SetParameter(ref _setting, value);
-            if (Find(value) is { } setting && Kind != setting.Kind) TrySetKind(setting.Kind);
-        }
-    }
-
     public static List<string> GetSettingMenuItems() => Settings.Select(s => s.Name).ToList();
 
     // what it's read as, placing it in a slot picks the slot's type (saved after the setting, so a loaded block keeps it)
@@ -81,15 +70,42 @@ public class GetTimeBlock : AdaptableValueBlock
 
 
 
+    // menu events
+
+
+
+    // picking an option in the dropdown (not a block in it: that's only known when it runs)
+    private void OnSettingPicked()
+    {
+        var value = _setting.Text;
+        if (Find(value) is { } setting && Kind != setting.Kind) TrySetKind(setting.Kind);
+    }
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("setting")]
+    private ValueSlotData JsonSetting
+    {
+        get => _setting.GetData();
+        set => _setting.LoadData(value);
+    }
+
+
+
     // constructor
 
 
 
     public GetTimeBlock() : base(ValueKind.Text)
     {
-        _setting = "Date";
-        _slots = [];
+        _setting = new("Setting", GetSettingMenuItems, "Date");
+        _slots = [_setting];
 
+        _setting.TextChanged += OnSettingPicked;
         TrackSlots();
     }
 
@@ -99,13 +115,14 @@ public class GetTimeBlock : AdaptableValueBlock
 
 
 
-    protected override Task<object> ComputeAsync(TriggerContext context)
+    protected override async Task<object> ComputeAsync(TriggerContext context)
     {
-        var setting = Find(_setting) ?? throw Fail($"unknown setting '{_setting}'");
+        var settingOption = await _setting.EvaluateAsync(context);
+        var setting = Find(settingOption) ?? throw Fail($"unknown setting '{settingOption}'");
         var value = setting.Read(DateTime.Now);
 
         if (!ValueTypes.TryConvert(value, setting.Kind, Kind, out var result, out var error)) throw Fail(error);
-        return Task.FromResult(result);
+        return result;
     }
 
 

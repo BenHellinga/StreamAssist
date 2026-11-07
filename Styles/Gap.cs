@@ -65,7 +65,7 @@ public static class SpacingRecipes
     // a component's own sizes (Sizes.axaml), the Themes tab's Components section, a subsection per Group
     public static readonly IReadOnlyList<ThemeValue> ComponentValues =
     [
-        new("KeyboardMinWidth", "KW", "Min width", 100, 5000, Group: "Keyboard"),
+        new("InputBoxMinWidth", "KW", "Box min width", 100, 5000, Group: "Input"),
     ];
 
 
@@ -98,7 +98,11 @@ public static class SpacingRecipes
         ["ScrollEdgeMargin"] = "P,P-3,P,P", // a scroll area's visible part (3 of the top P is on its content, for a first item's insert line)
         ["ScrollInset"] = "0,3,0,0",
         ["LinedScrollEdgeMargin"] = "0,P-3,0,P", // a page of sections and dividers: no sides, the sections pad themselves
-        ["BigTitleMargin"] = "0,LV-C-5,0,-4", // the 18px font leaves ~5 above its capitals and ~4 under its letters
+        // big titles (TextBlock.Title's style, never on a view): the 18px font leaves ~5 above its capitals and ~4 under
+        // its letters, taken back so the title's box is its letters and its container's LV is the gap on both sides.
+        // Right under a line content is only C away, so a title there (UnderLine) adds LV-C
+        ["TitleTrim"] = "0,-5,0,-4",
+        ["TitleUnderLineMargin"] = "0,LV-C-5,0,-4",
 
         // content to content
         ["SmallGapBefore"] = "SH,0,0,0",
@@ -135,6 +139,7 @@ public static class SpacingRecipes
         ["CardTitleMargin"] = "P,P,P,2",
         ["CardBodyMargin"] = "P,0,P,P",
         ["SearchRowMargin"] = "P,0,P,P",
+        ["SearchBoxWidth"] = "2*WN", // a list's search box: two minimum boxes wide (its type dropdown is one)
         ["TableHeaderLineMargin"] = "0,C,0,C", // the line under a table's column headers: C from them and from the first row
         ["SmallGapBelow"] = "0,0,0,SV", // a table row: SV to the next (or to the empty row after the last)
         ["SortNamePadding"] = "BT,0,CG+SB+SH+SB+SH,0", // a column name: room on the right for its two corner buttons

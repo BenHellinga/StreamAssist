@@ -10,7 +10,7 @@ namespace StreamAssist.Components.Blocks.UI;
 
 // view model for an if's branches: dropping a condition on a branch starts a new branch before it (the zone at the end
 // adds one last)
-public class BlockBranchListViewModel : ViewModelBase, IDroppable
+public class BlockBranchListViewModel : ViewModelBase, IDroppable, ISlotTagSource
 {
     // private
 
@@ -25,6 +25,7 @@ public class BlockBranchListViewModel : ViewModelBase, IDroppable
 
 
 
+    public BlockSlotBase TagSlot => _list; // clicked while empty: the lists show what fits
     public ObservableCollection<BlockBranchViewModel> Branches => _branches;
     public bool HasBranches => _branches.Count > 0; // none: the branch list is hidden, so it adds no gap above the end zone
 

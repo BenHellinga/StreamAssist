@@ -19,6 +19,7 @@ public sealed class DashboardComponentModel : IDisposable
 
 
     private readonly ConfigSet<DashboardConfigModel> _configs;
+    private readonly TimersModel _backgroundTimers; // timers started with no dock: nothing shows or changes them, they just end
 
 
 
@@ -28,6 +29,7 @@ public sealed class DashboardComponentModel : IDisposable
 
     [JsonIgnore] public ConfigSet<DashboardConfigModel> Configs => _configs;
     [JsonIgnore] public DashboardConfigModel? Config => _configs.Selected;
+    [JsonIgnore] public TimersModel BackgroundTimers => _backgroundTimers;
 
 
 
@@ -66,6 +68,7 @@ public sealed class DashboardComponentModel : IDisposable
     public DashboardComponentModel()
     {
         _configs = new("dashboard config", () => new DashboardConfigModel());
+        _backgroundTimers = new();
 
         _configs.Changed += OnConfigsChanged;
     }
@@ -107,6 +110,21 @@ public sealed class DashboardComponentModel : IDisposable
 
 
 
+    // where a sound goes (Play Sound, Speak Text): a sound dock's queue, or null for no dock (an empty name: the sound
+    // plays straight away over anything else, and can't be stopped)
+    public bool TryFindSoundQueue(string name, out SoundsModel? sounds, out string error)
+    {
+        sounds = null;
+        error = "";
+        if (name.Trim() == "") return true;
+        if (!TryFindDock(name, DockKind.Sound, out var dock, out error)) return false;
+
+        sounds = dock.Sounds;
+        return true;
+    }
+
+
+
     // a console dock of the config in use, by name (Dock Message)
     public bool TryWriteToDock(string name, string message, out string error)
     {
@@ -128,9 +146,9 @@ public sealed class DashboardComponentModel : IDisposable
 
 
 
-    // every timer dock's timers, in every config (a config not in use keeps its timers running)
+    // every timer dock's timers, in every config (a config not in use keeps its timers running), and the ones with no dock
     public List<TimersModel> AllTimers() =>
-        _configs.Items.SelectMany(c => c.Docks).Where(d => d.Kind == DockKind.Timer).Select(d => d.Timers).ToList();
+        [.. _configs.Items.SelectMany(c => c.Docks).Where(d => d.Kind == DockKind.Timer).Select(d => d.Timers), _backgroundTimers];
 
 
 
@@ -160,6 +178,7 @@ public sealed class DashboardComponentModel : IDisposable
     {
         DockKind.Console => "a console",
         DockKind.Timer => "a timer dock",
+        DockKind.Sound => "a sound dock",
         DockKind.Button => "a button dock",
         DockKind.Indicator => "an indicator dock",
         _ => "a variable dock",
@@ -179,5 +198,6 @@ public sealed class DashboardComponentModel : IDisposable
     {
         _configs.Changed -= OnConfigsChanged;
         _configs.Dispose();
+        _backgroundTimers.Dispose();
     }
 }

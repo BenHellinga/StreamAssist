@@ -12,14 +12,14 @@ namespace StreamAssist.Components.Dashboard.Model;
 // what a dock shows (the dock list's cards, in this order), saved by name. Blank is an empty spot a copied dock is
 // pasted into (it takes the blank's place)
 [JsonConverter(typeof(JsonStringEnumConverter<DockKind>))]
-public enum DockKind { Console, Timer, Button, Indicator, Variable, Blank }
+public enum DockKind { Console, Timer, Sound, Button, Indicator, Variable, Blank }
 
 
 
 // one dock on the dashboard: its name (what blocks use to find it, unique in its config) and its kind. Its id ties it
 // to its place in the layout and never changes. A console's lines are only kept while the app runs; a button dock's
 // indicator and variable docks' rows are saved. A timer dock's timers and an indicator dock's on/off states live here
-// too, only while the app runs (blocks name the dock, then the timer or indicator). Variable docks show the Data tab's
+// too, only while the app runs (blocks name the dock, then the timer or indicator), and a sound dock's queue of sounds. Variable docks show the Data tab's
 // variables, which live there. A dock can be turned off (saved, not a blank one): then everything that would change it
 // does nothing, quietly (a message, a timer started or changed, an indicator set, a button pressed); reading it still
 // works
@@ -44,6 +44,7 @@ public sealed class DockModel : IDisposable
     private readonly DockNameList _indicators;
     private readonly DockNameList _variables;
     private readonly TimersModel _timers;
+    private readonly SoundsModel _sounds;
     private readonly Dictionary<string, bool> _indicatorStates; // by indicator name, case ignored
     private bool _isDisabled;
 
@@ -61,6 +62,7 @@ public sealed class DockModel : IDisposable
     [JsonIgnore] public DockNameList Indicators => _indicators; // an indicator dock's rows
     [JsonIgnore] public DockNameList Variables => _variables; // a variable dock's rows
     [JsonIgnore] public TimersModel Timers => _timers; // a timer dock's running timers
+    [JsonIgnore] public SoundsModel Sounds => _sounds; // a sound dock's playing and waiting sounds
     [JsonIgnore] public bool IsDisabled => _isDisabled;
     [JsonIgnore] public bool CanDisable => _kind != DockKind.Blank;
 
@@ -99,7 +101,16 @@ public sealed class DockModel : IDisposable
         {
             _isDisabled = value;
             _timers.SetIsOff(value);
+            _sounds.SetIsOff(value);
         }
+    }
+
+    // only written for sound docks: play one at a time (the default) or over each other
+    [JsonInclude] [JsonPropertyName("waitUntilDone")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    private bool? JsonWaitUntilDone
+    {
+        get => _kind == DockKind.Sound ? _sounds.WaitUntilDone : null;
+        set => _sounds.SetWaitUntilDone(value ?? true);
     }
 
     // only written for button docks
@@ -153,10 +164,12 @@ public sealed class DockModel : IDisposable
         _indicators = new();
         _variables = new();
         _timers = new();
+        _sounds = new();
         _indicatorStates = new(StringComparer.OrdinalIgnoreCase);
 
         _buttons.Changed += OnButtonsChanged;
         _indicators.Changed += OnIndicatorsChanged;
+        _sounds.WaitUntilDoneChanged += OnSoundsWaitUntilDoneChanged;
         _variables.Changed += OnVariablesChanged;
     }
 
@@ -190,6 +203,7 @@ public sealed class DockModel : IDisposable
     public static string KindTitle(DockKind kind) => kind switch
     {
         DockKind.Timer => "Timers",
+        DockKind.Sound => "Sounds",
         DockKind.Button => "Buttons",
         DockKind.Indicator => "Indicators",
         DockKind.Variable => "Variables",
@@ -221,6 +235,7 @@ public sealed class DockModel : IDisposable
 
         _isDisabled = isDisabled;
         _timers.SetIsOff(isDisabled);
+        _sounds.SetIsOff(isDisabled);
         IsDisabledChanged?.Invoke(isDisabled);
         Changed?.Invoke();
     }
@@ -328,6 +343,10 @@ public sealed class DockModel : IDisposable
 
 
 
+    private void OnSoundsWaitUntilDoneChanged() => Changed?.Invoke();
+
+
+
     // disposal (stops its buttons' runs)
 
 
@@ -341,5 +360,7 @@ public sealed class DockModel : IDisposable
         _variables.Changed -= OnVariablesChanged;
         _variables.Dispose();
         _timers.Dispose(); // a removed dock's timers end without running their end
+        _sounds.WaitUntilDoneChanged -= OnSoundsWaitUntilDoneChanged;
+        _sounds.Dispose(); // and its sounds stop
     }
 }

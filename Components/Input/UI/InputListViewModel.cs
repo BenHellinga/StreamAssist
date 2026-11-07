@@ -13,7 +13,7 @@ namespace StreamAssist.Components.Input.UI;
 
 
 
-// the Keyboard tab's input device boxes, top to bottom. An input device card dropped on a box adds one before it (on
+// the Input tab's input device boxes, top to bottom. An input device card dropped on a box adds one before it (on
 // the drop zone at the end, last); a box dragged by its grip moves the same way
 public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 {
@@ -67,7 +67,7 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
         foreach (var slot in _list.Slots)
             CreateSlot(slot, _slots.Count);
 
-        SubscribeToKeyboardListModel(_list);
+        SubscribeToListModel(_list);
         _list.Configs.ListChanged += OnConfigsChanged;
     }
 
@@ -143,7 +143,7 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
 
 
-    private void SubscribeToKeyboardListModel(InputListModel list)
+    private void SubscribeToListModel(InputListModel list)
     {
         list.SlotCreated += OnSlotCreated;
         list.SlotDeleted += OnSlotDeleted;
@@ -153,7 +153,7 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
 
 
-    private void UnsubscribeFromKeyboardListModel(InputListModel list)
+    private void UnsubscribeFromListModel(InputListModel list)
     {
         list.SlotCreated -= OnSlotCreated;
         list.SlotDeleted -= OnSlotDeleted;
@@ -177,7 +177,7 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
     public override void Dispose()
     {
-        UnsubscribeFromKeyboardListModel(_list);
+        UnsubscribeFromListModel(_list);
 
         foreach (var slot in _slots)
             slot.Dispose();

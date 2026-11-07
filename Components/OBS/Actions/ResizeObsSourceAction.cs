@@ -25,8 +25,8 @@ public class ResizeObsSourceAction : ActionBlock
 
 
 
-    private string _mode;
-    private string _anchor;
+    private readonly MenuSlot _mode;
+    private readonly MenuSlot _anchor;
     private readonly ValueSlot<string> _scene;
     private readonly ValueSlot<string> _source;
     private readonly ValueSlot<double> _percent;
@@ -40,21 +40,8 @@ public class ResizeObsSourceAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Mode", ConfiguratorType.Menu)] [JsonPropertyName("mode")]
-    public string Mode
-    {
-        get => _mode;
-        set => SetParameter(ref _mode, value);
-    }
-
     public static List<string> GetModeMenuItems() => ["Change by %", "Set size to"];
 
-    [ConfigurableParameter("Keep Fixed", ConfiguratorType.Menu)] [JsonPropertyName("anchor")]
-    public string Anchor
-    {
-        get => _anchor;
-        set => SetParameter(ref _anchor, value);
-    }
 
     public static List<string> GetAnchorMenuItems() => ObsManager.Anchors.Select(a => a.Name).ToList();
 
@@ -65,6 +52,20 @@ public class ResizeObsSourceAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("mode")]
+    private ValueSlotData JsonMode
+    {
+        get => _mode.GetData();
+        set => _mode.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("anchor")]
+    private ValueSlotData JsonAnchor
+    {
+        get => _anchor.GetData();
+        set => _anchor.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("scene")]
     private ValueSlotData JsonScene { get => _scene.GetData(); set => _scene.LoadData(value); }
@@ -89,14 +90,14 @@ public class ResizeObsSourceAction : ActionBlock
 
     public ResizeObsSourceAction()
     {
-        _mode = "Change by %";
-        _anchor = "Bottom Right";
+        _mode = new("Mode", GetModeMenuItems, "Change by %");
+        _anchor = new("Keep Fixed", GetAnchorMenuItems, "Bottom Right");
         _scene = new("Scene");
         _source = new("Source");
         _percent = new("Percent");
         _width = new("Width");
         _height = new("Height");
-        _slots = [_scene, _source, _percent, _width, _height];
+        _slots = [_mode, _anchor, _scene, _source, _percent, _width, _height];
 
         _percent.SetText("20");
         _width.SetText("100");
@@ -114,12 +115,14 @@ public class ResizeObsSourceAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var mode = await _mode.EvaluateAsync(context);
+        var anchor = await _anchor.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
 
         System.Func<double, double, (double, double)> newSize;
-        if (_mode == "Set size to")
+        if (mode == "Set size to")
         {
             var (width, height) = (await _width.EvaluateAsync(context), await _height.EvaluateAsync(context));
             newSize = (_, _) => (width, height);
@@ -131,6 +134,6 @@ public class ResizeObsSourceAction : ActionBlock
             newSize = (width, height) => (width * factor, height * factor);
         }
 
-        if (!(await obs.TryResizeAsync(scene, source, newSize, _anchor)).Ok) throw new BlockFailedException("not resized");
+        if (!(await obs.TryResizeAsync(scene, source, newSize, anchor)).Ok) throw new BlockFailedException("not resized");
     }
 }

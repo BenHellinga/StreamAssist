@@ -25,8 +25,8 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
 
-    private string _setType;
-    private string _channel;
+    private readonly MenuSlot _setType;
+    private readonly MenuSlot _channel;
     private string _muteSound;
     private string _unmuteSound;
     private readonly ValueSlot<double> _soundVolume;
@@ -37,20 +37,6 @@ public class MuteVoicemeeterAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Set Type", ConfiguratorType.Menu)] [JsonPropertyName("setType")]
-    public string SetType
-    {
-        get => _setType;
-        set => SetParameter(ref _setType, value);
-    }
-
-    [ConfigurableParameter("Channel", ConfiguratorType.Menu)] [JsonPropertyName("channel")]
-    public string Channel
-    {
-        get => _channel;
-        set => SetParameter(ref _channel, value);
-    }
 
     // played when it becomes muted / unmuted (empty = no sound)
     [ConfigurableParameter("Mute Sound", ConfiguratorType.Filepath)] [JsonPropertyName("muteSound")]
@@ -75,6 +61,20 @@ public class MuteVoicemeeterAction : ActionBlock
 
 
 
+    [JsonInclude] [JsonPropertyName("setType")]
+    private ValueSlotData JsonSetType
+    {
+        get => _setType.GetData();
+        set => _setType.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("channel")]
+    private ValueSlotData JsonChannel
+    {
+        get => _channel.GetData();
+        set => _channel.LoadData(value);
+    }
+
     // how loud the mute / unmute sounds play (0 to 1, kept to that range), typed or from a block
     [JsonInclude] [JsonPropertyName("soundVolume")]
     private ValueSlotData JsonSoundVolume
@@ -91,12 +91,12 @@ public class MuteVoicemeeterAction : ActionBlock
 
     public MuteVoicemeeterAction()
     {
-        _setType = "Toggle";
-        _channel = "Stereo Input 1";
+        _setType = new("Set Type", GetSetTypeMenuItems, "Toggle");
+        _channel = new("Channel", GetChannelMenuItems, "Stereo Input 1", isFixed: false);
         _muteSound = "";
         _soundVolume = new("Sound Volume");
         _unmuteSound = "";
-        _slots = [_soundVolume];
+        _slots = [_setType, _channel, _soundVolume];
 
         _soundVolume.SetText("1");
 
@@ -126,20 +126,22 @@ public class MuteVoicemeeterAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var setType = await _setType.EvaluateAsync(context);
+        var channel = await _channel.EvaluateAsync(context);
         var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
 
         // one read of what Voicemeeter has now decides both the new state and the sound, so they always agree
         // (e.g. after unmuting in Voicemeeter's own window, a toggle mutes and plays the mute sound)
-        if (!voicemeeter.TryGetMute(_channel, out var muted)) throw new BlockFailedException("mute not read");
+        if (!voicemeeter.TryGetMute(channel, out var muted)) throw new BlockFailedException("mute not read");
 
-        var newState = _setType switch
+        var newState = setType switch
         {
             "Mute" => true,
             "Unmute" => false,
             _ => !muted,
         };
 
-        if (!voicemeeter.TrySetMute(_channel, newState)) throw new BlockFailedException("mute not set");
+        if (!voicemeeter.TrySetMute(channel, newState)) throw new BlockFailedException("mute not set");
 
         var sound = newState ? _muteSound : _unmuteSound;
         if (newState == muted || sound.Trim() == "") return;

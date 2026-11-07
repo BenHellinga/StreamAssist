@@ -25,8 +25,9 @@ public class SetObsOutputAction : ActionBlock
 
 
 
-    private string _output;
-    private string _change;
+    private readonly MenuSlot _output;
+    private readonly MenuSlot _change;
+    private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
 
@@ -34,25 +35,32 @@ public class SetObsOutputAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Output", ConfiguratorType.Menu)] [JsonPropertyName("output")]
-    public string Output
-    {
-        get => _output;
-        set => SetParameter(ref _output, value);
-    }
-
     public static List<string> GetOutputMenuItems() => ObsManager.Outputs.ToList();
 
-    [ConfigurableParameter("Change", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
 
     public static List<string> GetChangeMenuItems() => ["Start", "Stop", "Toggle"];
 
-    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => [];
+    [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("output")]
+    private ValueSlotData JsonOutput
+    {
+        get => _output.GetData();
+        set => _output.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
 
 
@@ -62,8 +70,11 @@ public class SetObsOutputAction : ActionBlock
 
     public SetObsOutputAction()
     {
-        _output = "Recording";
-        _change = "Toggle";
+        _output = new("Output", GetOutputMenuItems, "Recording");
+        _change = new("Change", GetChangeMenuItems, "Toggle");
+        _slots = [_output, _change];
+
+        TrackSlots();
     }
 
 
@@ -75,9 +86,11 @@ public class SetObsOutputAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var output = await _output.EvaluateAsync(context);
+        var changeOption = await _change.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var change = _change == "Start" ? ObsToggle.On : _change == "Stop" ? ObsToggle.Off : ObsToggle.Toggle;
+        var change = changeOption == "Start" ? ObsToggle.On : changeOption == "Stop" ? ObsToggle.Off : ObsToggle.Toggle;
 
-        if (!(await obs.TrySetOutputAsync(_output, change)).Ok) throw new BlockFailedException("output not changed");
+        if (!(await obs.TrySetOutputAsync(output, change)).Ok) throw new BlockFailedException("output not changed");
     }
 }

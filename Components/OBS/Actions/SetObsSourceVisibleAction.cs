@@ -25,7 +25,7 @@ public class SetObsSourceVisibleAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly ValueSlot<string> _scene;
     private readonly ValueSlot<string> _source;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -36,13 +36,6 @@ public class SetObsSourceVisibleAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
-
     public static List<string> GetChangeMenuItems() => ["Show", "Hide", "Toggle"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -52,6 +45,13 @@ public class SetObsSourceVisibleAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("scene")]
     private ValueSlotData JsonScene
@@ -75,10 +75,10 @@ public class SetObsSourceVisibleAction : ActionBlock
 
     public SetObsSourceVisibleAction()
     {
-        _change = "Toggle";
+        _change = new("Do", GetChangeMenuItems, "Toggle");
         _scene = new("Scene");
         _source = new("Source");
-        _slots = [_scene, _source];
+        _slots = [_change, _scene, _source];
 
         TrackSlots();
     }
@@ -92,10 +92,11 @@ public class SetObsSourceVisibleAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var changeOption = await _change.EvaluateAsync(context);
         var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
-        var change = _change == "Show" ? ObsToggle.On : _change == "Hide" ? ObsToggle.Off : ObsToggle.Toggle;
+        var change = changeOption == "Show" ? ObsToggle.On : changeOption == "Hide" ? ObsToggle.Off : ObsToggle.Toggle;
 
         if (!(await obs.TrySetSourceVisibleAsync(scene, source, change)).Ok) throw new BlockFailedException("source not shown/hidden");
     }

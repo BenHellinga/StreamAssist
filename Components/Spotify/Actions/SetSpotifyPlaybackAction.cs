@@ -24,7 +24,7 @@ public class SetSpotifyPlaybackAction : ActionBlock
 
 
 
-    private string _change;
+    private readonly MenuSlot _change;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -33,16 +33,22 @@ public class SetSpotifyPlaybackAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
-
     public static List<string> GetChangeMenuItems() => ["Pause", "Resume", "Toggle", "Next", "Previous"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
 
 
 
@@ -52,8 +58,8 @@ public class SetSpotifyPlaybackAction : ActionBlock
 
     public SetSpotifyPlaybackAction()
     {
-        _change = "Toggle";
-        _slots = [];
+        _change = new("Do", GetChangeMenuItems, "Toggle");
+        _slots = [_change];
 
         TrackSlots();
     }
@@ -67,7 +73,8 @@ public class SetSpotifyPlaybackAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var change = await _change.EvaluateAsync(context);
         var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        if (!await spotify.TrySetPlaybackAsync(_change, context.CancellationToken)) throw new BlockFailedException("playback not changed");
+        if (!await spotify.TrySetPlaybackAsync(change, context.CancellationToken)) throw new BlockFailedException("playback not changed");
     }
 }

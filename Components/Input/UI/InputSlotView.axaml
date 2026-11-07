@@ -73,8 +73,8 @@
                 </StackPanel>
 
                 <!-- the picture (each KeyViewModel becomes a KeyView through the ViewLocator), as wide as the box (a mouse or
-                     controller stops growing, DeviceDisplayHelper.MaxScale), centred. A mouse's or controller's
-                     buttons sit on its body outline (DeviceDisplayHelper.BodyPath, a line like a box's border) -->
+                     controller stops growing, DevicePictures.MaxScale), centred. A mouse's or controller's
+                     buttons sit on its body outline (DevicePictures.BodyPath, a line like a box's border) -->
 
                 <keyboard:DevicePictureHost x:Name="DevicePictureHost" Margin="{s:Gap PadAll}" IsVisible="{Binding !IsCollapsed}">
                     <Panel HorizontalAlignment="Center" Width="{Binding CurrentWidth}" Height="{Binding CurrentHeight}">

@@ -60,9 +60,9 @@
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
-                        <TextBlock Classes="Title" Text="Built-in" Margin="{s:Gap BigTitleMargin}"/>
+                        <TextBlock Classes="Title" Text="Built-in"/>
                         <ContentControl Content="{Binding Root}"/>
-                        <TextBlock Classes="Title" Text="Custom" Margin="{s:Gap BigTitleMargin}"/>
+                        <TextBlock Classes="Title" Text="Custom"/>
                         <ContentControl Content="{Binding EditableRoot}"/>
                     </StackPanel>
                 </Border>

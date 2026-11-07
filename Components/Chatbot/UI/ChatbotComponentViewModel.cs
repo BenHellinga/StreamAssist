@@ -90,6 +90,7 @@ public partial class ChatbotComponentViewModel : ViewModelBase
         // registered per tab rather than once, because bind boxes show their command and so need this model
         BlockViewModel.RegisterSlotViewModel<MatchTextRowList>(rows => new MatchTextRowListViewModel(rows, _model));
         BlockViewModel.RegisterSlotViewModel<ChatTarget>(target => new ChatTargetViewModel(target, _model));
+        SlotTags.RegisterKind("Chat Block", typeof(ChatBlock)); // the chat list's type filter
 
         _page = CreatePage();
 

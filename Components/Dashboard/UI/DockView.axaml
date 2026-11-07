@@ -49,6 +49,14 @@
                         <Button Content="Clear" Command="{Binding ClearPressedCommand}"
                                 VerticalAlignment="Center" IsVisible="{Binding IsConsole}" IsEnabled="{Binding !IsDisabled}"/>
 
+                        <!-- the lines to a .txt in Downloads (says Saved for a moment) -->
+                        <Button Command="{Binding DownloadPressedCommand}" VerticalAlignment="Center" IsVisible="{Binding IsConsole}">
+                            <Panel>
+                                <TextBlock Classes="BoxText" Text="Download" Opacity="{Binding JustSaved, Converter={x:Static ui:DockView.HideWhenTrue}}"/>
+                                <TextBlock Classes="BoxText" Text="Saved" HorizontalAlignment="Center" IsVisible="{Binding JustSaved}"/>
+                            </Panel>
+                        </Button>
+
                         <!-- indicators: flip every one (one never set turns on) -->
                         <Button Content="Toggle all" Command="{Binding Indicators.ToggleAllPressedCommand}" VerticalAlignment="Center"
                                 IsVisible="{Binding Indicators, Converter={x:Static ObjectConverters.IsNotNull}}" IsEnabled="{Binding !IsDisabled}"/>
@@ -75,6 +83,28 @@
                             <TextBox Text="{Binding Timers.AddSeconds, FallbackValue=''}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" PlaceholderText="Seconds"
                                      Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
                             <Button Classes="Square Medium" Content="＋" Command="{Binding Timers.AddTimeAllPressedCommand}"/>
+                        </StackPanel>
+
+                        <!-- sounds: pause all (play while all are paused), skip the playing ones, stop them all (dimmed while
+                             there are none), then one at a time or over each other -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" VerticalAlignment="Center"
+                                    IsVisible="{Binding Sounds, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" IsEnabled="{Binding !IsDisabled}"
+                                        Opacity="{Binding Sounds.IsEmpty, Converter={x:Static ui:DockView.DimWhenTrue}, FallbackValue=1}">
+                                <Button Classes="Square Medium" Command="{Binding Sounds.PauseAllPressedCommand}">
+                                    <Panel>
+                                        <Path Classes="Icon" Data="{StaticResource PauseIcon}" IsVisible="{Binding Sounds.AnyRunning, FallbackValue=False}"/>
+                                        <Path Classes="Icon" Data="{StaticResource PlayIcon}" IsVisible="{Binding !Sounds.AnyRunning, FallbackValue=False}"/>
+                                    </Panel>
+                                </Button>
+                                <Button Classes="Square Medium" Command="{Binding Sounds.SkipPressedCommand}">
+                                    <Path Classes="Icon" Data="{StaticResource SkipIcon}"/>
+                                </Button>
+                                <Button Classes="Square Medium" Command="{Binding Sounds.StopAllPressedCommand}">
+                                    <Path Classes="Icon" Data="{StaticResource StopIcon}"/>
+                                </Button>
+                            </StackPanel>
+                            <CheckBox Content="Wait Until Done" IsChecked="{Binding Sounds.WaitUntilDone, FallbackValue=True}"/>
                         </StackPanel>
 
                         <!-- buttons: press every one, top to bottom -->

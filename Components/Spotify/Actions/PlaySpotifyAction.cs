@@ -25,7 +25,7 @@ public class PlaySpotifyAction : ActionBlock
 
 
 
-    private string _find;
+    private readonly MenuSlot _find;
     private readonly ValueSlot<string> _what;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
@@ -34,13 +34,6 @@ public class PlaySpotifyAction : ActionBlock
     // public
 
 
-
-    [ConfigurableParameter("Find", ConfiguratorType.Menu)] [JsonPropertyName("find")]
-    public string Find
-    {
-        get => _find;
-        set => SetParameter(ref _find, value);
-    }
 
     public static List<string> GetFindMenuItems() => ["Song", "Playlist", "Album"];
 
@@ -51,6 +44,13 @@ public class PlaySpotifyAction : ActionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("find")]
+    private ValueSlotData JsonFind
+    {
+        get => _find.GetData();
+        set => _find.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("what")]
     private ValueSlotData JsonWhat
@@ -67,9 +67,9 @@ public class PlaySpotifyAction : ActionBlock
 
     public PlaySpotifyAction()
     {
-        _find = "Song";
+        _find = new("Find", GetFindMenuItems, "Song");
         _what = new("What");
-        _slots = [_what];
+        _slots = [_find, _what];
 
         TrackSlots();
     }
@@ -83,10 +83,11 @@ public class PlaySpotifyAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var findOption = await _find.EvaluateAsync(context);
         var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
         var what = await _what.EvaluateAsync(context);
         if (what.Trim() == "") throw Fail("nothing to play");
-        var find = _find == "Playlist" ? SpotifyFind.Playlist : _find == "Album" ? SpotifyFind.Album : SpotifyFind.Song;
+        var find = findOption == "Playlist" ? SpotifyFind.Playlist : findOption == "Album" ? SpotifyFind.Album : SpotifyFind.Song;
 
         if (!await spotify.TryPlayAsync(what, find, context.CancellationToken)) throw new BlockFailedException("not played");
     }

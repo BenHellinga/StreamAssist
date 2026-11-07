@@ -24,9 +24,9 @@ public class SetVoicemeeterRouteAction : ActionBlock
 
 
 
-    private string _change;
-    private string _input;
-    private string _bus;
+    private readonly MenuSlot _change;
+    private readonly MenuSlot _input;
+    private readonly MenuSlot _bus;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -35,34 +35,42 @@ public class SetVoicemeeterRouteAction : ActionBlock
 
 
 
-    [ConfigurableParameter("Do", ConfiguratorType.Menu)] [JsonPropertyName("change")]
-    public string Change
-    {
-        get => _change;
-        set => SetParameter(ref _change, value);
-    }
-
     public static List<string> GetChangeMenuItems() => ["On", "Off", "Toggle"];
 
-    [ConfigurableParameter("Input", ConfiguratorType.Menu)] [JsonPropertyName("input")]
-    public string Input
-    {
-        get => _input;
-        set => SetParameter(ref _input, value);
-    }
 
     public static List<string> GetInputMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow(), inputs: true);
 
-    [ConfigurableParameter("Bus", ConfiguratorType.Menu)] [JsonPropertyName("bus")]
-    public string Bus
-    {
-        get => _bus;
-        set => SetParameter(ref _bus, value);
-    }
 
     public static List<string> GetBusMenuItems() => VoicemeeterChannels.Names(MuteVoicemeeterAction.ChannelsNow(), inputs: false);
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
+
+
+
+    // json
+
+
+
+    [JsonInclude] [JsonPropertyName("change")]
+    private ValueSlotData JsonChange
+    {
+        get => _change.GetData();
+        set => _change.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("input")]
+    private ValueSlotData JsonInput
+    {
+        get => _input.GetData();
+        set => _input.LoadData(value);
+    }
+
+    [JsonInclude] [JsonPropertyName("bus")]
+    private ValueSlotData JsonBus
+    {
+        get => _bus.GetData();
+        set => _bus.LoadData(value);
+    }
 
 
 
@@ -72,10 +80,10 @@ public class SetVoicemeeterRouteAction : ActionBlock
 
     public SetVoicemeeterRouteAction()
     {
-        _change = "Toggle";
-        _input = "Stereo Input 1";
-        _bus = "A1";
-        _slots = [];
+        _change = new("Do", GetChangeMenuItems, "Toggle");
+        _input = new("Input", GetInputMenuItems, "Stereo Input 1", isFixed: false);
+        _bus = new("Bus", GetBusMenuItems, "A1", isFixed: false);
+        _slots = [_change, _input, _bus];
 
         TrackSlots();
     }
@@ -87,17 +95,20 @@ public class SetVoicemeeterRouteAction : ActionBlock
 
 
     // Voicemeeter logs its own failure, then the run stops
-    protected override Task ExecuteAsync(TriggerContext context)
+    protected override async Task ExecuteAsync(TriggerContext context)
     {
+        var change = await _change.EvaluateAsync(context);
+        var input = await _input.EvaluateAsync(context);
+        var bus = await _bus.EvaluateAsync(context);
         var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        var routed = _change == "On";
-        if (_change == "Toggle")
+        var routed = change == "On";
+        if (change == "Toggle")
         {
-            if (!voicemeeter.TryGetRoute(_input, _bus, out var current)) throw new BlockFailedException("route not read");
+            if (!voicemeeter.TryGetRoute(input, bus, out var current)) throw new BlockFailedException("route not read");
             routed = !current;
         }
 
-        if (!voicemeeter.TrySetRoute(_input, _bus, routed)) throw new BlockFailedException("route not set");
-        return Task.CompletedTask;
+        if (!voicemeeter.TrySetRoute(input, bus, routed)) throw new BlockFailedException("route not set");
+        return;
     }
 }

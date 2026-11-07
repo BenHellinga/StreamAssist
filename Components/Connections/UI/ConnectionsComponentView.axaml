@@ -17,7 +17,7 @@
                 <!-- twitch: the app both accounts log in through (hidden, the eye button shows them, safe to have on stream) -->
 
                 <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                    <TextBlock Classes="Title" Text="Twitch" Margin="{s:Gap BigTitleMargin}"/>
+                    <TextBlock Classes="Title UnderLine" Text="Twitch"/>
 
                     <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
@@ -37,7 +37,7 @@
                 <Border Classes="Divider"/>
 
                 <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                    <TextBlock Classes="Title" Text="Voicemeeter" Margin="{s:Gap BigTitleMargin}"/>
+                    <TextBlock Classes="Title UnderLine" Text="Voicemeeter"/>
 
                     <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                         <ContentControl Content="{Binding Voicemeeter}"/>
@@ -49,7 +49,7 @@
                 <!-- obs: its websocket server (OBS: Tools > WebSocket Server Settings), password hidden like twitch's -->
 
                 <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                    <TextBlock Classes="Title" Text="OBS" Margin="{s:Gap BigTitleMargin}"/>
+                    <TextBlock Classes="Title UnderLine" Text="OBS"/>
 
                     <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
@@ -69,7 +69,7 @@
                 <!-- spotify: your app on developer.spotify.com (hidden like twitch's), whose Redirect URI has to be the one shown -->
 
                 <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                    <TextBlock Classes="Title" Text="Spotify" Margin="{s:Gap BigTitleMargin}"/>
+                    <TextBlock Classes="Title UnderLine" Text="Spotify"/>
 
                     <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">

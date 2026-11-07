@@ -9,7 +9,7 @@
     <!-- what's wrong with the file, and the one way out besides fixing it by hand -->
 
     <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}" MaxWidth="700" HorizontalAlignment="Left">
-        <TextBlock Classes="Title" Text="{Binding Title}" Margin="{s:Gap BigTitleMargin}"/>
+        <TextBlock Classes="Title UnderLine" Text="{Binding Title}"/>
 
         <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
             <TextBlock Text="{Binding Reason}"/>

@@ -23,7 +23,7 @@ public class EqualsCondition : ConditionBlock
 
 
 
-    private string _case;
+    private readonly MenuSlot _case;
     private readonly AnyValueSlot _first;
     private readonly AnyValueSlot _second;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
@@ -34,13 +34,6 @@ public class EqualsCondition : ConditionBlock
 
 
 
-    [ConfigurableParameter("Case", ConfiguratorType.Menu)] [JsonPropertyName("case")]
-    public string Case
-    {
-        get => _case;
-        set => SetParameter(ref _case, value);
-    }
-
     public static List<string> GetCaseMenuItems() => ["Match Case", "Ignore Case"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
@@ -50,6 +43,13 @@ public class EqualsCondition : ConditionBlock
     // json
 
 
+
+    [JsonInclude] [JsonPropertyName("case")]
+    private ValueSlotData JsonCase
+    {
+        get => _case.GetData();
+        set => _case.LoadData(value);
+    }
 
     [JsonInclude] [JsonPropertyName("first")]
     private ValueSlotData JsonFirst
@@ -73,11 +73,11 @@ public class EqualsCondition : ConditionBlock
 
     public EqualsCondition()
     {
-        _case = "Match Case";
+        _case = new("Case", GetCaseMenuItems, "Match Case");
         _first = new("");
         _second = new("");
         _second.SetConnector("==");
-        _slots = [_first, _second];
+        _slots = [_case, _first, _second];
 
         TrackSlots();
     }
@@ -90,9 +90,10 @@ public class EqualsCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
+        var caseOption = await _case.EvaluateAsync(context);
         var (firstKind, first) = await _first.EvaluateRawAsync(context);
         var (secondKind, second) = await _second.EvaluateRawAsync(context);
-        return AreEqual(firstKind, first, secondKind, second, ignoreCase: _case == "Ignore Case");
+        return AreEqual(firstKind, first, secondKind, second, ignoreCase: caseOption == "Ignore Case");
     }
 
 

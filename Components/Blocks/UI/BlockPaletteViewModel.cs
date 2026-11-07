@@ -38,7 +38,7 @@ public partial class BlockGroupViewModel : ViewModelBase
     public BlockGroup Group { get; }
     public IReadOnlyList<BlockCardViewModel> AllCards => _allCards;
     public bool ShowCards => !IsCollapsed;
-    public string HeadingText => IsSearching ? $"{Title} ({Cards.Count})" : Title; // with how many match while searching
+    public string HeadingText => $"{Title} ({Cards.Count})"; // with how many it shows (all, or the ones matching)
     public string Arrow => ShowCards ? "▾" : "▸";
     public string Heading => $"{HeadingText} {Arrow}";
 
@@ -84,9 +84,11 @@ public partial class BlockGroupViewModel : ViewModelBase
 
 
 
-// a block list: the block types of the given headings, filtered by the search box. Which headings are collapsed is kept
-// in the window layout (Config/window.json), so it stays the same in every block list and after a restart
-public partial class BlockPaletteViewModel : ViewModelBase
+// a block list: the block types of the given headings, filtered by the type dropdown (the kind of slot they'd go in,
+// only kinds this list has; clicking an empty slot picks its kind) and the search box (their names). Which headings
+// are collapsed is kept in the window layout (Config/window.json), so it stays the same in every block list and after a
+// restart
+public partial class BlockPaletteViewModel : ViewModelBase, IListSearch
 {
     // private
 
@@ -101,6 +103,7 @@ public partial class BlockPaletteViewModel : ViewModelBase
     private IDisposable? _pendingSearch;
 
     [ObservableProperty] private string _searchText;
+    [ObservableProperty] private string _selectedTag;
     [ObservableProperty] private bool _hasResults;
 
 
@@ -110,6 +113,7 @@ public partial class BlockPaletteViewModel : ViewModelBase
 
 
     public ObservableCollection<BlockGroupViewModel> Groups => _groups;
+    public IReadOnlyList<string> Tags { get; } // All, then the kinds of slot this list's blocks go in
 
 
 
@@ -126,11 +130,13 @@ public partial class BlockPaletteViewModel : ViewModelBase
         _pendingSearch = null;
 
         _searchText = "";
+        _selectedTag = SlotTags.All;
         _hasResults = true;
 
         var blocks = BlockResolver.DiscoverAll();
         foreach (var group in groups)
             AddGroup(group, blocks);
+        Tags = SlotTags.TagsFor(_allGroups.SelectMany(g => g.AllCards).Select(c => c.Block));
 
         SubscribeToLayout();
         ApplySearch();
@@ -169,7 +175,19 @@ public partial class BlockPaletteViewModel : ViewModelBase
 
 
 
+    partial void OnSelectedTagChanged(string value) => ApplySearch();
+
+
+
     // model events
+
+
+
+    // an empty slot was clicked: show what fits it, if this list has any
+    private void OnSlotTagRequested(string tag)
+    {
+        if (Tags.Contains(tag)) SelectedTag = tag;
+    }
 
 
 
@@ -206,16 +224,18 @@ public partial class BlockPaletteViewModel : ViewModelBase
 
 
 
-    // shows the cards whose name contains the search text (any case), headings with nothing left are hidden
+    // shows the cards of the picked kind whose name contains the search text (any case), headings with nothing left are
+    // hidden
     private void ApplySearch()
     {
         var search = SearchText.Trim();
+        var tag = SelectedTag ?? SlotTags.All;
         _groups.Clear();
 
         foreach (var group in _allGroups)
         {
-            group.Cards = group.AllCards.Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
-            group.IsSearching = search != "";
+            group.Cards = group.AllCards.Where(c => SlotTags.Fits(c.Block, tag) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+            group.IsSearching = search != "" || tag != SlotTags.All;
 
             if (group.Cards.Count > 0)
                 _groups.Add(group);
@@ -233,6 +253,7 @@ public partial class BlockPaletteViewModel : ViewModelBase
     private void SubscribeToLayout()
     {
         if (_layout != null) _layout.BlockGroupCollapsedChanged += OnBlockGroupCollapsedChanged;
+        SlotTags.Requested += OnSlotTagRequested;
     }
 
 
@@ -240,6 +261,7 @@ public partial class BlockPaletteViewModel : ViewModelBase
     private void UnsubscribeFromLayout()
     {
         if (_layout != null) _layout.BlockGroupCollapsedChanged -= OnBlockGroupCollapsedChanged;
+        SlotTags.Requested -= OnSlotTagRequested;
     }
 
 
