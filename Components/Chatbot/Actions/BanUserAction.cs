@@ -16,6 +16,7 @@ public class BanUserAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Ban User";
     [JsonIgnore] public override string Description => "Bans a user from your chat. User is their login name, {userLogin} is whoever triggered this. The bot (or you) has to be a moderator. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Moderation";
 
 
 

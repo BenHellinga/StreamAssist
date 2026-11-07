@@ -7,7 +7,7 @@
              xmlns:s="using:StreamAssist.Styles">
 
     <!-- the config bar (named themes), then a section per kind of setting (like the Connections tab): Colors, Styles,
-         Spacing, Components (a subsection per component). Each row: what it is | its value (applied when the box is
+         Spacing, then a section per tab with its own sizes (Input, Widgets). Each row: what it is | its value (applied when the box is
          left) | Reset while it's changed. A changed value's label is bright. With no theme, the page says to make one -->
 
     <UserControl.Styles>
@@ -50,19 +50,6 @@
             </Grid>
         </DataTemplate>
 
-        <!-- a component's subsection: its name as a subheading, then its rows -->
-        <DataTemplate DataType="ui:ThemeGroupViewModel">
-            <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
-                <TextBlock Classes="Label Subheading" Text="{Binding Name}"/>
-                <ItemsControl ItemsSource="{Binding Rows}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-            </StackPanel>
-        </DataTemplate>
     </UserControl.DataTemplates>
 
     <DockPanel>
@@ -137,25 +124,39 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <Border Classes="Divider"/>
+                        <!-- each tab's own sizes, a section each (e.g. Input, Widgets), with a divider above like the rest -->
 
-                        <!-- components: their own sizes, a subsection each -->
+                        <ItemsControl ItemsSource="{Binding Components}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="{s:Gap ContentPadding}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
 
-                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
-                            <TextBlock Classes="Title UnderLine" Text="Components"/>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="ui:ThemeGroupViewModel">
+                                    <StackPanel Spacing="{s:Gap ContentPadding}">
+                                        <Border Classes="Divider"/>
 
-                            <StackPanel Spacing="{DynamicResource MediumVerticalGap}">
-                                <ItemsControl ItemsSource="{Binding Components}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Spacing="{DynamicResource MediumVerticalGap}"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
+                                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                                            <TextBlock Classes="Title UnderLine" Text="{Binding Name}"/>
 
-                                <Button Content="Reset all components" Command="{Binding ResetComponentsCommand}" HorizontalAlignment="Left"/>
-                            </StackPanel>
-                        </StackPanel>
+                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                                                <ItemsControl ItemsSource="{Binding Rows}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                </ItemsControl>
+
+                                                <Button Content="{Binding ResetText}" Command="{Binding ResetPressedCommand}" HorizontalAlignment="Left"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                     </StackPanel>
                 </Border>

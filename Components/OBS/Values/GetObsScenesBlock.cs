@@ -18,6 +18,7 @@ public class GetObsScenesBlock : ValueBlock<string>
 
     [JsonIgnore] public override string Name => "Get OBS Scenes";
     [JsonIgnore] public override string Description => "Every scene's name, top to bottom as OBS lists them, separated by \", \" (e.g. for a chat reply).";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

@@ -21,6 +21,7 @@ public class TableRowsBlock : ValueBlock<string>
 
     [JsonIgnore] public override string Name => "Table Rows";
     [JsonIgnore] public override string Description => "Rows of a table as text, e.g. a leaderboard: the rows Query picks (like the Data tab's query, empty = every row), sorted by Sort By (highest or lowest first, numbers as numbers), the first Count of them, each written as Row Text with its columns as {name}s and {id}, e.g. \"{user}: {total}\", joined by Separator. No rows gives empty text.";
+    [JsonIgnore] public override string? Subgroup => "Read";
 
 
 

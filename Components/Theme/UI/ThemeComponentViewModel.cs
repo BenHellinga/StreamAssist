@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -75,7 +76,7 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
         _styles = Rows(SpacingRecipes.StyleValues);
         _spacing = Rows(SpacingRecipes.BaseValues);
         _components = SpacingRecipes.ComponentValues.GroupBy(v => v.Group ?? "Other")
-            .Select(g => new ThemeGroupViewModel(g.Key, Rows(g))).ToList();
+            .Select(g => new ThemeGroupViewModel(g.Key, Rows(g), () => _model.ResetAll(g))).ToList();
         _hasConfig = _model.Configs.Selected != null;
 
         SubscribeToModel();
@@ -90,7 +91,6 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
     [RelayCommand] private void ResetColors() => _model.ResetAllColors();
     [RelayCommand] private void ResetStyles() => _model.ResetAll(SpacingRecipes.StyleValues);
     [RelayCommand] private void ResetSpacing() => _model.ResetAll(SpacingRecipes.BaseValues);
-    [RelayCommand] private void ResetComponents() => _model.ResetAll(SpacingRecipes.ComponentValues);
 
 
 
@@ -146,11 +146,14 @@ public sealed partial class ThemeComponentViewModel : ViewModelBase
 
 
 
-// a component's subsection in the Components section (e.g. Keyboard): its name and its values' rows
-public sealed class ThemeGroupViewModel(string name, IReadOnlyList<ThemeValueRowViewModel> rows) : ViewModelBase
+// a tab's own section (e.g. Input, Widgets): its name, its values' rows, and resetting them
+public sealed partial class ThemeGroupViewModel(string name, IReadOnlyList<ThemeValueRowViewModel> rows, Action reset) : ViewModelBase
 {
     public string Name { get; } = name;
     public IReadOnlyList<ThemeValueRowViewModel> Rows { get; } = rows;
+    public string ResetText => $"Reset all {Name.ToLowerInvariant()}";
+
+    [RelayCommand] private void OnResetPressed() => reset();
 
     public override void Dispose() { }
 }

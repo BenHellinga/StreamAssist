@@ -18,6 +18,7 @@ public class FindSpotifySongBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Find Spotify Song";
     [JsonIgnore] public override string Description => "Looks up a song: its Title, Artist, Album, Link or Length Seconds. Song is a link, or words to search for (the first song found), e.g. to reply with what a song request found. Picking a setting picks its type.";
+    [JsonIgnore] public override string? Subgroup => "Songs";
 
 
 

@@ -16,6 +16,7 @@ public class FindOrAddTableRowAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Find Or Add Table Row";
     [JsonIgnore] public override string Description => "Finds the first row whose Column has this Value (as text, case ignored), or adds a row with it if there's none, and puts its id in a parameter ({rowId} by default). E.g. a viewer's row by {userLogin}: then Change Table Value adds to it, an empty cell counting as 0.";
+    [JsonIgnore] public override string? Subgroup => "Change";
 
 
 

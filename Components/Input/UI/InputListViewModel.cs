@@ -36,6 +36,7 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
 
     public ObservableCollection<InputSlotViewModel> Slots => _slots;
+    public bool HasSlots => _slots.Count > 0; // the empty list is hidden, so the stack doesn't space it from the drop zone
     public ConfigBarViewModel ConfigBar => _configBar; // one config for the whole tab
     public NoConfigViewModel NoConfig { get; } = new(); // shown instead of the keyboards while there's no config
     public bool HasConfig => _list.Configs.SelectedItem != null;
@@ -69,6 +70,7 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
         SubscribeToListModel(_list);
         _list.Configs.ListChanged += OnConfigsChanged;
+        _slots.CollectionChanged += OnSlotsChanged;
     }
 
 
@@ -128,6 +130,10 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
 
 
+    private void OnSlotsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => OnPropertyChanged(nameof(HasSlots));
+
+
+
     // a device was plugged in or removed: the dropdowns get the new lists, then each slot shows its device again
     private void OnDevicesChanged()
     {
@@ -184,5 +190,6 @@ public partial class InputListViewModel : ViewModelBase, IDisposable, IDroppable
 
         _configBar.Dispose();
         _list.Configs.ListChanged -= OnConfigsChanged;
+        _slots.CollectionChanged -= OnSlotsChanged;
     }
 }

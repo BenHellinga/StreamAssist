@@ -18,6 +18,7 @@ public class PlaySpotifyAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Play Spotify";
     [JsonIgnore] public override string Description => "Plays a song, or a playlist or album from its start. What is a Spotify link (Share > Copy link), or words: Find picks what they find (the first song or album a search finds, or one of your playlists by name). Parameters work, e.g. {rest} from a chat command or {input} from a redeem. If nothing is playing it starts on the computer the Spotify app is open on. Needs Spotify Premium.";
+    [JsonIgnore] public override string? Subgroup => "Playback";
 
 
 

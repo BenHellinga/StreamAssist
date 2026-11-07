@@ -18,6 +18,7 @@ public class SetObsOutputAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Output";
     [JsonIgnore] public override string Description => "Starts, stops or toggles recording, streaming, the replay buffer or the virtual camera. Starting one that's already running does nothing.";
+    [JsonIgnore] public override string? Subgroup => "Outputs";
 
 
 

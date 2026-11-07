@@ -18,6 +18,7 @@ public class GetObsOutputBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Get OBS Output";
     [JsonIgnore] public override string Description => "Reads one of OBS's outputs (Streaming, Recording, Replay Buffer, Virtual Camera): Active is whether it's running, Time how long it has been as h:mm:ss, e.g. 2:00:00, like OBS's own counter (empty while it's off; only Streaming and Recording have one, a recording's paused time isn't counted). Picking a setting picks its type.";
+    [JsonIgnore] public override string? Subgroup => "Outputs";
 
 
 

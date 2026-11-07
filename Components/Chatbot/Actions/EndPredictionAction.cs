@@ -18,6 +18,7 @@ public class EndPredictionAction : ActionBlock
 
     [JsonIgnore] public override string Name => "End Prediction";
     [JsonIgnore] public override string Description => "Locks the open prediction (no more predicting), resolves it (Winner = an outcome's title, points are paid out) or cancels it (points go back). Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Polls & Predictions";
 
 
 

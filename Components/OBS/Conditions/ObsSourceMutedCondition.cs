@@ -18,6 +18,7 @@ public class ObsSourceMutedCondition : ConditionBlock
 
     [JsonIgnore] public override string Name => "OBS Source Muted";
     [JsonIgnore] public override string Description => "True if an audio source is muted in OBS.";
+    [JsonIgnore] public override string? Subgroup => "Audio";
 
 
 

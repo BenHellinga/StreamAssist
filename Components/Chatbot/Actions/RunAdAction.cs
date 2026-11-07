@@ -18,6 +18,7 @@ public class RunAdAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Run Ad";
     [JsonIgnore] public override string Description => "Starts an ad break of this many seconds (30 to 180, affiliates and partners only). Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Stream";
 
 
 

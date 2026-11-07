@@ -18,6 +18,7 @@ public class DeleteTableRowAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Delete Table Row";
     [JsonIgnore] public override string Description => "Deletes a row of a table by its id. Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string? Subgroup => "Change";
 
 
 

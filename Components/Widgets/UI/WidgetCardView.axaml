@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.WidgetCardView"
+             x:DataType="ui:WidgetCardViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a kind of widget in the widget list, looks like a block card -->
+
+    <Border Classes="Panel Draggable" PointerPressed="OnPointerPressed">
+        <StackPanel>
+            <TextBlock Classes="Label" Text="{Binding Name}" Margin="{s:Gap CardTitleMargin}"/>
+            <TextBlock Classes="Description" Text="{Binding Description}" Margin="{s:Gap CardBodyMargin}"
+                       MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+    </Border>
+
+</UserControl>

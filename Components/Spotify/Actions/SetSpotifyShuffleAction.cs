@@ -17,6 +17,7 @@ public class SetSpotifyShuffleAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Spotify Shuffle";
     [JsonIgnore] public override string Description => "Turns Spotify's shuffle on or off, or toggles it. Needs Spotify Premium.";
+    [JsonIgnore] public override string? Subgroup => "Playback";
 
 
 

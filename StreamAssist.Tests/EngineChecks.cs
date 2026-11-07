@@ -104,6 +104,9 @@ internal static partial class EngineChecks
         SoundQueue();
         MenuSlots();
         ListTypeFilter();
+        WidgetModels();
+        await WidgetBlockChecks();
+        await WidgetServerChecks();
 
         return _failed;
     }

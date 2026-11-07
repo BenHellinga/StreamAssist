@@ -17,6 +17,7 @@ public class SetSpotifyPlaybackAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Spotify Playback";
     [JsonIgnore] public override string Description => "Pauses, resumes or toggles Spotify, or skips to the next or previous song. Pausing while paused (or resuming while playing) does nothing. Needs Spotify Premium.";
+    [JsonIgnore] public override string? Subgroup => "Playback";
 
 
 

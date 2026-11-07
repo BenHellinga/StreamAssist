@@ -143,6 +143,10 @@ internal static partial class EngineChecks
             && Eval(new GetObsOutputBlock()) is true && Eval(new GetObsOutputBlock().Pick("Output", "Recording")) is false && streamTime.Kind == ValueKind.Text);
         fake.Recording = true; fake.RecordMs = 3_723_500;
         Check("obs output: recording's time", Eval(recordTime) is "1:02:03");
+        Check("connected conditions: OBS while connected, Spotify and Twitch aren't (not set up here)",
+            Eval(new StreamAssist.Components.OBS.Conditions.ObsConnectedCondition()) is true
+            && Eval(new StreamAssist.Components.Spotify.Conditions.SpotifyConnectedCondition()) is false
+            && Eval(new StreamAssist.Components.Chatbot.Conditions.TwitchConnectedCondition().Pick("Account", "Bot")) is false);
         fake.Streaming = false; fake.Recording = false;
         Check("obs blocks: recording started, started again silently, toggled, a replay saved", RunObs(new SetObsOutputAction().Pick("Change", "Start")) && fake.Recording
             && RunObs(new SetObsOutputAction().Pick("Change", "Start")) && fake.Recording && RunObs(new SetObsOutputAction()) && !fake.Recording

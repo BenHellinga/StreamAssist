@@ -13,7 +13,7 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Panel Grid.Column="0" Width="{StaticResource SlotLabelWidth}" IsVisible="{Binding HasLabel}">
+        <Panel Grid.Column="0" MinWidth="{StaticResource SlotLabelWidth}" IsVisible="{Binding HasLabel}">
             <TextBlock Classes="Label SlotLabel" Text="{Binding Label}"/>
         </Panel>
 

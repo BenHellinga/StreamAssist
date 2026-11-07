@@ -84,6 +84,26 @@
                     </StackPanel>
                 </StackPanel>
 
+                <Border Classes="Divider"/>
+
+                <!-- widgets: the app's own server for the Widgets tab's browser sources (pick a port once and leave it, OBS's
+                     sources keep the address) -->
+
+                <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                    <TextBlock Classes="Title UnderLine" Text="Widgets"/>
+
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label" Text="Port" Width="100"/>
+                            <TextBox Text="{Binding WidgetPortInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" PlaceholderText="8976"/>
+                            <TextBlock Classes="Label" Text="Address"/>
+                            <SelectableTextBlock Classes="Description" Text="{Binding WidgetAddress}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <ContentControl Content="{Binding Widgets}"/>
+                    </StackPanel>
+                </StackPanel>
+
             </StackPanel>
         </Border>
     </ScrollViewer>

@@ -18,6 +18,7 @@ public class ResizeObsSourceAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Resize OBS Source";
     [JsonIgnore] public override string Description => "Grows or shrinks a source in a scene while one of its points stays still (Keep Fixed, e.g. Bottom Right for something in the bottom-right corner). Change by % takes Percent (20 grows by 20%, -20 shrinks by 20%), Set size to takes Width and Height in pixels. For a source inside a group, Scene is the group's name. An empty Scene means the live scene.";
+    [JsonIgnore] public override string? Subgroup => "Transform";
 
 
 

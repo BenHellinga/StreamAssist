@@ -18,6 +18,7 @@ public class CreateClipAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Create Clip";
     [JsonIgnore] public override string Description => "Clips the last ~30 seconds (only while live) and puts the clip's link in a parameter for the blocks after it, e.g. {clipUrl} in a Send Chat Message. Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Stream";
 
 
 

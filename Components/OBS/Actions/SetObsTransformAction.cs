@@ -19,6 +19,7 @@ public class SetObsTransformAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Transform";
     [JsonIgnore] public override string Description => "Moves, resizes, rotates or crops a source in a scene: pick what to set, in pixels (degrees for Rotation, 1 = own size for Scale). Width and Height resize it by changing its scale. Scene left empty = the live scene.";
+    [JsonIgnore] public override string? Subgroup => "Transform";
 
 
 

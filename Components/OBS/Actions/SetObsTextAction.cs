@@ -18,6 +18,7 @@ public class SetObsTextAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Text";
     [JsonIgnore] public override string Description => "Writes into a text source (its \"text\" setting), e.g. \"{user} just raided\". Parameters work in the text.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

@@ -352,16 +352,16 @@ internal static partial class EngineChecks
         var layout = new StreamAssist.Shell.WindowLayoutModel();
         var palette = new BlockPaletteViewModel(layout, BlockGroup.Control, BlockGroup.Twitch);
         var twitchGroup = palette.Groups.Single(g => g.Group == BlockGroup.Twitch);
-        Check("block list: headings in order, expanded at first", palette.Groups.Select(g => g.Title).SequenceEqual(new[] { "Control", "Twitch" }) && twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Cards.Count}) ▾");
+        Check("block list: headings in order, expanded at first", palette.Groups.Select(g => g.Title).SequenceEqual(new[] { "Control", "Twitch" }) && twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Count}) ▾");
         var otherPalette = new BlockPaletteViewModel(layout, BlockGroup.Twitch);
         twitchGroup.HeadingPressedCommand.Execute(null);
-        Check("block list: clicking a heading collapses it, in every list, and it's saved", !twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Cards.Count}) ▸" && !otherPalette.Groups[0].ShowCards
+        Check("block list: clicking a heading collapses it, in every list, and it's saved", !twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Count}) ▸" && !otherPalette.Groups[0].ShowCards
             && layout.IsBlockGroupCollapsed("Twitch") && JsonSerializer.Serialize(layout).Contains("\"collapsedBlockGroups\":[\"Twitch\"]"));
         Check("block list: a loaded layout keeps it collapsed", !new BlockPaletteViewModel(JsonSerializer.Deserialize<StreamAssist.Shell.WindowLayoutModel>(JsonSerializer.Serialize(layout))!, BlockGroup.Twitch).Groups[0].ShowCards);
         palette.SearchText = "announce";
         palette.GetType().GetMethod("ApplySearch", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(palette, null);
-        Check("block list: searching keeps a heading collapsed, counting its matches", !twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Cards.Count}) ▸"
-            && twitchGroup.Cards.All(c => c.Name.Contains("announce", StringComparison.OrdinalIgnoreCase)) && twitchGroup.Cards.Count > 0);
+        Check("block list: searching keeps a heading collapsed, counting its matches", !twitchGroup.ShowCards && twitchGroup.Heading == $"Twitch ({twitchGroup.Count}) ▸"
+            && twitchGroup.Subgroups.SelectMany(g => g.Cards).Concat(twitchGroup.Cards).All(c => c.Name.Contains("announce", StringComparison.OrdinalIgnoreCase)) && twitchGroup.Count > 0);
         Check("block list: a heading with no matches is hidden", !palette.Groups.Any(g => g.Group == BlockGroup.Control));
         twitchGroup.HeadingPressedCommand.Execute(null);
         Check("block list: a heading can be expanded while searching", twitchGroup.ShowCards && twitchGroup.Heading.EndsWith("▾"));

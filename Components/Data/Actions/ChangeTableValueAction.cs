@@ -18,6 +18,7 @@ public class ChangeTableValueAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Change Table Value";
     [JsonIgnore] public override string Description => "Adds Amount to a number cell (negative takes away, an empty cell counts as 0), or flips a true/false one, in one step (e.g. a viewer's points). Table is the name of a table in the Data tab. Row is an id ({rowId}) or column=value, e.g. user={userLogin} (that row is added if there's none).";
+    [JsonIgnore] public override string? Subgroup => "Change";
 
 
 

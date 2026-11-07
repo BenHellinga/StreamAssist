@@ -18,6 +18,7 @@ public class GetObsVolumeBlock : ValueBlock<double>
 
     [JsonIgnore] public override string Name => "Get OBS Volume";
     [JsonIgnore] public override string Description => "An audio source's volume in dB, like the OBS mixer (0 is full volume, lower is quieter).";
+    [JsonIgnore] public override string? Subgroup => "Audio";
 
 
 

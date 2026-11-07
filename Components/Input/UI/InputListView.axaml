@@ -24,7 +24,7 @@
                 <!-- never narrower than InputBoxMinWidth: a narrow window scrolls sideways, the keyboard pictures stay
                      usable (they don't ask for width themselves, DevicePictureHost, so wider windows still widen them) -->
                 <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}" MinWidth="{DynamicResource InputBoxMinWidth}">
-                    <ItemsControl ItemsSource="{Binding Slots}">
+                    <ItemsControl ItemsSource="{Binding Slots}" IsVisible="{Binding HasSlots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>

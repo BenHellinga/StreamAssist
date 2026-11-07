@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.WheelBodyView"
+             x:DataType="ui:WheelBodyViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a Wheel's settings (a label and a box per row, a sound's Browse… right after its box), its options under a
+         subheading (scrolling inside the box once they're taller than WidgetListMaxHeight), a divider, then its preview.
+         The divider runs the body's full height (a line keeps its own LineGap zones), the settings and preview pad
+         ContentPadding inside them -->
+
+    <Grid ColumnDefinitions="Auto,Auto,*">
+
+        <StackPanel Grid.Column="0" Spacing="{DynamicResource MediumVerticalGap}" VerticalAlignment="Top" Margin="{s:Gap PadAll}">
+
+            <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                  RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label Colon" Text="Spin Time (s):" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Classes="Commit" Text="{Binding SpinSecondsInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label Colon" Text="Winner Time (s):" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Classes="Commit" Text="{Binding ShowSecondsInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label Colon" Text="Tick Sound:" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBox Classes="Commit" Text="{Binding TickSoundInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                             PlaceholderText="Empty: the built-in tick"/>
+                    <Button Content="Browse…" Command="{Binding BrowseTickPressedCommand}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label Colon" Text="Win Sound:" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBox Classes="Commit" Text="{Binding WinSoundInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                             PlaceholderText="Empty: the built-in chime"/>
+                    <Button Content="Browse…" Command="{Binding BrowseWinPressedCommand}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Classes="Label Colon" Text="Tick Volume:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Classes="Commit" Text="{Binding TickVolumeInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Classes="Label Colon" Text="Win Volume:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="5" Grid.Column="1" Classes="Commit" Text="{Binding WinVolumeInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="6" Grid.Column="0" Classes="Label Colon" Text="Output Device:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="6" Grid.Column="1" HorizontalAlignment="Left"
+                          ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding SelectedOutputDevice}"/>
+            </Grid>
+
+            <TextBlock Classes="Label Subheading" Text="Options"/>
+
+            <!-- text | weight | colour (the swatch opens the palette and a hex box); the empty last row adds one -->
+            <ScrollViewer MaxHeight="{DynamicResource WidgetListMaxHeight}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <!-- the text column is shared by all rows (a shared size scope), so the weights and colours line up -->
+                <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="ui:WheelOptionRowViewModel">
+                            <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="OptionText"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding Text}" Classes.New="{Binding !HasText}" PlaceholderText="New option…" HorizontalAlignment="Left"
+                                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                <TextBox Grid.Column="1" Classes="Commit" Text="{Binding WeightInput}" IsVisible="{Binding HasText}"
+                                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                <Button Grid.Column="2" Classes="Square Medium" IsVisible="{Binding HasText}">
+                                    <Border Background="{Binding ColorBrush}" Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
+                                            CornerRadius="{s:Gap Corners}"/>
+                                    <Button.Flyout>
+                                        <Flyout Placement="Bottom">
+                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                                                <ItemsControl ItemsSource="{Binding Palette}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <UniformGrid Columns="6"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="ui:ColorChoice">
+                                                            <Button Classes="Square Medium" Command="{Binding PressedCommand}">
+                                                                <Border Background="{Binding Brush}" Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
+                                                                        CornerRadius="{s:Gap Corners}"/>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBox Text="{Binding ColorInput}" PlaceholderText="#FF8800" HorizontalAlignment="Left"
+                                                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+
+        <Border Grid.Column="1" Classes="VerticalDivider"/>
+
+        <ui:WheelPreview Grid.Column="2" Margin="{s:Gap PadAll}"
+                         MinWidth="{DynamicResource WidgetPreviewMinWidth}" MinHeight="{DynamicResource WidgetPreviewMinHeight}"
+                         Slices="{Binding PreviewSlices}" Rotation="{Binding PreviewRotation}" Highlight="{Binding PreviewHighlight}"/>
+
+    </Grid>
+
+</UserControl>

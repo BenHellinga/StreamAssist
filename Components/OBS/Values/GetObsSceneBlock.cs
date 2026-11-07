@@ -18,6 +18,7 @@ public class GetObsSceneBlock : ValueBlock<string>
 
     [JsonIgnore] public override string Name => "Get OBS Scene";
     [JsonIgnore] public override string Description => "The name of the scene that's live in OBS right now.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

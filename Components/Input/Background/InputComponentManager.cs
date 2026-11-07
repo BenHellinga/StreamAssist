@@ -62,6 +62,7 @@ public class InputComponentManager : IDisposable
 
 
     public DeviceInputManager GetInputManager() => _inputManager;
+    public MicrophoneManager GetMicrophoneManager() => _microphoneManager; // e.g. Mic Bounce widgets' levels
 
 
 

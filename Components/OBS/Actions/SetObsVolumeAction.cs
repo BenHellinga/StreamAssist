@@ -18,6 +18,7 @@ public class SetObsVolumeAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Volume";
     [JsonIgnore] public override string Description => "Sets an audio source's volume in dB, like the OBS mixer: 0 is full volume, lower is quieter (-100 to 26).";
+    [JsonIgnore] public override string? Subgroup => "Audio";
 
 
 

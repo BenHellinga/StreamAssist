@@ -18,6 +18,7 @@ public class SetStreamInfoAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Stream Info";
     [JsonIgnore] public override string Description => "Changes your stream title, or category (by name, e.g. Just Chatting; the closest match if it isn't exact). Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Stream";
 
 
 

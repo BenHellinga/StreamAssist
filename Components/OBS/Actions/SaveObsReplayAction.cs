@@ -16,6 +16,7 @@ public class SaveObsReplayAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Save OBS Replay";
     [JsonIgnore] public override string Description => "Saves the replay buffer's last moments to a file (the replay buffer has to be running, see Set OBS Output).";
+    [JsonIgnore] public override string? Subgroup => "Outputs";
 
 
 

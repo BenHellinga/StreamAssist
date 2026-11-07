@@ -18,6 +18,7 @@ public class SetSpotifyVolumeAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Spotify Volume";
     [JsonIgnore] public override string Description => "Sets Spotify's volume, 0 to 100 (kept in that range). Some devices (e.g. phones) don't let it be changed. Needs Spotify Premium.";
+    [JsonIgnore] public override string? Subgroup => "Playback";
 
 
 

@@ -19,6 +19,7 @@ public class GetObsSourceSettingBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Get OBS Source Setting";
     [JsonIgnore] public override string Description => "Any setting of a source by its name, like its Properties window (e.g. \"text\" for text sources), read as text, a number or true/false.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

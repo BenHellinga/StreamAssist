@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.WidgetPaletteView"
+             x:DataType="ui:WidgetPaletteViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- search box | a card per kind of widget (a WidgetCardView through the ViewLocator), dragged into the widgets
+         -->
+
+    <DockPanel>
+
+        <blocks:ListSearchView DockPanel.Dock="Top" Margin="{s:Gap PadAll}"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <ScrollViewer Classes="Gapped">
+            <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap ScrollInset}">
+
+                <!-- one heading like the block list's: the title, then the arrow (a small button) that collapses / expands -->
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBlock Classes="Label" Text="{Binding Section.HeadingText}" VerticalAlignment="Center"/>
+                    <Button Classes="Square Small" Content="{Binding Section.Arrow}" Command="{Binding Section.HeadingPressedCommand}"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding Section.Cards}" IsVisible="{Binding Section.ShowCards}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </DockPanel>
+
+</UserControl>

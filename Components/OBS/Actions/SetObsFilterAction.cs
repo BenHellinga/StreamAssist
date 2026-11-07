@@ -17,6 +17,7 @@ public class SetObsFilterAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Filter";
     [JsonIgnore] public override string Description => "Turns a filter on a source (or a scene) on, off or toggles it, both by their names as OBS shows them.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

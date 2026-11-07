@@ -18,6 +18,7 @@ public class CountTableRowsBlock : ValueBlock<int>
 
     [JsonIgnore] public override string Name => "Count Table Rows";
     [JsonIgnore] public override string Description => "How many rows a table has. Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string? Subgroup => "Read";
 
 
 

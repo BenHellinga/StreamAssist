@@ -18,6 +18,7 @@ public class UnbanUserAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Unban User";
     [JsonIgnore] public override string Description => "Unbans a user (or ends their timeout). User is their login name, {userLogin} is whoever triggered this. The bot (or you) has to be a moderator. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Moderation";
 
 
 

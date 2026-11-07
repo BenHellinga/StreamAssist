@@ -18,6 +18,7 @@ public class GetStreamInfoBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Get Stream Info";
     [JsonIgnore] public override string Description => "Reads your stream from Twitch: Title, Category, Live, Viewers, Uptime (h:mm:ss, e.g. 2:00:00), Uptime Minutes or Followers. Picking a setting picks its type. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Stream";
 
 
 

@@ -18,6 +18,7 @@ public class SetObsSourceSettingAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Source Setting";
     [JsonIgnore] public override string Description => "Sets any setting of a source by its name, like its Properties window (e.g. \"text\" for text sources, \"url\" for browser sources, \"file\" for images). The value keeps the kind the setting already is.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

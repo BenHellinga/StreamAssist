@@ -18,6 +18,7 @@ public class SetChatModeAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Chat Mode";
     [JsonIgnore] public override string Description => "Turns a chat mode on or off, or toggles it: slow mode (Duration = seconds between messages, 3 to 120), followers only (Duration = minutes they must have followed), subscribers only, emote only, unique chat. Duration can stay empty. The bot (or you) has to be a moderator. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Chat";
 
 
 

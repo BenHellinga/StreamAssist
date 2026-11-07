@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.WidgetView"
+             x:DataType="ui:WidgetViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the box's corner buttons show only while the pointer is on it (hidden by opacity, so nothing moves) -->
+
+    <UserControl.Styles>
+        <Style Selector="Border#Card > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border#Card:pointerover > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- a widget box, like an input device box: a green outline (red while off), a LineGap ring inside it. Its header like
+         a dock's (the name box, then the widget's own buttons at fixed sizes, cropped on the right when the box is
+         narrow), a divider at the ring, then its settings and preview (hidden while collapsed). The corner buttons
+         (copy, collapse, on / off, drag, remove) show on hover, CornerGap from the border, out of the ring -->
+
+    <Border x:Name="Card" Classes="Panel Bound" Classes.Disabled="{Binding IsDisabled}" Padding="{s:Gap LineZoneAll}">
+        <Panel>
+            <DockPanel>
+
+                <Panel DockPanel.Dock="Top" ClipToBounds="True">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Margin="{s:Gap PadAll}" HorizontalAlignment="Left">
+
+                        <TextBox Classes="Commit" Text="{Binding NameInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                                 Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+
+                        <!-- a wheel: spin it now -->
+                        <Button Content="Spin" Command="{Binding SpinPressedCommand}" VerticalAlignment="Center"
+                                IsVisible="{Binding IsWheel}" IsEnabled="{Binding !IsDisabled}"/>
+
+                        <!-- its address: for a browser source in OBS, or to look at it in a browser -->
+                        <Button Content="Copy URL" Command="{Binding CopyUrlPressedCommand}" VerticalAlignment="Center"/>
+                        <Button Content="Open" Command="{Binding OpenPressedCommand}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Panel>
+
+                <Border DockPanel.Dock="Top" Classes="Divider" IsVisible="{Binding !IsCollapsed}"/>
+
+                <!-- its settings, a divider and its preview (a MicBounceBodyView or WheelBodyView through the ViewLocator),
+                     which pad themselves: the divider runs the body's full height -->
+                <ContentControl Content="{Binding Body}" IsVisible="{Binding !IsCollapsed}"/>
+
+            </DockPanel>
+
+            <blocks:EditButtons Classes="HoverOnly" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap RingCornerMargin}"/>
+        </Panel>
+    </Border>
+
+</UserControl>

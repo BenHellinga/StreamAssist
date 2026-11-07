@@ -16,6 +16,7 @@ public class SendChatMessageAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Send Chat Message";
     [JsonIgnore] public override string Description => "Sends a message to your Twitch chat (type it, {name} is replaced with a parameter, e.g. {user}, or place a text block). Sent as the bot if it's connected, otherwise as the streamer, unless Chat only as bot is ticked. Twitch actions wait their turn, one per second. Reply answers the chat message that started this run as a threaded reply (a plain message if it wasn't started by one).";
+    [JsonIgnore] public override string? Subgroup => "Chat";
 
 
 

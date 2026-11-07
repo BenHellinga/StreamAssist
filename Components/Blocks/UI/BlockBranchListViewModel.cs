@@ -114,7 +114,7 @@ public class BlockBranchListViewModel : ViewModelBase, IDroppable, ISlotTagSourc
     private void UpdateHeaders()
     {
         for (int i = 0; i < _branches.Count; i++)
-            _branches[i].Header = i == 0 ? "if" : "else if";
+            _branches[i].Header = i == 0 ? "if:" : "else if:";
 
         OnPropertyChanged(nameof(HasBranches));
     }

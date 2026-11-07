@@ -43,4 +43,10 @@
          keyboard picture stays usable -->
     <x:Double x:Key="InputBoxMinWidth">1000</x:Double>
 
+    <!-- a widget box's preview (past the splitter right of its settings) is at least this big, and a wheel's options get
+         this tall before they scroll inside the box -->
+    <x:Double x:Key="WidgetPreviewMinWidth">200</x:Double>
+    <x:Double x:Key="WidgetPreviewMinHeight">200</x:Double>
+    <x:Double x:Key="WidgetListMaxHeight">300</x:Double>
+
 </ResourceDictionary>

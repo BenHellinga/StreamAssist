@@ -19,6 +19,7 @@ public class GetObsTransformBlock : ValueBlock<double>
 
     [JsonIgnore] public override string Name => "Get OBS Transform";
     [JsonIgnore] public override string Description => "Where a source is in a scene, or its size, rotation or crop: pick which, in pixels (degrees for Rotation, 1 = own size for Scale). Scene left empty = the live scene.";
+    [JsonIgnore] public override string? Subgroup => "Transform";
 
 
 

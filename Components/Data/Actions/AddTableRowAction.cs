@@ -18,6 +18,7 @@ public class AddTableRowAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Add Table Row";
     [JsonIgnore] public override string Description => "Adds an empty row at the end of a table and puts its id in a parameter ({rowId} by default) for the blocks after it, e.g. Set Table Value. Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string? Subgroup => "Change";
 
 
 

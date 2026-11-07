@@ -18,6 +18,7 @@ public class GetObsSourcesBlock : ValueBlock<string>
 
     [JsonIgnore] public override string Name => "Get OBS Sources";
     [JsonIgnore] public override string Description => "Every source in a scene, top to bottom as OBS lists them, separated by \", \". Scene left empty = the live scene.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

@@ -18,6 +18,7 @@ public class SetModeratorAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Moderator";
     [JsonIgnore] public override string Description => "Makes a user a moderator of your channel, or removes it. User is their login name, {userLogin} is whoever triggered this. Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Moderation";
 
 
 

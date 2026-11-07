@@ -66,6 +66,9 @@ public static class SpacingRecipes
     public static readonly IReadOnlyList<ThemeValue> ComponentValues =
     [
         new("InputBoxMinWidth", "KW", "Box min width", 100, 5000, Group: "Input"),
+        new("WidgetPreviewMinWidth", "WPW", "Preview min width", 50, 2000, Group: "Widgets"),
+        new("WidgetPreviewMinHeight", "WPH", "Preview min height", 50, 2000, Group: "Widgets"),
+        new("WidgetListMaxHeight", "WLH", "Options max height", 50, 5000, Group: "Widgets"),
     ];
 
 
@@ -134,11 +137,12 @@ public static class SpacingRecipes
         // empty after it, taken back so the colon itself is the gap from what follows
         ["ColonTrim"] = "0,0,-FM*0.22,0",
         ["SlotLabelMargin"] = "P,0,SH-FM*0.22,0", // a value slot's label: P from the ring, SH from its box (colon trimmed)
-        ["SlotLabelTextMargin"] = "P,4,0,0",
+        ["SlotLabelTextMargin"] = "P,4,SH-FM*0.22,0", // a block slot's label (When Done:): SH from its colon to its slot when it's wider than SlotLabelWidth
         ["ConnectorMargin"] = "SH,0,0,SV",
         ["CardTitleMargin"] = "P,P,P,2",
         ["CardBodyMargin"] = "P,0,P,P",
         ["SearchRowMargin"] = "P,0,P,P",
+        ["SubgroupIndent"] = "MH,0,0,0", // a block list's subgroup (its heading and cards) under its group's heading
         ["SearchBoxWidth"] = "2*WN", // a list's search box: two minimum boxes wide (its type dropdown is one)
         ["TableHeaderLineMargin"] = "0,C,0,C", // the line under a table's column headers: C from them and from the first row
         ["SmallGapBelow"] = "0,0,0,SV", // a table row: SV to the next (or to the empty row after the last)

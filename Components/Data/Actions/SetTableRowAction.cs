@@ -17,6 +17,7 @@ public class SetTableRowAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Table Row";
     [JsonIgnore] public override string Description => "Set Table Value for several cells of one row: a column name on each row with its value to the right, set top to bottom. Each value is converted to its column's type, and the first one that doesn't fit stops the run (the ones above it are already set). Row is an id ({rowId}) or column=value, e.g. user={userLogin} (that row is added if there's none).";
+    [JsonIgnore] public override string? Subgroup => "Change";
 
 
 

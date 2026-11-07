@@ -11,6 +11,7 @@ using StreamAssist.Components.Spotify.Background;
 using StreamAssist.Components.Spotify.Model;
 using StreamAssist.Components.Dashboard.Model;
 using StreamAssist.Components.Theme.Model;
+using StreamAssist.Components.Widgets.Model;
 
 namespace StreamAssist.Shell;
 
@@ -45,4 +46,6 @@ public static class GlobalContext
     public static DashboardComponentModel? DashboardComponentModel { get; set; } // e.g. for writing to a console dock
 
     public static ThemeComponentModel? ThemeComponentModel { get; set; } // e.g. for switching themes
+
+    public static WidgetsComponentModel? WidgetsComponentModel { get; set; } // e.g. for spinning a wheel
 }

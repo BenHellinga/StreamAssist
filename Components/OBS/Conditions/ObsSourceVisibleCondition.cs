@@ -18,6 +18,7 @@ public class ObsSourceVisibleCondition : ConditionBlock
 
     [JsonIgnore] public override string Name => "OBS Source Visible";
     [JsonIgnore] public override string Description => "True if a source is showing in a scene (its eye is on in OBS). Scene left empty = the live scene.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

@@ -17,6 +17,7 @@ public class GetTableRowAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Get Table Row";
     [JsonIgnore] public override string Description => "Reads a whole row into parameters, one per column named after it (e.g. {quote}, {date}, and {id}), with the Prefix in front if there is one ({q_quote}). Empty cells read as empty text. Only for this run, nothing is kept.";
+    [JsonIgnore] public override string? Subgroup => "Read";
 
 
 

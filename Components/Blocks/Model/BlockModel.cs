@@ -13,7 +13,7 @@ namespace StreamAssist.Components.Blocks.Model;
 // value blocks are listed by the type they return: Condition (bool), Text, Int, Double, Char, or Any (they can return any)
 // the heading a block is listed under in the block list (in this order): the general blocks by what they do, then one
 // per integration. Chat is the chatbot tab's own list (Match Text, ...)
-public enum BlockGroup { Control, Logic, Math, Text, Parameters, Variables, Tables, App, Dashboard, Twitch, Obs, Voicemeeter, Spotify, Chat }
+public enum BlockGroup { Control, Logic, Math, Text, Parameters, Variables, Tables, App, Dashboard, Widgets, Twitch, Obs, Voicemeeter, Spotify, Chat }
 
 
 
@@ -38,6 +38,7 @@ public abstract class BlockModel : ModelBase
     // the heading it's listed under: the integration its component folder is (e.g. Components/OBS/... is OBS), or for the
     // general blocks in Components/Blocks what kind of block it is (KindGroup). A block can pick its own (e.g. Play Sound)
     [JsonIgnore] public virtual BlockGroup Group => ComponentGroup(GetType().Namespace) ?? KindGroup;
+    [JsonIgnore] public virtual string? Subgroup => null; // a heading inside its group's, e.g. Twitch > Moderation (none: straight under it)
     [JsonIgnore] public virtual IReadOnlyList<BlockSlotBase> Slots => [];
     [JsonIgnore] public virtual bool SlotsBesideSettings => false; // the editor shows the slots to the right of the settings, not under them
 
@@ -202,6 +203,7 @@ public abstract class BlockModel : ModelBase
         _ when ns.Contains(".Audio.") => BlockGroup.Voicemeeter,
         _ when ns.Contains(".Input.") || ns.Contains(".OutputConsole.") => BlockGroup.App,
         _ when ns.Contains(".Dashboard.") => BlockGroup.Dashboard,
+        _ when ns.Contains(".Widgets.") => BlockGroup.Widgets,
         _ => null,
     };
 }

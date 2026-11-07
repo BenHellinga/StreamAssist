@@ -13,8 +13,9 @@ namespace StreamAssist.Components.Blocks.UI;
 
 
 
-// one heading in the block list and the cards under it. Clicking the heading collapses / expands it, searching or not
-// (a collapsed heading stays collapsed while searching, its heading shows how many blocks match)
+// one heading in the block list: the cards straight under it, then its subgroups (headings of their own, e.g. Twitch >
+// Moderation, one level deep). Clicking a heading's arrow collapses / expands it, searching or not; its count is every
+// card it shows, its subgroups' included
 public partial class BlockGroupViewModel : ViewModelBase
 {
     // private
@@ -24,7 +25,8 @@ public partial class BlockGroupViewModel : ViewModelBase
     private readonly IReadOnlyList<BlockCardViewModel> _allCards; // never filtered
     private readonly Action<bool> _setCollapsed;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(Heading), nameof(HeadingText))] private IReadOnlyList<BlockCardViewModel> _cards; // the ones matching the search
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(Heading), nameof(HeadingText), nameof(Count))] private IReadOnlyList<BlockCardViewModel> _cards; // the ones matching the search
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(Heading), nameof(HeadingText), nameof(Count))] private IReadOnlyList<BlockGroupViewModel> _subgroups; // the ones with a match
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowCards), nameof(Heading), nameof(Arrow))] private bool _isCollapsed;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowCards), nameof(Heading), nameof(HeadingText))] private bool _isSearching;
 
@@ -36,9 +38,12 @@ public partial class BlockGroupViewModel : ViewModelBase
 
     public string Title { get; }
     public BlockGroup Group { get; }
+    public string Key { get; } // where its collapsing is kept: the group's name, or "Group/Subgroup"
     public IReadOnlyList<BlockCardViewModel> AllCards => _allCards;
+    public IReadOnlyList<BlockGroupViewModel> AllSubgroups { get; } // never filtered
     public bool ShowCards => !IsCollapsed;
-    public string HeadingText => $"{Title} ({Cards.Count})"; // with how many it shows (all, or the ones matching)
+    public int Count => Cards.Count + Subgroups.Sum(s => s.Count);
+    public string HeadingText => $"{Title} ({Count})"; // with how many it shows (all, or the ones matching)
     public string Arrow => ShowCards ? "▾" : "▸";
     public string Heading => $"{HeadingText} {Arrow}";
 
@@ -48,14 +53,18 @@ public partial class BlockGroupViewModel : ViewModelBase
 
 
 
-    public BlockGroupViewModel(string title, BlockGroup group, IReadOnlyList<BlockCardViewModel> cards, bool isCollapsed, Action<bool> setCollapsed)
+    public BlockGroupViewModel(string title, BlockGroup group, string key, IReadOnlyList<BlockCardViewModel> cards, IReadOnlyList<BlockGroupViewModel> subgroups,
+        bool isCollapsed, Action<bool> setCollapsed)
     {
         Title = title;
         Group = group;
+        Key = key;
         _allCards = cards;
+        AllSubgroups = subgroups;
         _setCollapsed = setCollapsed;
 
         _cards = cards;
+        _subgroups = subgroups;
         _isCollapsed = isCollapsed;
         _isSearching = false;
     }
@@ -79,6 +88,8 @@ public partial class BlockGroupViewModel : ViewModelBase
     {
         foreach (var card in _allCards)
             card.Dispose();
+        foreach (var subgroup in AllSubgroups)
+            subgroup.Dispose();
     }
 }
 
@@ -136,7 +147,7 @@ public partial class BlockPaletteViewModel : ViewModelBase, IListSearch
         var blocks = BlockResolver.DiscoverAll();
         foreach (var group in groups)
             AddGroup(group, blocks);
-        Tags = SlotTags.TagsFor(_allGroups.SelectMany(g => g.AllCards).Select(c => c.Block));
+        Tags = SlotTags.TagsFor(_allGroups.SelectMany(g => g.AllSubgroups.Prepend(g)).SelectMany(g => g.AllCards).Select(c => c.Block));
 
         SubscribeToLayout();
         ApplySearch();
@@ -193,7 +204,7 @@ public partial class BlockPaletteViewModel : ViewModelBase, IListSearch
 
     private void OnBlockGroupCollapsedChanged(string name)
     {
-        foreach (var group in _allGroups.Where(g => g.Group.ToString() == name))
+        foreach (var group in _allGroups.SelectMany(g => g.AllSubgroups.Prepend(g)).Where(g => g.Key == name))
             group.IsCollapsed = _layout!.IsBlockGroupCollapsed(name);
     }
 
@@ -203,23 +214,32 @@ public partial class BlockPaletteViewModel : ViewModelBase, IListSearch
 
 
 
+    // a heading: the group's blocks without a subgroup straight under it, then a heading per subgroup (by name)
     private void AddGroup(BlockGroup group, IReadOnlyList<BlockModel> blocks)
     {
-        var cards = blocks
-            .Where(b => b.Group == group)
-            .OrderBy(b => b.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(b => new BlockCardViewModel(b))
+        var inGroup = blocks.Where(b => b.Group == group).ToList();
+        var name = group.ToString();
+
+        var subgroups = inGroup.Where(b => b.Subgroup != null).GroupBy(b => b.Subgroup!).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => Heading(g.Key, group, $"{name}/{g.Key}", g, []))
             .ToList();
 
-        var name = group.ToString();
+        _allGroups.Add(Heading(TitleOf(group), group, name, inGroup.Where(b => b.Subgroup == null), subgroups));
+    }
+
+
+
+    private BlockGroupViewModel Heading(string title, BlockGroup group, string key, IEnumerable<BlockModel> blocks, IReadOnlyList<BlockGroupViewModel> subgroups)
+    {
+        var cards = blocks.OrderBy(b => b.Name, StringComparer.OrdinalIgnoreCase).Select(b => new BlockCardViewModel(b)).ToList();
+
         BlockGroupViewModel? created = null;
-        created = new(TitleOf(group), group, cards, _layout?.IsBlockGroupCollapsed(name) ?? false, collapsed =>
+        created = new(title, group, key, cards, subgroups, _layout?.IsBlockGroupCollapsed(key) ?? false, collapsed =>
         {
-            if (_layout != null) _layout.SetBlockGroupCollapsed(name, collapsed);
+            if (_layout != null) _layout.SetBlockGroupCollapsed(key, collapsed);
             else created!.IsCollapsed = collapsed;
         });
-
-        _allGroups.Add(created);
+        return created;
     }
 
 
@@ -232,12 +252,21 @@ public partial class BlockPaletteViewModel : ViewModelBase, IListSearch
         var tag = SelectedTag ?? SlotTags.All;
         _groups.Clear();
 
+        bool Shows(BlockCardViewModel card) => SlotTags.Fits(card.Block, tag) && card.Name.Contains(search, StringComparison.OrdinalIgnoreCase);
+
         foreach (var group in _allGroups)
         {
-            group.Cards = group.AllCards.Where(c => SlotTags.Fits(c.Block, tag) && c.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var subgroup in group.AllSubgroups)
+            {
+                subgroup.Cards = subgroup.AllCards.Where(Shows).ToList();
+                subgroup.IsSearching = search != "" || tag != SlotTags.All;
+            }
+
+            group.Cards = group.AllCards.Where(Shows).ToList();
+            group.Subgroups = group.AllSubgroups.Where(s => s.Cards.Count > 0).ToList();
             group.IsSearching = search != "" || tag != SlotTags.All;
 
-            if (group.Cards.Count > 0)
+            if (group.Count > 0)
                 _groups.Add(group);
         }
 

@@ -18,6 +18,7 @@ public class CreateStreamMarkerAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Create Stream Marker";
     [JsonIgnore] public override string Description => "Marks this moment of the stream (only while live), with an optional description, so it's easy to find in the VOD. Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Stream";
 
 
 

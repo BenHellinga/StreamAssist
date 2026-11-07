@@ -17,6 +17,7 @@ public class StartPollAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Start Poll";
     [JsonIgnore] public override string Description => "Starts a poll on your channel: a title, 2 to 5 choices (typing in the empty one adds the next) and how many seconds it runs (15 to 1800). Parameters work in the text. Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Polls & Predictions";
 
 
 

@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.MicBounceBodyView"
+             x:DataType="ui:MicBounceBodyViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a Mic Bounce's settings, a label and a box per row (an image's Browse… right after its box), a divider, then its
+         preview: the image as the page shows it, risen as far as you're loud right now. The divider runs the body's full
+         height (a line keeps its own LineGap zones), the settings and preview pad ContentPadding inside them -->
+
+    <Grid ColumnDefinitions="Auto,Auto,*">
+
+        <Grid Grid.Column="0" ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Top" Margin="{s:Gap PadAll}"
+              RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label Colon" Text="Idle Image:" VerticalAlignment="Center"/>
+            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                <TextBox Classes="Commit" Text="{Binding IdleImageInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                         PlaceholderText="Inside assets, e.g. Images/me.png"/>
+                <Button Content="Browse…" Command="{Binding BrowseIdlePressedCommand}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label Colon" Text="Talking Image:" VerticalAlignment="Center"/>
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                <TextBox Classes="Commit" Text="{Binding TalkingImageInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                         PlaceholderText="Empty: the idle one"/>
+                <Button Content="Browse…" Command="{Binding BrowseTalkingPressedCommand}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label Colon" Text="Microphone:" VerticalAlignment="Center"/>
+            <ComboBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left" ItemsSource="{Binding Microphones}" SelectedItem="{Binding SelectedMicrophone}"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label Colon" Text="Height (px):" VerticalAlignment="Center"/>
+            <TextBox Grid.Row="3" Grid.Column="1" Classes="Commit" Text="{Binding HeightInput}" HorizontalAlignment="Left"
+                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Classes="Label Colon" Text="Min (dB):" VerticalAlignment="Center"/>
+            <TextBox Grid.Row="4" Grid.Column="1" Classes="Commit" Text="{Binding MinDbInput}" HorizontalAlignment="Left"
+                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+            <TextBlock Grid.Row="5" Grid.Column="0" Classes="Label Colon" Text="Max (dB):" VerticalAlignment="Center"/>
+            <TextBox Grid.Row="5" Grid.Column="1" Classes="Commit" Text="{Binding MaxDbInput}" HorizontalAlignment="Left"
+                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+            <TextBlock Grid.Row="6" Grid.Column="0" Classes="Label Colon" Text="Smoothing (ms):" VerticalAlignment="Center"/>
+            <TextBox Grid.Row="6" Grid.Column="1" Classes="Commit" Text="{Binding SmoothingInput}" HorizontalAlignment="Left"
+                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+        </Grid>
+
+        <Border Grid.Column="1" Classes="VerticalDivider"/>
+
+        <ui:BouncePreview Grid.Column="2" Margin="{s:Gap PadAll}"
+                          MinWidth="{DynamicResource WidgetPreviewMinWidth}" MinHeight="{DynamicResource WidgetPreviewMinHeight}"
+                          Source="{Binding PreviewImage}" Level="{Binding PreviewLevel}" BounceHeight="{Binding PreviewHeight}"/>
+
+    </Grid>
+
+</UserControl>

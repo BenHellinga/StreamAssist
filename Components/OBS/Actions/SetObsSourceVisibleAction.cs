@@ -18,6 +18,7 @@ public class SetObsSourceVisibleAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Source Visible";
     [JsonIgnore] public override string Description => "Shows, hides or toggles a source in a scene (the eye in OBS). Scene left empty = the live scene.";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

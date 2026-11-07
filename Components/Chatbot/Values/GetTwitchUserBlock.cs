@@ -18,6 +18,7 @@ public class GetTwitchUserBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Get Twitch User";
     [JsonIgnore] public override string Description => "Reads a Twitch account: Display Name, Id, Account Age Days, Created On or Description (e.g. for !accountage). User is their login name. Picking a setting picks its type. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Users";
 
 
 

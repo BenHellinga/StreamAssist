@@ -75,7 +75,7 @@ public partial class BindableEditorViewModel : ViewModelBase
         _emptyText = emptyText;
 
         _palette = new(layout,
-            BlockGroup.Control, BlockGroup.Logic, BlockGroup.Math, BlockGroup.Text, BlockGroup.Parameters, BlockGroup.Variables, BlockGroup.Tables, BlockGroup.App, BlockGroup.Dashboard,
+            BlockGroup.Control, BlockGroup.Logic, BlockGroup.Math, BlockGroup.Text, BlockGroup.Parameters, BlockGroup.Variables, BlockGroup.Tables, BlockGroup.App, BlockGroup.Dashboard, BlockGroup.Widgets,
             BlockGroup.Twitch, BlockGroup.Obs, BlockGroup.Voicemeeter, BlockGroup.Spotify);
 
         _labelBlocker = new();

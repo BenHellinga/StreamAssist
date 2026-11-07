@@ -25,7 +25,7 @@ public partial class BlockSlotViewModel : ViewModelBase, IDroppable, ISlotTagSou
 
 
     public BlockSlotBase TagSlot => _slot; // clicked while empty: the lists show what fits
-    public string Label => _slot.Label;
+    public string Label => _slot.Label + ":";
     public bool HasLabel => !string.IsNullOrEmpty(_slot.Label);
     public bool IsConditionSlot => typeof(ConditionBlock).IsAssignableFrom(_slot.AcceptedType);
 

@@ -18,6 +18,7 @@ public class ChatHistoryBlock : ValueBlock<string>
 
     [JsonIgnore] public override string Name => "Chat History";
     [JsonIgnore] public override string Description => "Something about a recent chat message (the app keeps the last 100 while it runs). Find picks it: the Newest, or by Message Id that one (This), the one just Older or just Newer, staying put at either end, an empty id counting as the newest. Give picks what you get, e.g. its messageId to remember where you are, its message, or its userLogin to time them out.";
+    [JsonIgnore] public override string? Subgroup => "Chat";
 
 
 

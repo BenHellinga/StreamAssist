@@ -17,6 +17,7 @@ public class StartPredictionAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Start Prediction";
     [JsonIgnore] public override string Description => "Starts a prediction on your channel: a title, 2 to 10 outcomes (typing in the empty one adds the next) and how many seconds viewers can predict (30 to 1800). End it with End Prediction. Parameters work in the text. Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Polls & Predictions";
 
 
 

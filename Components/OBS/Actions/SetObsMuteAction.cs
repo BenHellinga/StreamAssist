@@ -18,6 +18,7 @@ public class SetObsMuteAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Mute";
     [JsonIgnore] public override string Description => "Mutes, unmutes or toggles an audio source in OBS.";
+    [JsonIgnore] public override string? Subgroup => "Audio";
 
 
 

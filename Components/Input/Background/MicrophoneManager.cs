@@ -45,6 +45,7 @@ public sealed class MicrophoneManager : IDisposable
     private readonly Dictionary<string, Capture> _captures; // by the input's id
     private readonly HashSet<string> _failed; // inputs that couldn't be opened (warned once, tried again when picked again)
     private readonly Dictionary<InputSlotModel, DateTime> _lastLoud; // when each talking box last reached its threshold
+    private Dictionary<string, double> _levels; // each input's level at the last look, by its id
     private readonly DispatcherTimer _timer;
     private int _ticks;
 
@@ -60,6 +61,7 @@ public sealed class MicrophoneManager : IDisposable
         _captures = new(StringComparer.OrdinalIgnoreCase);
         _failed = new(StringComparer.OrdinalIgnoreCase);
         _lastLoud = [];
+        _levels = new(StringComparer.OrdinalIgnoreCase);
 
         _timer = new DispatcherTimer { Interval = Tick };
         _timer.Tick += OnTick;
@@ -69,6 +71,16 @@ public sealed class MicrophoneManager : IDisposable
 
 
     // public api
+
+
+
+    // inputs to listen to besides the microphone boxes' (e.g. Mic Bounce widgets'), by their id
+    public Func<IEnumerable<string>>? ExtraInputs { get; set; }
+
+
+
+    // an input's level (dB) at the last look, Silence if it isn't listened to
+    public double LevelOf(string inputId) => _levels.TryGetValue(inputId, out var level) ? level : Silence;
 
 
 
@@ -121,6 +133,7 @@ public sealed class MicrophoneManager : IDisposable
         if (++_ticks % ReconcileEvery == 1) Reconcile();
 
         var levels = _captures.ToDictionary(c => c.Key, c => TakeLoudest(c.Value), StringComparer.OrdinalIgnoreCase);
+        _levels = levels;
         var now = DateTime.UtcNow;
 
         foreach (var slot in _list.Slots.Where(s => s.Layout == InputSlotModel.MicrophoneLayout).ToList())
@@ -148,8 +161,10 @@ public sealed class MicrophoneManager : IDisposable
     // listens to the inputs microphone boxes have picked, stops listening to the rest
     private void Reconcile()
     {
-        var wanted = _list.Slots.Where(s => s.Layout == InputSlotModel.MicrophoneLayout && s.SelectedDevice != null)
-            .Select(s => s.SelectedDevice!).GroupBy(d => d.DevicePath, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
+        var extra = (ExtraInputs?.Invoke() ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var wanted = _list.Slots.Where(s => s.Layout == InputSlotModel.MicrophoneLayout && s.SelectedDevice != null).Select(s => s.SelectedDevice!)
+            .Concat((_list.Devices ?? []).Where(d => d.Kind == DeviceKind.Microphone && extra.Contains(d.DevicePath)))
+            .GroupBy(d => d.DevicePath, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
 
         foreach (var id in _captures.Keys.Where(id => wanted.All(d => !string.Equals(d.DevicePath, id, StringComparison.OrdinalIgnoreCase))).ToList())
             Stop(id);

@@ -18,6 +18,7 @@ public class FindTableRowBlock : ValueBlock<int>
 
     [JsonIgnore] public override string Name => "Find Table Row";
     [JsonIgnore] public override string Description => "The id of the first row whose Column has this Value (compared as text, case ignored), or 0 if there's none, e.g. a viewer's row by {userLogin}. Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string? Subgroup => "Read";
 
 
 

@@ -18,6 +18,7 @@ public class GetTableValueBlock : AdaptableValueBlock
 
     [JsonIgnore] public override string Name => "Get Table Value";
     [JsonIgnore] public override string Description => "One cell: a row (by its id) and a column (by its name), read as text, a number or true/false. An empty cell reads as empty text, 0 or false. Table is the name of a table in the Data tab. Row is an id ({rowId}) or column=value, e.g. user={userLogin} (no such row reads as empty).";
+    [JsonIgnore] public override string? Subgroup => "Read";
 
 
 

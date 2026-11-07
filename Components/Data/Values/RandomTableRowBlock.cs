@@ -18,6 +18,7 @@ public class RandomTableRowBlock : ValueBlock<int>
 
     [JsonIgnore] public override string Name => "Random Table Row";
     [JsonIgnore] public override string Description => "The id of a row picked at random (e.g. for !quote), or 0 if the table is empty. Table is the name of a table in the Data tab.";
+    [JsonIgnore] public override string? Subgroup => "Read";
 
 
 

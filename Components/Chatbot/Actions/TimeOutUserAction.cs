@@ -16,6 +16,7 @@ public class TimeOutUserAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Time Out User";
     [JsonIgnore] public override string Description => "Times a user out of your chat for some seconds (1 to 1209600, two weeks). User is their login name, {userLogin} is whoever triggered this. The bot (or you) has to be a moderator. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Moderation";
 
 
 

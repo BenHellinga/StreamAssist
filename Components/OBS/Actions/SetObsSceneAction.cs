@@ -18,6 +18,7 @@ public class SetObsSceneAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set OBS Scene";
     [JsonIgnore] public override string Description => "Switches OBS to this scene (its name as OBS shows it).";
+    [JsonIgnore] public override string? Subgroup => "Scenes & Sources";
 
 
 

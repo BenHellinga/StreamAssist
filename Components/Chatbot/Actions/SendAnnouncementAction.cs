@@ -18,6 +18,7 @@ public class SendAnnouncementAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Send Announcement";
     [JsonIgnore] public override string Description => "Sends a highlighted announcement to chat in a colour (parameters like {user} work in the message). The bot (or you) has to be a moderator. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Chat";
 
 
 

@@ -18,6 +18,7 @@ public class EndPollAction : ActionBlock
 
     [JsonIgnore] public override string Name => "End Poll";
     [JsonIgnore] public override string Description => "Ends the poll that's running, showing its results or hiding them. Done as the streamer. Twitch actions wait their turn, one per second.";
+    [JsonIgnore] public override string? Subgroup => "Polls & Predictions";
 
 
 

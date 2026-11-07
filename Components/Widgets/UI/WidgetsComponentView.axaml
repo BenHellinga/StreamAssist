@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.WidgetsComponentView"
+             x:DataType="ui:WidgetsComponentViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the config bar (the widgets switch with it), a divider, then the widget boxes | the widget list past a splitter
+         (like the Input tab's input device list) -->
+
+    <DockPanel>
+
+        <ContentControl DockPanel.Dock="Top" Content="{Binding WidgetList.ConfigBar}" Margin="{s:Gap PadAll}"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="100"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="{Binding WidgetListWidth, Mode=TwoWay}" MinWidth="100"/>
+            </Grid.ColumnDefinitions>
+
+            <ui:WidgetListView Grid.Column="0" DataContext="{Binding WidgetList}"/>
+
+            <GridSplitter Grid.Column="1" Classes="ColumnSplitter"/>
+
+            <ui:WidgetPaletteView Grid.Column="2" DataContext="{Binding Palette}"/>
+        </Grid>
+
+    </DockPanel>
+
+</UserControl>

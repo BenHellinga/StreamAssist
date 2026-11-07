@@ -10,7 +10,7 @@
 
     <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
 
-        <TextBlock Classes="Label" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
+        <TextBlock Classes="Label Colon" Text="{Binding Label}" IsVisible="{Binding HasLabel}"/>
 
         <ItemsControl ItemsSource="{Binding Blocks}">
             <ItemsControl.ItemsPanel>

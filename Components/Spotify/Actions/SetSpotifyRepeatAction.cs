@@ -17,6 +17,7 @@ public class SetSpotifyRepeatAction : ActionBlock
 
     [JsonIgnore] public override string Name => "Set Spotify Repeat";
     [JsonIgnore] public override string Description => "Sets Spotify's repeat: Off, Song (repeat the song) or Playlist (repeat the playlist or album). Needs Spotify Premium.";
+    [JsonIgnore] public override string? Subgroup => "Playback";
 
 
 
