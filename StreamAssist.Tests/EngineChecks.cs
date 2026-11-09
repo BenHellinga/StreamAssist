@@ -105,8 +105,10 @@ internal static partial class EngineChecks
         MenuSlots();
         ListTypeFilter();
         WidgetModels();
+        PlinkoModels();
         await WidgetBlockChecks();
         await WidgetServerChecks();
+        await Scripts();
 
         return _failed;
     }

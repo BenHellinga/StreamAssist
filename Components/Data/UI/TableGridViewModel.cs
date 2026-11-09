@@ -76,6 +76,7 @@ public partial class ColumnHeaderViewModel : ObservableObject, ICommitOnLeave
     [ObservableProperty] private string _sortText; // ↕ not sorted by it, ▲ least to greatest, ▼ greatest to least
     [ObservableProperty] private bool _isDeleteMode; // the grid's Delete columns is on
     [ObservableProperty] private double _width = double.NaN; // as laid out (set by the view), its cells take it; until then they size themselves
+    [ObservableProperty] private string _widestText = ""; // the column's longest value (all rows, not just the shown ones), the header grows to fit it
 
     public ColumnHeaderViewModel(DataModel model, TableModel table, TableColumn column, Action<string> sort, bool isDeleteMode)
     {
@@ -87,6 +88,7 @@ public partial class ColumnHeaderViewModel : ObservableObject, ICommitOnLeave
         _nameInput = column.Name;
         _kindName = column.Kind.ToString();
         _isDeleteMode = isDeleteMode;
+        RefreshWidestText();
     }
 
     public string Name => _column.Name;
@@ -114,6 +116,11 @@ public partial class ColumnHeaderViewModel : ObservableObject, ICommitOnLeave
     }
 
     [RelayCommand] private void OnSortPressed() => _sort(_column.Name);
+
+    // the font is monospaced, so the most characters is the widest
+    public void RefreshWidestText() => WidestText = _table.Rows
+        .Select(r => r.Get(_column.Name) is { } value ? ValueTypes.ToText(value) : "")
+        .MaxBy(t => t.Length) ?? "";
 
     // only shown in delete mode, which is the safety: it deletes the column and everything in it straight away
     [RelayCommand] private void OnDeletePressed() => _model.TryDeleteColumn(_table.Name, _column.Name);
@@ -300,6 +307,7 @@ public partial class TableGridViewModel : ViewModelBase, ICommitOnLeave
         var view = CreateRow(row);
         _rowViews[row.Id] = view;
         Rows.Add(view);
+        foreach (var header in Columns) header.RefreshWidestText();
     }
 
 
@@ -315,6 +323,7 @@ public partial class TableGridViewModel : ViewModelBase, ICommitOnLeave
     {
         if (table != _table || !_rowViews.Remove(row.Id, out var shown)) return;
         Rows.Remove(shown);
+        foreach (var header in Columns) header.RefreshWidestText(); // it may have held a column's longest value
     }
 
 
@@ -324,6 +333,7 @@ public partial class TableGridViewModel : ViewModelBase, ICommitOnLeave
         if (table != _table) return;
         var index = _table.ColumnList.IndexOf(column);
         if (_rowViews.TryGetValue(row.Id, out var shown) && index >= 0 && index < shown.Cells.Count) shown.Cells[index].Show(Text(row.Get(column.Name)));
+        if (index >= 0 && index < Columns.Count) Columns[index].RefreshWidestText();
     }
 
 

@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using NAudio.Wave;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Input.Background;
+using StreamAssist.Components.Theme.Model;
 using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Widgets.Model;
 using StreamAssist.Core.Connections;
@@ -22,8 +23,10 @@ namespace StreamAssist.Components.Widgets.Background;
 // runs the widgets: the server their pages come from (started once at startup, or on Start / Retry on the Connections
 // tab, a failure logged once), what each page is told to draw (everything when it connects, then each change), each
 // Mic Bounce's level from its microphone box (50 times a second), and each spin's timing: the ticks as slices pass the
-// pointer, the win sound when it stops, then FinishSpin. Sounds play through the app (the wheel's output device), not
-// OBS. Only the config in use's widgets are drawn; a spin that started carries on to its end whatever happens to the tab
+// pointer, the win sound when it stops, then FinishSpin; and each plinko board's physics (stepped 50 times a second while
+// it has balls, which are sent to its pages each time), its pin sounds and a finished drop's win sound. Sounds play through the app (the
+// widget's output device), not OBS. Only the config in use's widgets are drawn; a spin that started carries on to its
+// end whatever happens to the tab
 public sealed class WidgetManager : IDisposable
 {
     // constants
@@ -40,11 +43,13 @@ public sealed class WidgetManager : IDisposable
 
 
     private readonly WidgetsComponentModel _model;
+    private readonly ThemeComponentModel? _theme; // its WheelMinTextSize goes to the wheels' pages
     private readonly MicrophoneManager? _microphones; // listens to the inputs (none in the tests)
     private readonly WidgetServer _server;
     private readonly DispatcherTimer _timer;
     private readonly Stopwatch _clock;
     private readonly Dictionary<WheelWidget, CancellationTokenSource> _spins;
+    private readonly Dictionary<PlinkoWidget, PlinkoSounds> _plinkos; // the boards with balls on them, and their sounds
     private WidgetsConfigModel? _config; // the one listened to
     private readonly List<WidgetModel> _widgets; // its widgets, listened to
     private TimeSpan _lastTick;
@@ -72,13 +77,15 @@ public sealed class WidgetManager : IDisposable
 
 
 
-    public WidgetManager(WidgetsComponentModel model, MicrophoneManager? microphones)
+    public WidgetManager(WidgetsComponentModel model, MicrophoneManager? microphones, ThemeComponentModel? theme = null)
     {
         _model = model;
+        _theme = theme;
         _microphones = microphones;
         _server = new(_ => WidgetPage.Html, ReadAsset);
         _clock = Stopwatch.StartNew();
         _spins = [];
+        _plinkos = [];
         _widgets = [];
         Status = ConnectionStatus.NotConnected;
         StatusMessage = "Not running";
@@ -86,6 +93,7 @@ public sealed class WidgetManager : IDisposable
         _model.ServerChanged += OnServerChanged;
         _model.Configs.ListChanged += OnConfigsChanged;
         _server.Joined += OnPageJoined;
+        if (_theme != null) _theme.ValueChanged += OnThemeValueChanged;
 
         _timer = new DispatcherTimer { Interval = Tick };
         _timer.Tick += OnTick;
@@ -200,6 +208,7 @@ public sealed class WidgetManager : IDisposable
             ["found"] = true,
             ["kind"] = widget.Kind.ToString(),
             ["disabled"] = widget.IsDisabled,
+            ["hidden"] = widget.IsHidden,
         };
 
         switch (widget)
@@ -216,6 +225,7 @@ public sealed class WidgetManager : IDisposable
             case WheelWidget wheel:
                 state["slices"] = SlicesJson(WheelWidget.Slices(wheel.FilledOptions));
                 state["rotation"] = wheel.Rotation;
+                state["minTextSize"] = WheelMinTextSize();
                 state["spin"] = wheel.Spin is { } spin ? SpinJson(wheel, spin) : null;
 
                 // a winner still showing (a page opened, or OBS reloaded it, after the spin stopped)
@@ -229,9 +239,41 @@ public sealed class WidgetManager : IDisposable
                         ["showMs"] = wheel.ShowSeconds * 1000,
                     };
                 break;
+
+            case PlinkoWidget plinko:
+                var board = plinko.Board;
+                state["board"] = new JsonObject
+                {
+                    ["pins"] = new JsonArray([.. board.Pins().SelectMany(p => new JsonNode[] { p.X, p.Y })]),
+                    ["pinRadius"] = board.PinRadius,
+                    ["ballRadius"] = board.BallRadius,
+                    ["walls"] = new JsonArray([.. board.Drawn.Select(w => (JsonNode)new JsonArray(w.X1, w.Y1, w.X2, w.Y2))]),
+                    ["buckets"] = new JsonArray([.. board.Buckets.Select(b => (JsonNode)new JsonObject
+                        { ["text"] = b.Text, ["color"] = b.Color, ["left"] = b.Left, ["right"] = b.Right })]),
+                    ["bucketTop"] = board.BucketTop,
+                    ["floor"] = board.Floor,
+                    ["bounds"] = new JsonArray(board.Left, board.Top, board.Right, board.Bottom),
+                    ["resultY"] = board.ResultY,
+                    ["labelMax"] = PlinkoBoard.LabelMax,
+                    ["labelMin"] = PlinkoBoard.LabelMin,
+                };
+                state["frame"] = FrameJson(plinko.Frame());
+                break;
         }
         return state;
     }
+
+
+
+    // the balls (id, x, y, colour, flattened), how faded they are, each bucket's count, the result showing
+    private static JsonObject FrameJson(PlinkoFrame frame) => new()
+    {
+        ["type"] = "plinko",
+        ["balls"] = new JsonArray([.. frame.Balls.SelectMany(b => new JsonNode?[] { b.Id, Math.Round(b.X, 3), Math.Round(b.Y, 3), b.Color })]),
+        ["alpha"] = frame.Alpha,
+        ["counts"] = new JsonArray([.. frame.Counts.Select(c => (JsonNode)c)]),
+        ["result"] = frame.Result is { } result ? new JsonObject { ["text"] = result.Text, ["color"] = result.Color, ["alpha"] = Math.Round(result.Alpha, 3) } : null,
+    };
 
 
 
@@ -251,6 +293,21 @@ public sealed class WidgetManager : IDisposable
 
     private static JsonArray SlicesJson(IEnumerable<WheelSlice> slices) =>
         [.. slices.Select(s => (JsonNode)new JsonObject { ["text"] = s.Text, ["color"] = s.Color, ["start"] = s.Start, ["end"] = s.End })];
+
+
+
+    // the Themes tab's smallest slice text (Sizes.axaml WheelMinTextSize), a % of the wheel's radius
+    private static double WheelMinTextSize() =>
+        Avalonia.Application.Current is { } app && Avalonia.Controls.ResourceNodeExtensions.TryFindResource(app, "WheelMinTextSize", out var found)
+        && found is double size ? size : 4;
+
+
+
+    // a theme number changed: the wheels' pages draw with the new min text size
+    private void OnThemeValueChanged(string key)
+    {
+        if (key == "WheelMinTextSize") SendAllStates();
+    }
 
 
 
@@ -315,6 +372,7 @@ public sealed class WidgetManager : IDisposable
         widget.NameChanged += OnNameChanged;
         if (widget is MicBounceWidget bounce) bounce.LiveChanged += OnLiveChanged;
         if (widget is WheelWidget wheel) wheel.SpinStarted += OnSpinStarted;
+        if (widget is PlinkoWidget plinko) plinko.DropStarted += OnDropStarted;
     }
 
 
@@ -326,6 +384,11 @@ public sealed class WidgetManager : IDisposable
         widget.NameChanged -= OnNameChanged;
         if (widget is MicBounceWidget bounce) bounce.LiveChanged -= OnLiveChanged;
         if (widget is WheelWidget wheel) wheel.SpinStarted -= OnSpinStarted;
+        if (widget is PlinkoWidget plinko)
+        {
+            plinko.DropStarted -= OnDropStarted;
+            _plinkos.Remove(plinko);
+        }
     }
 
 
@@ -365,6 +428,8 @@ public sealed class WidgetManager : IDisposable
             var level = bounce.IsDisabled || bounce.Microphone == null || _microphones == null ? MicrophoneManager.Silence : _microphones.LevelOf(bounce.Microphone);
             bounce.Update(level, elapsed);
         }
+
+        StepPlinkos(elapsed / 1000);
     }
 
 
@@ -424,25 +489,77 @@ public sealed class WidgetManager : IDisposable
 
 
     // how this spin plays its sounds: checked once (a missing file or device is said once, then that sound is left out)
-    private static (Action? Tick, Action? Win) SoundsFor(WheelWidget wheel)
+    private static (Action? Tick, Action? Win) SoundsFor(WheelWidget wheel) =>
+        Sounds($"wheel '{wheel.Name}'", wheel.OutputDevice, (wheel.TickSound, wheel.TickVolume, "tick"), (wheel.WinSound, wheel.WinVolume, "win"));
+
+
+
+    // a widget's two sounds (empty paths: the built-in tick and chime), each null if it's silent or can't play
+    private static (Action? Tick, Action? Win) Sounds(string who, string device, (string Path, double Volume, string What) tick, (string Path, double Volume, string What) win)
     {
-        var device = wheel.OutputDevice;
-        if ((wheel.TickVolume > 0 || wheel.WinVolume > 0) && !AudioHelper.TryGetDeviceByString(device, out _)) return (null, null);
+        if ((tick.Volume > 0 || win.Volume > 0) && !AudioHelper.TryGetDeviceByString(device, out _)) return (null, null);
 
-        Action? Player(string path, Func<WaveStream> builtIn, double volume, string what)
+        Action? Player((string Path, double Volume, string What) sound, Func<WaveStream> builtIn)
         {
-            if (volume <= 0) return null;
-            if (path == "") return () => AudioHelper.TryOpenWave(builtIn(), (float)volume, device)?.Start(() => { });
+            if (sound.Volume <= 0) return null;
+            if (sound.Path == "") return () => AudioHelper.TryOpenWave(builtIn(), (float)sound.Volume, device)?.Start(() => { });
 
-            if (!AppPaths.TryResolveAsset(path, out var full, out var error) || !File.Exists(full))
+            if (!AppPaths.TryResolveAsset(sound.Path, out var full, out var error) || !File.Exists(full))
             {
-                AppLog.WriteError($"wheel '{wheel.Name}' can't play its {what} sound '{path}' ({(error == "" ? "no such file" : error)})");
+                AppLog.WriteError($"{who} can't play its {sound.What} sound '{sound.Path}' ({(error == "" ? "no such file" : error)})");
                 return null;
             }
-            return () => AudioHelper.TryOpenSound(path, (float)volume, device)?.Start(() => { });
+            return () => AudioHelper.TryOpenSound(sound.Path, (float)sound.Volume, device)?.Start(() => { });
         }
 
-        return (Player(wheel.TickSound, WheelSounds.Tick, wheel.TickVolume, "tick"), Player(wheel.WinSound, WheelSounds.Chime, wheel.WinVolume, "win"));
+        return (Player(tick, WheelSounds.Tick), Player(win, WheelSounds.Chime));
+    }
+
+
+
+    // plinko: stepping the boards with balls on them
+
+
+
+    // a board's sounds (checked when a drop starts), and when a pin tick last played (at most once every MinTickGap, so
+    // many balls aren't a wall of noise)
+    private sealed class PlinkoSounds(Action? pin, Action? win)
+    {
+        public Action? Pin { get; } = pin;
+        public Action? Win { get; } = win;
+        public TimeSpan? LastPin { get; set; } // null: not yet (TimeSpan.MinValue would overflow when subtracted)
+    }
+
+
+
+    private void OnDropStarted()
+    {
+        foreach (var plinko in _widgets.OfType<PlinkoWidget>().Where(p => p.IsBusy && !_plinkos.ContainsKey(p)).ToList())
+        {
+            var (pin, win) = Sounds($"plinko '{plinko.Name}'", plinko.OutputDevice, (plinko.PinSound, plinko.PinVolume, "pin"), (plinko.WinSound, plinko.WinVolume, "win"));
+            _plinkos[plinko] = new(pin, win);
+        }
+    }
+
+
+
+    // each busy board moves on, its pages get the balls; once there's nothing left they get that once more, and it's let go
+    private void StepPlinkos(double seconds)
+    {
+        var now = _clock.Elapsed;
+        foreach (var (plinko, sounds) in _plinkos.ToList())
+        {
+            var (pins, wins) = plinko.Step(seconds);
+            if (pins > 0 && sounds.Pin != null && (sounds.LastPin is not { } pin || now - pin >= MinTickGap))
+            {
+                sounds.Pin();
+                sounds.LastPin = now;
+            }
+            if (wins > 0) sounds.Win?.Invoke();
+
+            _server.Send(plinko.Name, FrameJson(plinko.Frame()).ToJsonString());
+            if (!plinko.IsBusy) _plinkos.Remove(plinko);
+        }
     }
 
 
@@ -461,6 +578,7 @@ public sealed class WidgetManager : IDisposable
         _timer.Tick -= OnTick;
         _model.ServerChanged -= OnServerChanged;
         _model.Configs.ListChanged -= OnConfigsChanged;
+        if (_theme != null) _theme.ValueChanged -= OnThemeValueChanged;
         _server.Joined -= OnPageJoined;
         if (_config != null)
         {

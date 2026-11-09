@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Scripts.UI.ScriptsComponentView"
+             x:DataType="ui:ScriptsComponentViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Scripts.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a bind box's edit buttons show only while the pointer is on a bound one (hidden by opacity, so nothing moves) -->
+
+    <UserControl.Styles>
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.Bound:pointerover > Grid > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- the config bar (the scripts switch with it), a divider, then the Scripts section: a row per script, its name |
+         bind box (once it has a name), the last row the empty one. Dropping a row's binding on another row moves it
+         before that one (the line above it lights up). With no config, a page that says to make one -->
+
+    <DockPanel>
+
+        <ContentControl DockPanel.Dock="Top" Content="{Binding ConfigBar}" Margin="{s:Gap PadAll}"/>
+
+        <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+        <Panel>
+            <ContentControl Content="{Binding NoConfig}" IsVisible="{Binding !HasConfig}"/>
+
+            <ScrollViewer Classes="Gapped Lined" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsVisible="{Binding HasConfig}">
+                <!-- the padding is room to scroll the last row up (Spacing.axaml ScrollEndPadding) -->
+                <Border Padding="{StaticResource ScrollEndPadding}">
+                    <StackPanel Spacing="{s:Gap ContentPadding}" Margin="{s:Gap ScrollInset}">
+
+                        <StackPanel Spacing="{DynamicResource LargeVerticalGap}" Margin="{s:Gap PadSides}">
+                            <TextBlock Classes="Title UnderLine" Text="Scripts"/>
+
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="ui:ScriptRowViewModel">
+                                        <Border Classes="Droppable InsertBefore"
+                                                DragDrop.DragOver="OnRowDragOver"
+                                                DragDrop.DragLeave="OnRowDragLeave"
+                                                DragDrop.Drop="OnRowDrop">
+                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+
+                                                <!-- the empty row at the end is a ghost box until a name is typed -->
+                                                <TextBox MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" VerticalAlignment="Top"
+                                                         Classes.New="{Binding Name, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                                         Text="{Binding Name}" PlaceholderText="New script…"/>
+
+                                                <!-- bind box: the script's name (grey until bound), click to edit it below, green = bound, red =
+                                                     off, flashes when it runs. A labelled binding adds its label as a line -->
+                                                <Border Classes="Panel Droppable Clickable"
+                                                        Classes.Bound="{Binding IsBound}"
+                                                        Classes.Disabled="{Binding IsDisabled}"
+                                                        Classes.Triggered="{Binding IsTriggered}"
+                                                        MinWidth="{DynamicResource ControlMinWidth}" MinHeight="{DynamicResource ControlHeight}" VerticalAlignment="Top"
+                                                        IsVisible="{Binding ShowBindBox}"
+
+                                                        DragDrop.AllowDrop="True"
+                                                        DragDrop.DragOver="OnDragOver"
+                                                        DragDrop.DragLeave="OnDragLeave"
+                                                        DragDrop.Drop="OnDrop"
+                                                        PointerPressed="OnBindBoxPointerPressed">
+
+                                                    <!-- an invisible copy of the buttons keeps their room, so the text doesn't move -->
+                                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Classes="BoxText" Text="{Binding Name}" Classes.Placeholder="{Binding !IsBound}"
+                                                                   Margin="{s:Gap BoxTextMargin}" MaxWidth="{DynamicResource ControlMaxWidth}" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"/>
+
+                                                        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Classes="BindLabel BoxText" Classes.Disabled="{Binding IsDisabled}"
+                                                                   Text="{Binding BindLabel}" IsVisible="{Binding BindLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                                   Margin="{s:Gap BindLabelMargin}"/>
+
+                                                        <Panel Grid.Row="0" Grid.Column="1">
+                                                            <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
+                                                            <blocks:EditButtons Classes="HoverOnly"/>
+                                                            <blocks:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
+                                                        </Panel>
+                                                    </Grid>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
+            </ScrollViewer>
+        </Panel>
+
+    </DockPanel>
+
+</UserControl>

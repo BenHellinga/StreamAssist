@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.PlinkoBodyView"
+             x:DataType="ui:PlinkoBodyViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a Plinko's settings (a label and a box per row, a sound's Browse… right after its box), its buckets under a
+         subheading, a divider, then its preview. Laid out like a Wheel's: the divider runs the body's full height, the
+         settings and preview pad ContentPadding inside them -->
+
+    <Grid ColumnDefinitions="Auto,Auto,*">
+
+        <StackPanel Grid.Column="0" Spacing="{DynamicResource MediumVerticalGap}" VerticalAlignment="Top" Margin="{s:Gap PadAll}">
+
+            <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                  RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label Colon" Text="Rows:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Classes="Commit" Text="{Binding RowsInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label Colon" Text="Gravity:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Classes="Commit" Text="{Binding GravityInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label Colon" Text="Bounciness:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Classes="Commit" Text="{Binding BouncinessInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label Colon" Text="Balls Collide:" VerticalAlignment="Center"/>
+                <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding BallsCollide}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Classes="Label Colon" Text="Drop Tempo (s):" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Classes="Commit" Text="{Binding DropTempoInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Classes="Label Colon" Text="Max Balls:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="5" Grid.Column="1" Classes="Commit" Text="{Binding MaxBallsInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" PlaceholderText="Empty: no limit"/>
+
+                <!-- Most: the bucket the most balls landed in; Sum: the buckets (numbers) added up -->
+                <TextBlock Grid.Row="6" Grid.Column="0" Classes="Label Colon" Text="Result:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="6" Grid.Column="1" HorizontalAlignment="Left" ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"/>
+
+                <TextBlock Grid.Row="7" Grid.Column="0" Classes="Label Colon" Text="Result Time (s):" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="7" Grid.Column="1" Classes="Commit" Text="{Binding ResultsSecondsInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="8" Grid.Column="0" Classes="Label Colon" Text="Pin Sound:" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBox Classes="Commit" Text="{Binding PinSoundInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                             PlaceholderText="Empty: the built-in tick"/>
+                    <Button Content="Browse…" Command="{Binding BrowsePinPressedCommand}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="9" Grid.Column="0" Classes="Label Colon" Text="Win Sound:" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="9" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBox Classes="Commit" Text="{Binding WinSoundInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                             PlaceholderText="Empty: the built-in chime"/>
+                    <Button Content="Browse…" Command="{Binding BrowseWinPressedCommand}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="10" Grid.Column="0" Classes="Label Colon" Text="Pin Volume:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="10" Grid.Column="1" Classes="Commit" Text="{Binding PinVolumeInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="11" Grid.Column="0" Classes="Label Colon" Text="Win Volume:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="11" Grid.Column="1" Classes="Commit" Text="{Binding WinVolumeInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="12" Grid.Column="0" Classes="Label Colon" Text="Output Device:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="12" Grid.Column="1" HorizontalAlignment="Left"
+                          ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding SelectedOutputDevice}"/>
+            </Grid>
+
+            <TextBlock Classes="Label Subheading" Text="Buckets"/>
+
+            <!-- a row per bucket (OptionListView), left to right along the bottom: the empty last row adds one, drag a
+                 handle to reorder, a bucket's weight is how wide it is -->
+            <ContentControl Content="{Binding Buckets}"/>
+        </StackPanel>
+
+        <Border Grid.Column="1" Classes="VerticalDivider"/>
+
+        <ui:PlinkoPreview Grid.Column="2" Margin="{s:Gap PadAll}"
+                          MinWidth="{DynamicResource WidgetPreviewMinWidth}" MinHeight="{DynamicResource WidgetPreviewMinHeight}"
+                          Frame="{Binding PreviewFrame}"/>
+
+    </Grid>
+
+</UserControl>

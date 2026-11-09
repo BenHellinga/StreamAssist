@@ -28,6 +28,9 @@ using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Spotify.Model;
 using StreamAssist.Components.Dashboard.Background;
 using StreamAssist.Components.Dashboard.Model;
+using StreamAssist.Components.Scripts.Background;
+using StreamAssist.Components.Scripts.Model;
+using StreamAssist.Components.Scripts.UI;
 using StreamAssist.Components.Widgets.Background;
 using StreamAssist.Components.Widgets.Model;
 using StreamAssist.Components.Widgets.UI;
@@ -53,6 +56,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private DashboardComponentModel _dashboardComponentModel;
     private ThemeComponentModel _themeComponentModel;
     private WidgetsComponentModel _widgetsComponentModel;
+    private ScriptsComponentModel _scriptsComponentModel;
 
     // managers
     private WindowLayoutSaveManager _windowLayoutSaveManager;
@@ -75,6 +79,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private ThemeManager _themeManager;
     private WidgetsSaveManager _widgetsSaveManager;
     private WidgetManager _widgetManager;
+    private ScriptsSaveManager _scriptsSaveManager;
 
     // main view models
     private PanelViewModel _outputConsolePanelViewModel;
@@ -132,6 +137,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var freshChatbot = !JsonFileStore.Exists(ChatbotSaveManager.FileName);
         var freshDashboard = !JsonFileStore.Exists(DashboardSaveManager.FileName);
         var freshWidgets = !JsonFileStore.Exists(WidgetsSaveManager.FileName);
+        var freshScripts = !JsonFileStore.Exists(ScriptsSaveManager.FileName);
 
         _windowLayoutModel = WindowLayoutSaveManager.Load();
         _inputComponentModel = JsonFileStore.Load<InputComponentModel>(InputSaveManager.FileName);
@@ -141,6 +147,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _spotifyComponentModel = SpotifySaveManager.Load();
         _dashboardComponentModel = DashboardSaveManager.Load();
         _widgetsComponentModel = WidgetsSaveManager.Load();
+        _scriptsComponentModel = ScriptsSaveManager.Load();
 
         if (freshInput) _inputComponentModel.ListModel.Configs.TryCreate(ConfigSet<InputConfigModel>.DefaultName);
         if (freshChatbot)
@@ -150,6 +157,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         if (freshDashboard) _dashboardComponentModel.Configs.TryCreate(ConfigSet<DashboardConfigModel>.DefaultName);
         if (freshWidgets) _widgetsComponentModel.Configs.TryCreate(ConfigSet<WidgetsConfigModel>.DefaultName);
+        if (freshScripts) _scriptsComponentModel.Configs.TryCreate(ConfigSet<ScriptsConfigModel>.DefaultName);
 
         // managers
 
@@ -170,7 +178,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _timerManager = new(_dashboardComponentModel);
 
         _widgetsSaveManager = new(_widgetsComponentModel);
-        _widgetManager = new(_widgetsComponentModel, _inputComponentManager.GetMicrophoneManager()); // starts the widget server if start on startup is ticked
+        _scriptsSaveManager = new(_scriptsComponentModel);
+        _widgetManager = new(_widgetsComponentModel, _inputComponentManager.GetMicrophoneManager(), _themeComponentModel); // starts the widget server if start on startup is ticked
 
         _spotifySaveManager = new(_spotifyComponentModel);
         _spotifyManager = new(_spotifyComponentModel); // connects if connect on startup is ticked
@@ -191,6 +200,7 @@ public partial class MainWindowViewModel : ViewModelBase
         GlobalContext.DashboardComponentModel = _dashboardComponentModel;
         GlobalContext.ThemeComponentModel = _themeComponentModel;
         GlobalContext.WidgetsComponentModel = _widgetsComponentModel;
+        GlobalContext.ScriptsComponentModel = _scriptsComponentModel;
 
         // the App Started event, once the startup connection attempts are over (set up last, it uses the managers)
 
@@ -214,6 +224,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ["Chat"] = "chatbot",
             ["Events"] = "chatbot",
             ["Widgets"] = WidgetsSaveManager.FileName,
+            ["Scripts"] = ScriptsSaveManager.FileName,
             ["Connections"] = CredentialStore.FileName,
         };
         _tabs = [
@@ -222,6 +233,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new("Chat", () => Guarded("Chat", () => ChatbotComponentViewModel.ActivateChatTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Events", () => Guarded("Events", () => ChatbotComponentViewModel.ActivateEventsTab(_chatbotComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Widgets", () => Guarded("Widgets", () => WidgetsComponentViewModel.ActivateTab(_widgetsComponentModel, _inputComponentModel.ListModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
+            new("Scripts", () => Guarded("Scripts", () => ScriptsComponentViewModel.ActivateTab(_scriptsComponentModel, _windowLayoutModel, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Data", () => DataComponentViewModel.ActivateTab(_dataModel, _sidePanelViewModel, _bottomPanelViewModel)),
             new("Connections", () => Guarded("Connections", () => ConnectionsComponentViewModel.ActivateTab(_chatbotComponentModel, _chatbotManager, _audioComponentModel, _voicemeeterManager, _obsComponentModel, _obsManager, _spotifyComponentModel, _spotifyManager, _widgetsComponentModel, _widgetManager, _sidePanelViewModel, _bottomPanelViewModel))),
             new("Themes", () => ThemeComponentViewModel.ActivateTab(_themeComponentModel, _sidePanelViewModel, _bottomPanelViewModel)),
@@ -322,6 +334,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _widgetManager.Dispose();
         _widgetsSaveManager.Dispose();
         _widgetsComponentModel.Dispose();
+        _scriptsSaveManager.Dispose();
+        _scriptsComponentModel.Dispose();
 
         _timerManager.Dispose();
         _appStartedManager.Dispose();

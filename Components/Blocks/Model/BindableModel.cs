@@ -123,6 +123,20 @@ public class BindableModel : ModelBase
 
 
 
+    // runs it once and finishes when it has (Run Script waiting until done): stopped by this binding's disposal or the
+    // caller's cancellation. False if it didn't run (off, or no blocks); its own errors are logged and end only it
+    public async Task<bool> RunOnceAsync(IReadOnlyDictionary<string, string>? parameters, CancellationToken caller)
+    {
+        if (_isDisabled || !HasBlock) return false;
+
+        Triggered?.Invoke();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cancellation.Token, caller);
+        await RunRootAsync(new TriggerContext(TriggerPhase.Once, linked.Token, parameters));
+        return true;
+    }
+
+
+
     // runs the tree in the background, errors are logged by SafeRunAsync
     private void Trigger(TriggerPhase phase, IReadOnlyDictionary<string, string>? parameters = null)
     {

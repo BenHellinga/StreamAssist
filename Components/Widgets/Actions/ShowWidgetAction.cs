@@ -17,7 +17,7 @@ public class ShowWidgetAction : ActionBlock
 
 
     [JsonIgnore] public override string Name => "Show Widget";
-    [JsonIgnore] public override string Description => "Shows, hides or toggles the widget named in Widget (the same as its on / off button): hidden, it doesn't run (an empty page, no sound or spins), its settings can still be changed.";
+    [JsonIgnore] public override string Description => "Shows, hides or toggles the widget named in Widget on stream (the same as its Show / Hide button): hidden, its page draws nothing, but it still runs (spins, sounds, its preview).";
 
 
 
@@ -84,6 +84,6 @@ public class ShowWidgetAction : ActionBlock
     {
         if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), null, out var widget, out var error)) throw Fail(error);
         var set = await _set.EvaluateAsync(context);
-        widget.SetIsDisabled(set switch { "Show" => false, "Hide" => true, _ => !widget.IsDisabled });
+        widget.SetIsHidden(set switch { "Show" => false, "Hide" => true, _ => !widget.IsHidden });
     }
 }

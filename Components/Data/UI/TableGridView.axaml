@@ -99,10 +99,12 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="ui:ColumnHeaderViewModel">
-                                    <!-- the column's width: the header grows with its name (min to max), the cells below take its width
-                                         (OnHeaderSizeChanged), never their own text's -->
-                                    <StackPanel MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Spacing="{DynamicResource SmallVerticalGap}" SizeChanged="OnHeaderSizeChanged">
+                                    <!-- the column's width: the header grows with its name or the column's longest value (an invisible cell
+                                         holding it, so it's measured exactly like one), between the column min and max; the cells below
+                                         take its width (OnHeaderSizeChanged) -->
+                                    <StackPanel MinWidth="{DynamicResource TableColumnMinWidth}" MaxWidth="{DynamicResource TableColumnMaxWidth}" Spacing="{DynamicResource SmallVerticalGap}" SizeChanged="OnHeaderSizeChanged">
                                         <Grid Height="{DynamicResource ControlHeight}">
+                                            <TextBox Classes="Cell" Text="{Binding WidestText}" Opacity="0" IsHitTestVisible="False" Focusable="False" IsTabStop="False"/>
                                             <TextBox Classes="Cell Name Commit" Classes.Plain="{Binding !IsEditable}" Text="{Binding NameInput}" IsReadOnly="{Binding !IsEditable}"/>
                                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="{s:Gap SortButtonsMargin}">
                                                 <Button Classes="Square Small" Content="－" Command="{Binding DeletePressedCommand}" IsVisible="{Binding IsDeleteMode}"/>

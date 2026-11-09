@@ -69,6 +69,9 @@ public static class SpacingRecipes
         new("WidgetPreviewMinWidth", "WPW", "Preview min width", 50, 2000, Group: "Widgets"),
         new("WidgetPreviewMinHeight", "WPH", "Preview min height", 50, 2000, Group: "Widgets"),
         new("WidgetListMaxHeight", "WLH", "Options max height", 50, 5000, Group: "Widgets"),
+        new("WheelMinTextSize", "WMT", "Wheel min text (% of radius)", 1, 20, Group: "Widgets"),
+        new("TableColumnMinWidth", "TCN", "Column min width", 20, 1000, Group: "Data"),
+        new("TableColumnMaxWidth", "TCX", "Column max width", 20, 2000, Group: "Data"),
     ];
 
 

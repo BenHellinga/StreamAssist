@@ -5,8 +5,10 @@ namespace StreamAssist.Components.Widgets.Background;
 // the page every widget's address serves (OBS's browser source): transparent, it connects back to the app
 // (/ws/<name>) and draws what it's told. Mic Bounce: the image, eased between the app's level updates (50 a second) so it
 // glides. Wheel: drawn on a canvas, spinning with the same curve the app times its ticks with (1 - (1 - x)^4), then
-// the rest of the wheel darkens and the winner shows in front for a while. It only draws while something moves (a
-// level changing, a spin, the winner fading) and sits idle otherwise, also while its widget is off (it shows nothing).
+// the rest of the wheel darkens and the winner shows in front for a while. Plinko: the board (sent when anything about it
+// changes) and its balls, sent 50 times a second while there are any, drawn a little behind so each ball glides between
+// two of them, then a finished drop's result in front, fading in and out. It only draws while something moves (a level changing, a spin, the winner fading, balls on the board) and
+// sits idle otherwise, also while its widget is off or hidden (it shows nothing).
 // If the app goes away it shows nothing and keeps trying to reconnect, so a restart needs nothing done in OBS
 public static class WidgetPage
 {
@@ -38,6 +40,7 @@ let talking = false;
 let rotation = 0;          // wheel: where it rests (degrees)
 let spin = null;           // the spin running: { from, to, lengthMs, slices, winnerIndex, started }
 let winner = null;         // the winner showing: { slices, index, rotation, started, showMs }
+let frames = [];           // plinko: the last few ball updates { t, balls: Map(id -> [x, y, colour]), alpha, counts }
 let last = performance.now();
 let looping = false;       // a frame is coming
 
@@ -46,7 +49,7 @@ let looping = false;       // a frame is coming
 function connect() {
   const socket = new WebSocket(`ws://${location.host}/ws/${encodeURIComponent(name)}`);
   socket.onmessage = e => receive(JSON.parse(e.data));
-  socket.onclose = () => { state = null; spin = null; winner = null; show(); setTimeout(connect, 2000); };
+  socket.onclose = () => { state = null; spin = null; winner = null; frames = []; show(); setTimeout(connect, 2000); };
   window.onresize = kick;
 }
 
@@ -58,6 +61,9 @@ function receive(m) {
       spin = m.spin ? startSpin(m.spin) : null; // a winner showing keeps showing
       if (m.showing && !winner) winner = { slices: m.showing.slices, index: m.showing.winnerIndex, rotation: m.rotation,
                                            started: performance.now() - m.showing.elapsedMs, showMs: m.showing.showMs };
+    } else if (m.kind === "Plinko") {
+      frames = [];
+      addFrame(m.frame);
     } else {
       level = m.level; talking = m.isTalking;
     }
@@ -66,6 +72,9 @@ function receive(m) {
   } else if (m.type === "live") {
     level = m.level;
     if (m.isTalking !== talking) { talking = m.isTalking; show(); }
+    kick();
+  } else if (m.type === "plinko") {
+    addFrame(m);
     kick();
   } else if (m.type === "spin") {
     winner = null;
@@ -80,10 +89,10 @@ function startSpin(s) {
 }
 
 function show() {
-  const on = state && state.found && !state.disabled;
+  const on = state && state.found && !state.disabled && !state.hidden;
   const bounce = on && state.kind === "MicBounce" && state.idleUrl;
   img.style.display = bounce ? "block" : "none";
-  canvas.style.display = on && state.kind === "Wheel" ? "block" : "none";
+  canvas.style.display = on && (state.kind === "Wheel" || state.kind === "Plinko") ? "block" : "none";
   if (bounce) {
     const src = talking && state.talkingUrl ? state.talkingUrl : state.idleUrl;
     if (img.getAttribute("src") !== src) img.setAttribute("src", src);
@@ -105,7 +114,7 @@ function frame(now) {
   const dt = Math.min(100, now - last);
   last = now;
   let moving = false;
-  const on = state && state.found && !state.disabled;
+  const on = state && state.found && !state.disabled && !state.hidden;
   if (on && state.kind === "MicBounce") {
     // glides between the app's updates (50 a second) as smoothly as it's set to; 0 jumps to each one
     shown = state.smoothing > 0 ? shown + (level - shown) * (1 - Math.exp(-dt / Math.min(40, state.smoothing))) : level;
@@ -115,9 +124,108 @@ function frame(now) {
   } else if (on && state.kind === "Wheel") {
     drawWheel(now);
     moving = spin !== null || winner !== null;
+  } else if (on && state.kind === "Plinko") {
+    drawPlinko(now);
+    moving = frames.some(f => f.balls.size > 0 || f.result);
   }
   if (moving) requestAnimationFrame(frame);
   else looping = false;
+}
+
+// ---- plinko ----
+
+const plinkoDelay = 50; // ms behind the newest update, so there's always a next one to glide towards
+
+function addFrame(f) {
+  if (!f) return;
+  const balls = new Map();
+  for (let i = 0; i + 3 < f.balls.length; i += 4) balls.set(f.balls[i], [f.balls[i + 1], f.balls[i + 2], f.balls[i + 3]]);
+  frames.push({ t: performance.now(), balls, alpha: f.alpha, counts: f.counts, result: f.result });
+  if (frames.length > 20) frames.shift();
+}
+
+function drawPlinko(now) {
+  const ratio = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.round(w * ratio) || canvas.height !== Math.round(h * ratio)) {
+    canvas.width = Math.round(w * ratio); canvas.height = Math.round(h * ratio);
+  }
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const board = state.board;
+  if (!board) return;
+
+  // the board fitted to the page, centred
+  const [l, t, r, b] = board.bounds;
+  const scale = Math.min(w / (r - l), h / (b - t));
+  const X = x => w / 2 + (x - (l + r) / 2) * scale, Y = y => h / 2 + (y - (t + b) / 2) * scale;
+
+  // the two updates either side of the moment drawn (the newest if it's caught up)
+  const at = now - plinkoDelay;
+  while (frames.length > 2 && frames[1].t <= at) frames.shift();
+  const a = frames[0], c = frames.length > 1 ? frames[1] : null;
+  const f = c ? Math.min(1, Math.max(0, (at - a.t) / (c.t - a.t))) : 0;
+  const counts = (c || a || {}).counts || [];
+
+  // the buckets, tinted (their names go on top of everything, below)
+  for (const bucket of board.buckets) {
+    const x0 = X(bucket.left), x1 = X(bucket.right), y0 = Y(board.bucketTop), y1 = Y(board.floor);
+    ctx.globalAlpha = 0.25; ctx.fillStyle = bucket.color; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); ctx.globalAlpha = 1;
+  }
+
+  // the walls, floor and dividers
+  ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, 0.06 * scale); ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  for (const [x1, y1, x2, y2] of board.walls) { ctx.beginPath(); ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x2), Y(y2)); ctx.stroke(); }
+
+  // the pins
+  ctx.fillStyle = "#9e9e9e"; ctx.strokeStyle = "#000000"; ctx.lineWidth = Math.max(1, 0.03 * scale);
+  for (let i = 0; i + 1 < board.pins.length; i += 2) {
+    ctx.beginPath(); ctx.arc(X(board.pins[i]), Y(board.pins[i + 1]), board.pinRadius * scale, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+
+  // the balls, each between where it was and where it's going
+  if (a) {
+    ctx.globalAlpha = c ? a.alpha + (c.alpha - a.alpha) * f : a.alpha;
+    ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = Math.max(1, 0.04 * scale);
+    for (const [id, [x, y, color]] of (c || a).balls) {
+      const from = c ? a.balls.get(id) : null;
+      const bx = from ? from[0] + (x - from[0]) * f : x, by = from ? from[1] + (y - from[1]) * f : y;
+      ctx.beginPath(); ctx.arc(X(bx), Y(by), board.ballRadius * scale, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // each bucket's name over how many have landed in it (0 until one does), in its middle, in front of the balls: both
+  // as big as the name fits its width (down to the min, then cut with …)
+  board.buckets.forEach((bucket, i) => {
+    const x0 = X(bucket.left), x1 = X(bucket.right), y0 = Y(board.bucketTop), y1 = Y(board.floor);
+    const width = (x1 - x0) * 0.85, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "rgba(0,0,0,0.8)";
+    const size = fitSize(bucket.text, board.labelMax * scale, board.labelMin * scale, width);
+    ctx.lineWidth = Math.max(2, size * 0.18);
+    const label = fit(bucket.text, width), count = fit(`${counts[i] || 0}`, width);
+    ctx.strokeText(label, mx, my - size * 0.6); ctx.fillText(label, mx, my - size * 0.6);
+    ctx.strokeText(count, mx, my + size * 0.6); ctx.fillText(count, mx, my + size * 0.6);
+  });
+
+  // a finished drop's result, in front: a box like the wheel's winner, its border the bucket's colour
+  const result = (c || a).result;
+  if (result) {
+    const size = 1.1 * scale;
+    ctx.save();
+    ctx.globalAlpha = result.alpha;
+    ctx.font = `bold ${size}px "Segoe UI", system-ui, sans-serif`;
+    const text = fit(result.text, (r - l) * scale * 0.75);
+    const tw = ctx.measureText(text).width, pad = size * 0.5;
+    const bw = tw + pad * 2, bh = size * 1.7, cx = X(0), cy = Y(board.resultY);
+    ctx.beginPath(); ctx.roundRect(cx - bw / 2, cy - bh / 2, bw, bh, bh * 0.25);
+    ctx.fillStyle = "rgba(15,15,15,0.92)"; ctx.fill();
+    ctx.lineWidth = Math.max(2, size * 0.12); ctx.strokeStyle = result.color; ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(text, cx, cy + size * 0.04);
+    ctx.restore();
+  }
 }
 
 // ---- the wheel ----
@@ -175,12 +283,19 @@ function drawWheel(now) {
     ctx.fillStyle = s.color; ctx.fill();
     ctx.lineWidth = Math.max(1, size * 0.004); ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.stroke();
 
-    // the label along the slice's middle, towards the rim
+    // the label along the slice's middle, towards the rim: as big as the slice allows, smaller to fit its length
+    // (down to the theme's min, a % of the radius), then cut with …
     const mid = (a0 + a1) / 2, span = a1 - a0;
-    const fontSize = Math.max(8, Math.min(r * 0.11, r * span * 0.45));
+    const min = r * (state.minTextSize || 4) / 100;
+    let fontSize = Math.max(min, Math.min(r * 0.11, r * span * 0.45));
     ctx.save();
     ctx.rotate(mid);
     ctx.font = `bold ${fontSize}px "Segoe UI", system-ui, sans-serif`;
+    const width = ctx.measureText(s.text).width;
+    if (width > r * 0.72) {
+      fontSize = Math.max(min, fontSize * r * 0.72 / width);
+      ctx.font = `bold ${fontSize}px "Segoe UI", system-ui, sans-serif`;
+    }
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     ctx.fillStyle = contrast(s.color);
     ctx.fillText(fit(s.text, r * 0.72), r * 0.92, 0);
@@ -240,6 +355,16 @@ function contrast(hex) {
   const n = parseInt(hex.slice(1), 16);
   const l = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
   return l > 150 ? "#111111" : "#ffffff";
+}
+
+// the biggest font size from max down to min the text fits the width at (set as the font), for fit() to cut it if even
+// the min doesn't fit
+function fitSize(text, max, min, width) {
+  ctx.font = `bold ${max}px "Segoe UI", system-ui, sans-serif`;
+  const tw = ctx.measureText(text).width;
+  const size = tw > width ? Math.max(min, max * width / tw) : max;
+  ctx.font = `bold ${size}px "Segoe UI", system-ui, sans-serif`;
+  return size;
 }
 
 // the text cut with … to fit the width (at the current font)

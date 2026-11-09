@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.OptionListView"
+             x:DataType="ui:OptionListViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a widget's options: text | weight | colour (the swatch opens the palette and a hex box) | drag handle; the empty
+         last row adds one. Dropping a row's handle on another row moves it before that one (the line above it lights
+         up). Scrolls inside the box once it's taller than WidgetListMaxHeight -->
+
+    <ScrollViewer MaxHeight="{DynamicResource WidgetListMaxHeight}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- the text column is shared by all rows (a shared size scope), so the weights and colours line up -->
+        <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="ui:OptionRowViewModel">
+                    <Border Classes="Droppable InsertBefore"
+                            DragDrop.DragOver="OnZoneDragOver"
+                            DragDrop.DragLeave="OnZoneDragLeave"
+                            DragDrop.Drop="OnZoneDrop">
+                        <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="OptionText"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding Text}" Classes.New="{Binding !HasText}" PlaceholderText="{Binding Placeholder}" HorizontalAlignment="Left"
+                                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                            <TextBox Grid.Column="1" Classes="Commit" Text="{Binding WeightInput}" IsVisible="{Binding HasText}"
+                                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                            <Button Grid.Column="2" Classes="Square Medium" IsVisible="{Binding HasText}">
+                                <Border Background="{Binding ColorBrush}" Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
+                                        CornerRadius="{s:Gap Corners}"/>
+                                <Button.Flyout>
+                                    <Flyout Placement="Bottom">
+                                        <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
+                                            <ItemsControl ItemsSource="{Binding Palette}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <UniformGrid Columns="6"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="ui:ColorChoice">
+                                                        <Button Classes="Square Medium" Command="{Binding PressedCommand}">
+                                                            <Border Background="{Binding Brush}" Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
+                                                                    CornerRadius="{s:Gap Corners}"/>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBox Text="{Binding ColorInput}" PlaceholderText="#FF8800" HorizontalAlignment="Left"
+                                                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                        </StackPanel>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+
+                            <!-- the drag handle, like a block's -->
+                            <Border Grid.Column="3" Classes="Panel Draggable" IsVisible="{Binding HasText}" VerticalAlignment="Center"
+                                    Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
+                                    PointerPressed="OnHandlePointerPressed">
+                                <TextBlock Text="⠿" HorizontalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+
+</UserControl>

@@ -1,72 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text.Json.Serialization;
 using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Widgets.Model;
-
-
-
-// one option of a wheel: its text, colour (#RRGGBB) and weight (a slice twice as heavy is twice as wide and twice as
-// likely). The wheel's options are a growing list: the empty last row is where a new one is typed, emptying one's
-// text removes it
-public sealed class WheelOption : IDisposable
-{
-    private string _text = "";
-    private string _color = "";
-    private double _weight = 1;
-
-    public string Text => _text;
-    public string Color => _color;
-    public double Weight => _weight;
-    public bool IsEmpty => _text == "";
-
-    public event Action? Changed;
-
-
-
-    public void SetText(string text)
-    {
-        if (text == _text) return;
-        _text = text;
-        Changed?.Invoke();
-    }
-
-
-
-    public void SetColor(string color)
-    {
-        if (color == _color) return;
-        _color = color;
-        Changed?.Invoke();
-    }
-
-
-
-    public void SetWeight(double weight)
-    {
-        if (weight == _weight) return;
-        _weight = weight;
-        Changed?.Invoke();
-    }
-
-
-
-    public void Dispose() { }
-}
-
-
-
-// how an option is saved
-public sealed class WheelOptionData
-{
-    [JsonPropertyName("text")] public string Text { get; set; } = "";
-    [JsonPropertyName("color")] public string Color { get; set; } = "";
-    [JsonPropertyName("weight")] public double Weight { get; set; } = 1;
-}
 
 
 
@@ -97,12 +35,10 @@ public sealed class WheelWidget : WidgetModel
 
 
 
-    public const double MaxWeight = 1000;
+    public const double MaxWeight = WidgetOptionList.MaxWeight;
     public const double MaxSeconds = 60;
 
-    // the colours new options get in turn
-    public static readonly IReadOnlyList<string> Palette =
-        ["#E6194B", "#3CB44B", "#FFE119", "#4363D8", "#F58231", "#911EB4", "#46F0F0", "#F032E6", "#BCF60C", "#FABEBE", "#008080", "#9A6324"];
+    public static IReadOnlyList<string> Palette => WidgetOptionList.Palette; // the colours new options get in turn
 
 
 
@@ -110,7 +46,7 @@ public sealed class WheelWidget : WidgetModel
 
 
 
-    private readonly GrowingList<WheelOption> _options;
+    private readonly WidgetOptionList _options;
     private double _spinSeconds;
     private double _showSeconds;
     private string _tickSound;
@@ -132,8 +68,9 @@ public sealed class WheelWidget : WidgetModel
 
 
     [JsonIgnore] public override WidgetKind Kind => WidgetKind.Wheel;
-    [JsonIgnore] public IReadOnlyList<WheelOption> Options => _options.Items; // the empty last row included
-    [JsonIgnore] public IReadOnlyList<WheelOption> FilledOptions => _options.NonEmptyItems.ToList();
+    [JsonIgnore] public WidgetOptionList OptionList => _options; // its box's rows
+    [JsonIgnore] public IReadOnlyList<WidgetOption> Options => _options.Items; // the empty last row included
+    [JsonIgnore] public IReadOnlyList<WidgetOption> FilledOptions => _options.Filled;
     [JsonIgnore] public double SpinSeconds => _spinSeconds;
     [JsonIgnore] public double ShowSeconds => _showSeconds; // how long the winner shows once it stops
     [JsonIgnore] public string TickSound => _tickSound; // inside Assets/, empty: the built-in tick
@@ -155,17 +92,10 @@ public sealed class WheelWidget : WidgetModel
 
 
     [JsonInclude] [JsonPropertyName("options")]
-    private List<WheelOptionData> JsonOptions
+    private List<WidgetOptionData> JsonOptions
     {
-        get => _options.NonEmptyItems.Select(o => new WheelOptionData { Text = o.Text, Color = o.Color, Weight = o.Weight }).ToList();
-        set => _options.Load(value.Select(data =>
-        {
-            var option = new WheelOption();
-            option.SetColor(ParseColor(data.Color) ?? Palette[0]);
-            option.SetWeight(data.Weight is > 0 and <= MaxWeight ? data.Weight : 1);
-            option.SetText(data.Text.Trim());
-            return option;
-        }));
+        get => _options.GetData();
+        set => _options.LoadData(value);
     }
 
     [JsonInclude] [JsonPropertyName("spinSeconds")]
@@ -223,7 +153,7 @@ public sealed class WheelWidget : WidgetModel
 
 
 
-    public event Action? OptionsChanged; // one was added, removed or changed (saved)
+    public event Action? OptionsChanged; // one was added, removed, moved or changed (saved)
     public event Action? SpinStarted;
     public event Action? SpinFinished;
 
@@ -235,7 +165,7 @@ public sealed class WheelWidget : WidgetModel
 
     public WheelWidget()
     {
-        _options = new(() => new WheelOption(), o => o.IsEmpty, SubscribeToOption, UnsubscribeFromOption);
+        _options = new("wheel option", "wheel", () => Name);
         _options.Changed += OnOptionsChanged;
         _spinSeconds = 6;
         _showSeconds = 4;
@@ -250,109 +180,21 @@ public sealed class WheelWidget : WidgetModel
         _lastWinner = "";
         _lastSpin = null;
         _finishedAt = DateTime.MinValue;
-        PrepareEmptyRow();
     }
 
 
 
-    // public api: options
+    // public api: options (also while the wheel is off; see WidgetOptionList)
 
 
 
-    // a new option (the empty row filled in), also while the wheel is off; one with that text already on it is left as it is. color empty
-    // picks the next one from the palette
-    public bool TryAddOption(string text, double weight = 1, string color = "")
-    {
-        var trimmed = text.Trim();
-        if (trimmed == "")
-        {
-            AppLog.WriteError("can't add a wheel option, no text");
-            return false;
-        }
-
-        if (!(weight is > 0 and <= MaxWeight))
-        {
-            AppLog.WriteError($"can't add wheel option '{trimmed}', weight {weight} isn't above 0 and up to {MaxWeight}");
-            return false;
-        }
-
-        var parsed = color.Trim() == "" ? NextColor() : ParseColor(color);
-        if (parsed == null)
-        {
-            AppLog.WriteError($"can't add wheel option '{trimmed}', '{color}' isn't a colour like #FF8800");
-            return false;
-        }
-
-        if (FindOption(trimmed) != null) return true;
-
-        var row = _options.Items[^1];
-        row.SetColor(parsed);
-        row.SetWeight(weight);
-        row.SetText(trimmed); // the row is filled now: the growing list adds the next empty one
-        return true;
-    }
-
-
-
-    public bool TryRemoveOption(string text)
-    {
-        if (FindOption(text) is not { } option)
-        {
-            AppLog.WriteError($"can't remove wheel option '{text.Trim()}', not on wheel '{Name}'");
-            return false;
-        }
-
-        option.SetText(""); // an empty row goes
-        return true;
-    }
-
-
-
-    public void ClearOptions()
-    {
-        foreach (var option in FilledOptions) option.SetText("");
-    }
-
-
-
-    public bool TrySetOptionWeight(WheelOption option, double weight)
-    {
-        if (!(weight is > 0 and <= MaxWeight))
-        {
-            AppLog.WriteError($"can't set a wheel option's weight to {weight}, it's above 0 and up to {MaxWeight}");
-            return false;
-        }
-
-        option.SetWeight(weight);
-        return true;
-    }
-
-
-
-    public bool TrySetOptionColor(WheelOption option, string color)
-    {
-        if (ParseColor(color) is not { } parsed)
-        {
-            AppLog.WriteError($"can't set a wheel option's colour, '{color}' isn't a colour like #FF8800");
-            return false;
-        }
-
-        option.SetColor(parsed);
-        return true;
-    }
-
-
-
-    // typing in a row's box (the empty row's text adds an option, emptying one removes it)
-    public void SetOptionText(WheelOption option, string text)
-    {
-        option.SetText(text.Trim() == "" ? "" : text);
-    }
-
-
-
-    public WheelOption? FindOption(string text) =>
-        _options.NonEmptyItems.FirstOrDefault(o => string.Equals(o.Text.Trim(), text.Trim(), StringComparison.OrdinalIgnoreCase));
+    public bool TryAddOption(string text, double weight = 1, string color = "") => _options.TryAdd(text, weight, color);
+    public bool TryRemoveOption(string text) => _options.TryRemove(text);
+    public void ClearOptions() => _options.Clear();
+    public bool TrySetOptionWeight(WidgetOption option, double weight) => _options.TrySetWeight(option, weight);
+    public bool TrySetOptionColor(WidgetOption option, string color) => _options.TrySetColor(option, color);
+    public void SetOptionText(WidgetOption option, string text) => _options.SetText(option, text);
+    public WidgetOption? FindOption(string text) => _options.Find(text);
 
 
 
@@ -381,11 +223,11 @@ public sealed class WheelWidget : WidgetModel
 
 
     // starts a spin, picking the winner now. False with an error when there's nothing to spin; false and no error
-    // (quietly nothing) while it's off or already spinning. onDone gets the winner once it stops
+    // (quietly nothing) while it's off, spinning, or still showing its last winner. onDone gets the winner once it stops
     public bool TryStartSpin(Action<string>? onDone, out string error, DateTime? now = null)
     {
         error = "";
-        if (IsDisabled || IsSpinning) return false;
+        if (IsDisabled || IsSpinning || IsShowingWinner(now ?? DateTime.UtcNow)) return false;
 
         var slices = Slices(FilledOptions);
         if (slices.Count == 0)
@@ -419,6 +261,11 @@ public sealed class WheelWidget : WidgetModel
 
 
 
+    // the last spin's winner is still showing (its Winner Time since it stopped): a new spin waits for it
+    public bool IsShowingWinner(DateTime now) => _lastSpin != null && (now - _finishedAt).TotalSeconds < _showSeconds;
+
+
+
     // the spin has stopped (the WidgetManager, once its time is up): it rests there, showing its winner. Gives back the
     // winner's callback (Spin Wheel's When Done), for the WidgetManager to run once the winner has shown for its time
     public Action? FinishSpin()
@@ -444,7 +291,7 @@ public sealed class WheelWidget : WidgetModel
 
 
     // the slices in order, clockwise from the top, each as wide as its share of the weights
-    public static List<WheelSlice> Slices(IReadOnlyList<WheelOption> options)
+    public static List<WheelSlice> Slices(IReadOnlyList<WidgetOption> options)
     {
         var total = options.Sum(o => o.Weight);
         var slices = new List<WheelSlice>();
@@ -498,21 +345,7 @@ public sealed class WheelWidget : WidgetModel
 
 
 
-    // "#RGB" or "#RRGGBB" (the # can be left out) as "#RRGGBB", null if it isn't one
-    public static string? ParseColor(string color)
-    {
-        var hex = color.Trim().TrimStart('#');
-        if (hex.Length == 3) hex = string.Concat(hex.Select(c => $"{c}{c}"));
-        return hex.Length == 6 && int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _) ? "#" + hex.ToUpperInvariant() : null;
-    }
-
-
-
     private static double Mod(double value, double by) => ((value % by) + by) % by;
-
-
-
-    private string NextColor() => Palette[FilledOptions.Count % Palette.Count];
 
 
 
@@ -561,40 +394,15 @@ public sealed class WheelWidget : WidgetModel
 
 
 
-    // the empty row gets the colour a new option would, so its swatch already shows it
-    private void PrepareEmptyRow()
-    {
-        if (_options.Items.Count > 0 && _options.Items[^1] is { IsEmpty: true } empty && empty.Color == "")
-            empty.SetColor(NextColor());
-    }
-
-
-
     // model callbacks
 
 
 
     private void OnOptionsChanged()
     {
-        PrepareEmptyRow();
         OptionsChanged?.Invoke();
         RaiseSettingsChanged();
     }
-
-
-
-    private void OnOptionChanged()
-    {
-        _options.Normalize();
-        PrepareEmptyRow();
-        OptionsChanged?.Invoke();
-        RaiseSettingsChanged();
-    }
-
-
-
-    private void SubscribeToOption(WheelOption option) => option.Changed += OnOptionChanged;
-    private void UnsubscribeFromOption(WheelOption option) => option.Changed -= OnOptionChanged;
 
 
 

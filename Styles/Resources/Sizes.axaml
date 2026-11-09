@@ -49,4 +49,12 @@
     <x:Double x:Key="WidgetPreviewMinHeight">200</x:Double>
     <x:Double x:Key="WidgetListMaxHeight">300</x:Double>
 
+    <!-- a wheel slice's text shrinks to fit its slice down to this (a % of the wheel's radius, so OBS and the preview
+         match), then it's cut with … -->
+    <x:Double x:Key="WheelMinTextSize">4</x:Double>
+
+    <!-- a table column in the Data tab is as wide as its name or its longest value, between these -->
+    <x:Double x:Key="TableColumnMinWidth">100</x:Double>
+    <x:Double x:Key="TableColumnMaxWidth">300</x:Double>
+
 </ResourceDictionary>

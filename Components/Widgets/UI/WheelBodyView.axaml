@@ -55,65 +55,13 @@
 
             <TextBlock Classes="Label Subheading" Text="Options"/>
 
-            <!-- text | weight | colour (the swatch opens the palette and a hex box); the empty last row adds one -->
-            <ScrollViewer MaxHeight="{DynamicResource WidgetListMaxHeight}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <!-- the text column is shared by all rows (a shared size scope), so the weights and colours line up -->
-                <ItemsControl ItemsSource="{Binding Rows}" Grid.IsSharedSizeScope="True">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="ui:WheelOptionRowViewModel">
-                            <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" SharedSizeGroup="OptionText"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Text="{Binding Text}" Classes.New="{Binding !HasText}" PlaceholderText="New option…" HorizontalAlignment="Left"
-                                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
-                                <TextBox Grid.Column="1" Classes="Commit" Text="{Binding WeightInput}" IsVisible="{Binding HasText}"
-                                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
-                                <Button Grid.Column="2" Classes="Square Medium" IsVisible="{Binding HasText}">
-                                    <Border Background="{Binding ColorBrush}" Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
-                                            CornerRadius="{s:Gap Corners}"/>
-                                    <Button.Flyout>
-                                        <Flyout Placement="Bottom">
-                                            <StackPanel Spacing="{DynamicResource SmallVerticalGap}">
-                                                <ItemsControl ItemsSource="{Binding Palette}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <UniformGrid Columns="6"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="ui:ColorChoice">
-                                                            <Button Classes="Square Medium" Command="{Binding PressedCommand}">
-                                                                <Border Background="{Binding Brush}" Width="{DynamicResource SmallButtonSize}" Height="{DynamicResource SmallButtonSize}"
-                                                                        CornerRadius="{s:Gap Corners}"/>
-                                                            </Button>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <TextBox Text="{Binding ColorInput}" PlaceholderText="#FF8800" HorizontalAlignment="Left"
-                                                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
-                                            </StackPanel>
-                                        </Flyout>
-                                    </Button.Flyout>
-                                </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+            <!-- a row per option (OptionListView): the empty last row adds one, drag a handle to reorder -->
+            <ContentControl Content="{Binding Options}"/>
         </StackPanel>
 
         <Border Grid.Column="1" Classes="VerticalDivider"/>
 
-        <ui:WheelPreview Grid.Column="2" Margin="{s:Gap PadAll}"
+        <ui:WheelPreview Grid.Column="2" Margin="{s:Gap PadAll}" MinTextSize="{DynamicResource WheelMinTextSize}"
                          MinWidth="{DynamicResource WidgetPreviewMinWidth}" MinHeight="{DynamicResource WidgetPreviewMinHeight}"
                          Slices="{Binding PreviewSlices}" Rotation="{Binding PreviewRotation}" Highlight="{Binding PreviewHighlight}"/>
 

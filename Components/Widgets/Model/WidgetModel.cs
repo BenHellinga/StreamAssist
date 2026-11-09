@@ -8,18 +8,20 @@ namespace StreamAssist.Components.Widgets.Model;
 
 // what a widget is (the widget list's cards, in this order), saved by name
 [JsonConverter(typeof(JsonStringEnumConverter<WidgetKind>))]
-public enum WidgetKind { MicBounce, Wheel }
+public enum WidgetKind { MicBounce, Wheel, Plinko }
 
 
 
 // one widget on the Widgets tab: something drawn on stream by its own browser source in OBS
 // (http://127.0.0.1:<port>/widget/<name>, served by the WidgetManager), with its own settings. Its name is what blocks
 // and its address use (unique in its config). Turned off, it doesn't run (its page shows nothing, no sound, no spins,
-// no listening), but its settings can still be changed, from its box or by blocks.
+// no listening), but its settings can still be changed, from its box or by blocks. Hidden, it still runs (spins, sounds,
+// its preview), its page just draws nothing, so it can be tested off stream.
 // Saved with its kind first ("kind": "Wheel"), so it loads as the right one
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(MicBounceWidget), "MicBounce")]
 [JsonDerivedType(typeof(WheelWidget), "Wheel")]
+[JsonDerivedType(typeof(PlinkoWidget), "Plinko")]
 public abstract class WidgetModel : IDisposable
 {
     // private
@@ -29,6 +31,7 @@ public abstract class WidgetModel : IDisposable
     private string _id;
     private string _name;
     private bool _isDisabled;
+    private bool _isHidden;
     private bool _isCollapsed;
 
 
@@ -40,6 +43,7 @@ public abstract class WidgetModel : IDisposable
     [JsonIgnore] public string Id => _id;
     [JsonIgnore] public string Name => _name;
     [JsonIgnore] public bool IsDisabled => _isDisabled;
+    [JsonIgnore] public bool IsHidden => _isHidden;
     [JsonIgnore] public bool IsCollapsed => _isCollapsed;
     [JsonIgnore] public abstract WidgetKind Kind { get; }
 
@@ -70,6 +74,13 @@ public abstract class WidgetModel : IDisposable
         set => _isDisabled = value;
     }
 
+    [JsonInclude] [JsonPropertyName("isHidden")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    private bool JsonIsHidden
+    {
+        get => _isHidden;
+        set => _isHidden = value;
+    }
+
     [JsonInclude] [JsonPropertyName("isCollapsed")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     private bool JsonIsCollapsed
     {
@@ -85,6 +96,7 @@ public abstract class WidgetModel : IDisposable
 
     public event Action? NameChanged;
     public event Action<bool>? IsDisabledChanged;
+    public event Action<bool>? IsHiddenChanged;
     public event Action<bool>? IsCollapsedChanged;
     public event Action? SettingsChanged; // something its page draws changed (its pages and preview draw it again)
     public event Action? Changed; // anything saved changed
@@ -100,6 +112,7 @@ public abstract class WidgetModel : IDisposable
         _id = Guid.NewGuid().ToString("N");
         _name = "";
         _isDisabled = false;
+        _isHidden = false;
         _isCollapsed = false;
     }
 
@@ -107,7 +120,12 @@ public abstract class WidgetModel : IDisposable
 
     public static WidgetModel Create(WidgetKind kind, string name)
     {
-        WidgetModel widget = kind == WidgetKind.Wheel ? new WheelWidget() : new MicBounceWidget();
+        WidgetModel widget = kind switch
+        {
+            WidgetKind.Wheel => new WheelWidget(),
+            WidgetKind.Plinko => new PlinkoWidget(),
+            _ => new MicBounceWidget(),
+        };
         widget._name = name;
         return widget;
     }
@@ -165,6 +183,19 @@ public abstract class WidgetModel : IDisposable
 
         _isDisabled = isDisabled;
         IsDisabledChanged?.Invoke(isDisabled);
+        SettingsChanged?.Invoke();
+        Changed?.Invoke();
+    }
+
+
+
+    // shown / hidden on stream: hidden, its page draws nothing but it still runs
+    public void SetIsHidden(bool isHidden)
+    {
+        if (isHidden == _isHidden) return;
+
+        _isHidden = isHidden;
+        IsHiddenChanged?.Invoke(isHidden);
         SettingsChanged?.Invoke();
         Changed?.Invoke();
     }

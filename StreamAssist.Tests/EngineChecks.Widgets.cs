@@ -120,6 +120,123 @@ internal static partial class EngineChecks
 
 
 
+    // ---- plinko: the board's shape, drops, the physics, saving ----
+    private static void PlinkoModels()
+    {
+        var plinko = new PlinkoWidget();
+        plinko.TryAddBucket("Big", 2);
+        plinko.TryAddBucket("Small");
+        plinko.TryAddBucket("Mid");
+        var board = plinko.Board;
+        double Width(PlinkoBucket b) => b.Right - b.Left;
+        Check("plinko: the bottom is split by weight across the walls, a divider between each two", board.Buckets.Count == 3
+            && Math.Abs(Width(board.Buckets[0]) - 2 * Width(board.Buckets[1])) < 1e-9 && Math.Abs(board.Buckets[0].Left + PlinkoBoard.WallX(board.Rows - 1)) < 1e-9
+            && Math.Abs(board.Buckets[2].Right - PlinkoBoard.WallX(board.Rows - 1)) < 1e-9 && board.Drawn.Count == 5 + 2);
+        Check("plinko: a triangle of pins, row r has r + 3 and one on the wall at each end", board.Pins().Count() == Enumerable.Range(0, 12).Sum(r => r + 5)
+            && board.Pins().Where(p => p.Y == 4).Max(p => p.X) == PlinkoBoard.WallX(4));
+
+        var each = new List<(string Bucket, int Number)>();
+        IReadOnlyList<string>? done = null;
+        var doneResult = "";
+        var queued = plinko.TryDrop(30, (bucket, number) => each.Add((bucket, number)), (results, result) => (done, doneResult) = (results, result), out _);
+        Check("plinko: a drop queues its balls", queued && plinko.IsDropping);
+
+        var inside = true;
+        var firstSeen = new Dictionary<int, (double X, double Y)>(); // where each ball dropped in (a step later, so near it)
+        for (var i = 0; i < 60 * 50 && plinko.IsDropping; i++)
+        {
+            plinko.Step(0.02);
+            foreach (var ball in plinko.Frame().Balls)
+            {
+                firstSeen.TryAdd(ball.Id, (ball.X, ball.Y));
+                inside &= Math.Abs(ball.X) <= PlinkoBoard.WallX(Math.Clamp(ball.Y, PlinkoBoard.LidY, board.Rows - 1)) + 0.05
+                    && ball.Y >= PlinkoBoard.LidY && ball.Y <= board.Floor;
+            }
+        }
+        var names = new[] { "Big", "Small", "Mid" };
+        Check("plinko: every ball lands in a bucket and stays inside the board", !plinko.IsDropping && inside && each.All(e => names.Contains(e.Bucket)));
+        Check("plinko: balls drop in at random spots in the drop-in area, both sides of it", firstSeen.Count == 30
+            && firstSeen.Values.All(p => Math.Abs(p.X) <= PlinkoBoard.SpawnHalfWidth + 0.15 && Math.Abs(p.Y - PlinkoBoard.SpawnY) <= PlinkoBoard.SpawnHalfHeight + 0.15)
+            && firstSeen.Values.Any(p => p.X < -0.3) && firstSeen.Values.Any(p => p.X > 0.3));
+        // Most: the bucket most landed in, the first to get there on a tie
+        string Most(IEnumerable<string> results)
+        {
+            var counts = new Dictionary<string, int>();
+            var best = "";
+            foreach (var r in results)
+            {
+                counts[r] = counts.GetValueOrDefault(r) + 1;
+                if (best == "" || counts[r] > counts[best]) best = r;
+            }
+            return best;
+        }
+        var showing = plinko.Frame().Result;
+        Check("plinko: the drop's result shows once its last ball lands, When Done waits", each.Select(e => e.Number).Order().SequenceEqual(Enumerable.Range(1, 30))
+            && done == null && showing != null && showing.Text == Most(each.Select(e => e.Bucket)) && plinko.LastResult == showing.Text && plinko.Frame().Counts.Sum() == 30);
+
+        for (var i = 0; i < 60 * 50 && plinko.IsBusy; i++) plinko.Step(0.02);
+        Check("plinko: once the result has gone, When Done gets every bucket in landing order and the result", done != null
+            && done.SequenceEqual(each.Select(e => e.Bucket)) && plinko.LastResults.SequenceEqual(done) && doneResult == plinko.LastResult);
+        Check("plinko: the balls fade and go with it", plinko.Frame().Balls.Count == 0 && plinko.Frame().Counts.Sum() == 0 && !plinko.HasBalls && plinko.Frame().Result == null);
+
+        var adder = new PlinkoWidget();
+        adder.TryAddBucket("Nothing");
+        adder.SetMode(PlinkoMode.Sum);
+        var notNumber = !adder.TryDrop(1, null, null, out var sumError) && sumError.Contains("'Nothing' isn't a number");
+        adder.TryRemoveBucket("Nothing");
+        adder.TryAddBucket("10");
+        adder.TryAddBucket("2.5");
+        adder.TrySetDropTempo(0);
+        var sum = "";
+        adder.TryDrop(6, null, (_, result) => sum = result, out _);
+        for (var i = 0; i < 60 * 50 && adder.IsBusy; i++) adder.Step(0.02);
+        var expected = adder.LastResults.Sum(r => double.Parse(r, System.Globalization.CultureInfo.InvariantCulture));
+        Check("plinko: Sum adds the buckets up (each a number, or the drop is refused)", notNumber && adder.LastResults.Count == 6
+            && sum == expected.ToString("0.##########", System.Globalization.CultureInfo.InvariantCulture));
+        adder.Dispose();
+
+        plinko.TrySetDropTempo(1);
+        plinko.TryDrop(3, null, null, out _);
+        for (var i = 0; i < 25; i++) plinko.Step(0.02);
+        var oneIn = plinko.Frame().Balls.Count == 1;
+        for (var i = 0; i < 40; i++) plinko.Step(0.02);
+        Check("plinko: balls drop in one per drop tempo", oneIn && plinko.Frame().Balls.Count == 2);
+        Check("plinko: a new drop waits (quietly) until the last one has finished", !plinko.TryDrop(1, null, null, out var busyError) && busyError == "");
+        for (var i = 0; i < 60 * 50 && plinko.IsBusy; i++) plinko.Step(0.02);
+
+        plinko.TrySetMaxBalls(5);
+        var overMax = !plinko.TryDrop(6, null, null, out var maxError) && maxError != "";
+        var badCount = !plinko.TryDrop(0, null, null, out var countError) && countError != "";
+        var empty = new PlinkoWidget();
+        var noBuckets = !empty.TryDrop(1, null, null, out var bucketError) && bucketError != "";
+        plinko.SetIsDisabled(true);
+        var off = !plinko.TryDrop(1, null, null, out var offError) && offError == "";
+        plinko.SetIsDisabled(false);
+        Check("plinko: over max balls, 0 balls or no buckets is an error; off, quietly nothing", overMax && badCount && noBuckets && off);
+
+        var ghost = new PlinkoWidget();
+        ghost.TryAddBucket("A");
+        ghost.TryAddBucket("B");
+        ghost.SetBallsCollide(false);
+        ghost.TrySetDropTempo(0);
+        var landed = 0;
+        ghost.TryDrop(15, (_, _) => landed++, null, out _);
+        for (var i = 0; i < 60 * 50 && ghost.IsDropping; i++) ghost.Step(0.02);
+        Check("plinko: balls that don't collide all land too", landed == 15);
+
+        plinko.TrySetRows(8);
+        var reloaded = (PlinkoWidget)JsonSerializer.Deserialize<WidgetModel>(JsonSerializer.Serialize<WidgetModel>(plinko))!;
+        Check("plinko: saved and loaded, its board built from them", reloaded.Rows == 8 && reloaded.MaxBalls == 5 && reloaded.DropTempo == 1
+            && reloaded.Buckets.Select(b => b.Text).SequenceEqual(names) && reloaded.Board.Buckets.Count == 3 && reloaded.Board.Rows == 8);
+
+        plinko.BucketList.TryMove(plinko.Buckets[2], 0);
+        Check("plinko: buckets reorder", plinko.Buckets.Select(b => b.Text).SequenceEqual(["Mid", "Big", "Small"]) && plinko.Board.Buckets[0].Text == "Mid");
+
+        foreach (var widget in new WidgetModel[] { plinko, empty, ghost, reloaded }) widget.Dispose();
+    }
+
+
+
     // ---- widget blocks: they find their widget by name, Spin Wheel's When Done gets {winner} ----
     private static async Task WidgetBlockChecks()
     {
@@ -150,14 +267,49 @@ internal static partial class EngineChecks
         Check("widget blocks: Spin Wheel spins it, When Done runs with {winner} after the winner has shown", spinning && notYet
             && FormatRecordBlock.Log.SequenceEqual(["Bob got Bob's pick"]) && await Named(new WheelWinnerBlock(), "Wheel").EvaluateAsync(ctx) == "Bob's pick");
 
+        // plinko: Drop Plinko runs When Each Lands per ball and When Done once, with the run's parameters
+        widgets.Config!.TryAddWidget(WidgetKind.Plinko, 1, out var foundPlinko);
+        var plinko = (PlinkoWidget)foundPlinko;
+        plinko.TryAddBucket("10");
+        plinko.TryAddBucket("100");
+        plinko.TrySetDropTempo(0);
+        var drop = Named(new DropPlinkoBlock(), "Plinko");
+        ((ValueSlot)drop.Slots[1]).SetText("3");
+        ((BlockSlot)drop.Slots[2]).TrySetBlock(new FormatRecordBlock { Template = "{user} ball {ball} in {bucket}" });
+        ((BlockSlot)drop.Slots[3]).TrySetBlock(new FormatRecordBlock { Template = "done: {result} of {results}" });
+        FormatRecordBlock.Log.Clear();
+        await drop.SafeRunAsync(ctx);
+        var dropping = await Named(new PlinkoDroppingCondition(), "Plinko").EvaluateAsync(ctx);
+        for (var i = 0; i < 60 * 50 && plinko.IsBusy; i++) plinko.Step(0.02);
+        await Task.Delay(100); // the When blocks run on their own
+        var landings = FormatRecordBlock.Log.Where(l => l.StartsWith("Bob ball")).ToList();
+        var results = string.Join(", ", plinko.LastResults);
+        var everyBucket = Named(new PlinkoResultsBlock(), "Plinko").Pick("Give", "Every Bucket");
+        Check("widget blocks: Drop Plinko runs When Each Lands per ball with {ball} and {bucket}, then When Done with {result} and {results}", dropping
+            && landings.Count == 3 && landings.All(l => l.EndsWith(" in 10") || l.EndsWith(" in 100")) && FormatRecordBlock.Log.Last() == $"done: {plinko.LastResult} of {results}"
+            && await Named(new PlinkoResultsBlock(), "Plinko").EvaluateAsync(ctx) == plinko.LastResult && await everyBucket.EvaluateAsync(ctx) == results
+            && !await Named(new PlinkoDroppingCondition(), "Plinko").EvaluateAsync(ctx));
+        var none = Named(new DropPlinkoBlock(), "Plinko");
+        ((ValueSlot)none.Slots[1]).SetText("0");
+        Check("widget blocks: Drop Plinko with 0 balls fails the run", !await none.SafeRunAsync(ctx));
+
         var missing = Named(new ClearWheelAction(), "Nope");
         Check("widget blocks: an unknown widget fails the run", !await missing.SafeRunAsync(ctx));
 
         await Named(new ShowWidgetAction(), "Wheel").SafeRunAsync(ctx);
-        var hidden = wheel.IsDisabled;
+        var hidden = wheel.IsHidden && !wheel.IsDisabled;
         await add.SafeRunAsync(new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["user"] = "Al" }));
-        Check("widget blocks: Show Widget toggles it, a hidden widget still takes changes (it just doesn't run)", hidden && wheel.FilledOptions.Count == 2
-            && !wheel.TryStartSpin(null, out var offError) && offError == "");
+        var waitsForWinner = !wheel.TryStartSpin(null, out var waitError) && waitError == "";
+        var hiddenSpins = wheel.TryStartSpin(null, out _, DateTime.UtcNow.AddSeconds(wheel.ShowSeconds + 1));
+        wheel.FinishSpin();
+        Check("widget blocks: a new spin waits (quietly) until the last winner has shown", waitsForWinner);
+        Check("widget blocks: Show Widget toggles hidden, a hidden widget still runs (takes changes, spins)", hidden && wheel.FilledOptions.Count == 2 && hiddenSpins);
+        var reloadedHidden = JsonSerializer.Deserialize<WidgetsComponentModel>(JsonSerializer.Serialize(widgets))!;
+        Check("widget blocks: hidden is saved", reloadedHidden.Config!.Widgets.OfType<WheelWidget>().Single().IsHidden);
+        reloadedHidden.Dispose();
+        await Named(new ShowWidgetAction(), "Wheel").SafeRunAsync(ctx);
+        wheel.SetIsDisabled(true);
+        Check("widget blocks: shown again; a widget that's off doesn't spin (quietly)", !wheel.IsHidden && !wheel.TryStartSpin(null, out var offError) && offError == "");
 
         StreamAssist.Shell.GlobalContext.WidgetsComponentModel = old;
         widgets.Dispose();
@@ -167,7 +319,7 @@ internal static partial class EngineChecks
         var twitch = palette.Groups.Single(g => g.Group == BlockGroup.Twitch);
         Check("subgroups: a group's blocks split into subgroups, its count is all of them",
             twitch.Subgroups.Any(s => s.Title == "Moderation") && twitch.Count == twitch.Cards.Count + twitch.Subgroups.Sum(s => s.Cards.Count)
-            && twitch.HeadingText == $"Twitch ({twitch.Count})" && palette.Groups.Single(g => g.Group == BlockGroup.Widgets).Subgroups.Select(s => s.Title).SequenceEqual(["Mic Bounce", "Wheel"]));
+            && twitch.HeadingText == $"Twitch ({twitch.Count})" && palette.Groups.Single(g => g.Group == BlockGroup.Widgets).Subgroups.Select(s => s.Title).SequenceEqual(["Mic Bounce", "Plinko", "Wheel"]));
         palette.Dispose();
     }
 

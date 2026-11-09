@@ -14,9 +14,10 @@ namespace StreamAssist.Components.Widgets.UI;
 
 
 
-// one widget's box: its header (the name, applied when the box is left, a refused one puts the old one back; Spin for
-// a wheel; its address copied or opened in a browser), the corner buttons blocks and docks have (copy, collapse,
-// on / off, drag, remove), then its kind's settings and preview (Body)
+// one widget's box: its header (the name, applied when the box is left, a refused one puts the old one back; its address
+// copied or opened in a browser; shown / hidden on stream; then a row of its kind's own buttons: Spin for a wheel, a ball
+// count and Drop for plinko), the
+// corner buttons blocks and docks have (copy, collapse, on / off, drag, remove), then its kind's settings and preview (Body)
 public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
 {
     // private
@@ -30,7 +31,9 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
 
     [ObservableProperty] private string _nameInput;
     [ObservableProperty] private bool _isDisabled; // red, nothing changes it
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HideButtonText))] private bool _isHidden; // its page draws nothing
     [ObservableProperty] private bool _isCollapsed; // only its header shows
+    [ObservableProperty] private string _dropCountInput; // plinko: how many balls Drop drops
 
 
 
@@ -40,6 +43,9 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
 
     public ViewModelBase Body => _body;
     public bool IsWheel => _widget is WheelWidget;
+    public bool IsPlinko => _widget is PlinkoWidget;
+    public bool HasOwnButtons => IsWheel || IsPlinko; // the header's second row
+    public string HideButtonText => IsHidden ? "Show" : "Hide"; // what pressing it does
     public bool CanCollapse => true;
     public bool CanCopy => true;
     public bool CanToggle => true;
@@ -59,12 +65,15 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
         {
             WheelWidget wheel => new WheelBodyViewModel(wheel),
             MicBounceWidget bounce => new MicBounceBodyViewModel(bounce, inputs),
+            PlinkoWidget plinko => new PlinkoBodyViewModel(plinko),
             _ => throw new ArgumentException($"no view for widget kind {widget.Kind}"),
         };
 
         _nameInput = _widget.Name;
         _isDisabled = _widget.IsDisabled;
+        _isHidden = _widget.IsHidden;
         _isCollapsed = _widget.IsCollapsed;
+        _dropCountInput = "1";
 
         SubscribeToWidget(_widget);
     }
@@ -98,6 +107,20 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
 
 
 
+    [RelayCommand]
+    private void OnDropPressed()
+    {
+        if (_widget is not PlinkoWidget plinko) return;
+        if (!int.TryParse(DropCountInput.Trim(), out var count))
+        {
+            AppLog.WriteError($"can't drop, '{DropCountInput.Trim()}' isn't a whole number of balls");
+            return;
+        }
+        if (!plinko.TryDrop(count, null, null, out var error) && error != "") AppLog.WriteError($"can't drop, {error}");
+    }
+
+
+
     // its address, for a browser source in OBS
     [RelayCommand] private void OnCopyUrlPressed() => _ = BlockClipboard.WriteText?.Invoke(WidgetManager.UrlOf(_model.Port, _widget.Name));
 
@@ -116,6 +139,10 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
             AppLog.WriteError($"can't open widget '{_widget.Name}' in a browser ({ex.Message})");
         }
     }
+
+
+
+    [RelayCommand] private void OnHidePressed() => _widget.SetIsHidden(!_widget.IsHidden);
 
 
 
@@ -156,6 +183,10 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
 
 
 
+    private void OnWidgetIsHiddenChanged(bool isHidden) => IsHidden = isHidden;
+
+
+
     private void OnWidgetIsCollapsedChanged(bool isCollapsed) => IsCollapsed = isCollapsed;
 
 
@@ -168,6 +199,7 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
     {
         widget.NameChanged += OnWidgetNameChanged;
         widget.IsDisabledChanged += OnWidgetIsDisabledChanged;
+        widget.IsHiddenChanged += OnWidgetIsHiddenChanged;
         widget.IsCollapsedChanged += OnWidgetIsCollapsedChanged;
     }
 
@@ -177,6 +209,7 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
     {
         widget.NameChanged -= OnWidgetNameChanged;
         widget.IsDisabledChanged -= OnWidgetIsDisabledChanged;
+        widget.IsHiddenChanged -= OnWidgetIsHiddenChanged;
         widget.IsCollapsedChanged -= OnWidgetIsCollapsedChanged;
     }
 

@@ -21,3 +21,13 @@ public partial class WheelBodyView : ViewBase
         InitializeComponent();
     }
 }
+
+
+
+public partial class PlinkoBodyView : ViewBase
+{
+    public PlinkoBodyView()
+    {
+        InitializeComponent();
+    }
+}
