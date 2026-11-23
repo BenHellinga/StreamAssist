@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Actions;
 
@@ -97,16 +96,10 @@ public class SetVoicemeeterGainAction : ActionBlock
     {
         var channel = await _channel.EvaluateAsync(context);
         var mode = await _mode.EvaluateAsync(context);
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
         var gain = await _gain.EvaluateAsync(context);
+        var voicemeeter = Api(context).Voicemeeter;
 
-        // a failure is already logged by the manager
-        if (mode == "Change by")
-        {
-            if (!voicemeeter.TryGetGain(channel, out var now)) throw new BlockFailedException("gain not read");
-            gain += now;
-        }
-
-        if (!voicemeeter.TrySetGain(channel, (float)gain)) throw new BlockFailedException("gain not set");
+        if (mode == "Change by") gain += voicemeeter.GetGain(channel);
+        voicemeeter.SetGain(channel, gain);
     }
 }

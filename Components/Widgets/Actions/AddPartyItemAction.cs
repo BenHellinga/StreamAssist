@@ -110,14 +110,10 @@ public class AddPartyItemAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.ImageParty, out var found, out var error)) throw Fail(error);
-        var party = (ImagePartyWidget)found;
-
-        var file = (await _file.EvaluateAsync(context)).Trim();
-        if (file == "") throw Fail("no file");
-        if (!AppPaths.TryResolveAsset(file, out var full, out var pathError)) throw Fail(pathError);
-        if (!File.Exists(full)) throw Fail($"no file '{file}' in assets");
-
-        if (!party.TryAddItem(file, await _size.EvaluateAsync(context), await _speed.EvaluateAsync(context), _muted)) throw new BlockFailedException("item not added");
+        var widget = await _widget.EvaluateAsync(context);
+        var file = await _file.EvaluateAsync(context);
+        var size = await _size.EvaluateAsync(context);
+        var speed = await _speed.EvaluateAsync(context);
+        Api(context).Widgets.AddPartyItem(widget, file, size, speed, _muted);
     }
 }

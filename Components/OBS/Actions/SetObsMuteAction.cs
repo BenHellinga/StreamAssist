@@ -1,10 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -84,11 +82,8 @@ public class SetObsMuteAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var changeOption = await _change.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
+        var change = await _change.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
-        var change = changeOption == "Mute" ? ObsToggle.On : changeOption == "Unmute" ? ObsToggle.Off : ObsToggle.Toggle;
-
-        if (!(await obs.TrySetMutedAsync(source, change)).Ok) throw new BlockFailedException("mute not changed");
+        await Api(context).Obs.SetMutedAsync(source, change == "Mute" ? Switch.On : change == "Unmute" ? Switch.Off : Switch.Toggle);
     }
 }

@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -72,10 +70,6 @@ public class SetSpotifyPlaybackAction : ActionBlock
 
 
     // spotify requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var change = await _change.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        if (!await spotify.TrySetPlaybackAsync(change, context.CancellationToken)) throw new BlockFailedException("playback not changed");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).SpotifyApi.SetPlaybackAsync(await _change.EvaluateAsync(context));
 }

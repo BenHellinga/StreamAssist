@@ -432,7 +432,7 @@ public sealed partial class CornerBindBoxViewModel : ViewModelBase, IDroppable, 
 
 
     private void OnCornerBindableChanged() => SetBindable(_party.CornerBindable);
-    private void OnBindableChanged() => IsBound = _bindable?.HasBlock ?? false;
+    private void OnBindableChanged() => IsBound = _bindable?.HasContent ?? false;
     private void OnBindableIsDisabledChanged(bool isDisabled) => IsDisabled = isDisabled;
     private void OnBindableTriggered() => _flash.Trigger();
 
@@ -452,7 +452,7 @@ public sealed partial class CornerBindBoxViewModel : ViewModelBase, IDroppable, 
         }
 
         _bindable = bindable;
-        IsBound = _bindable?.HasBlock ?? false;
+        IsBound = _bindable?.HasContent ?? false;
         IsDisabled = _bindable?.IsDisabled ?? false;
 
         if (_bindable != null)

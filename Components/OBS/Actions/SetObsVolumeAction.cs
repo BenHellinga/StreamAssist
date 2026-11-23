@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -96,17 +93,11 @@ public class SetObsVolumeAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var mode = await _mode.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
         var volume = await _volume.EvaluateAsync(context);
+        var obs = Api(context).Obs;
 
-        if (mode == "Change by")
-        {
-            var (ok, now) = await obs.TryGetVolumeAsync(source);
-            if (!ok) throw new BlockFailedException("volume not read");
-            volume += now;
-        }
-
-        if (!(await obs.TrySetVolumeAsync(source, volume)).Ok) throw new BlockFailedException("volume not set");
+        if (mode == "Change by") volume += await obs.GetVolumeAsync(source);
+        await obs.SetVolumeAsync(source, volume);
     }
 }

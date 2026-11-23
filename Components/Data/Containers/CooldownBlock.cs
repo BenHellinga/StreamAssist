@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Containers;
 
@@ -93,12 +92,8 @@ public class CooldownBlock : ContainerBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        var label = (await _label.EvaluateAsync(context)).Trim();
-        if (label == "") throw Fail("needs a label");
+        var label = await _label.EvaluateAsync(context);
         var seconds = await _seconds.EvaluateAsync(context);
-        if (seconds < 0) throw Fail($"can't cool down for {seconds} seconds");
-
-        if (data.UseCooldown(label, seconds, DateTime.Now, out _)) await _ready.RunAsync(context);
+        if (Api(context).Data.TryUseCooldown(label, seconds)) await _ready.RunAsync(context);
     }
 }

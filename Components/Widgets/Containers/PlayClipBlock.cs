@@ -4,9 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Widgets.Background;
 using StreamAssist.Components.Widgets.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Widgets.Containers;
 
@@ -102,16 +100,13 @@ public class PlayClipBlock : ContainerBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Clip, out var found, out var error)) throw Fail(error);
-        var widget = (ClipWidget)found;
-        if (widget.IsDisabled) return;
+        var widget = await _widget.EvaluateAsync(context);
+        var channel = await _channel.EvaluateAsync(context);
 
-        var channel = (await _channel.EvaluateAsync(context)).Trim().TrimStart('@');
-        if (channel == "") throw Fail("no channel");
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-
-        var (ok, clip, name) = await ClipPicker.TryPickAsync(chatbot, widget, channel, context.CancellationToken);
-        if (!ok) throw new BlockFailedException("clips not read");
+        // When Done gets this run's parameters as they are when the clip starts ({clipTitle}, ...)
+        TriggerContext? end = null;
+        var (clip, name) = await Api(context).WidgetsApi.PlayClipAsync(widget, channel, () => { if (end != null) RunWhenDone(end); });
+        if (name == "" && clip == null) return; // the widget is off
 
         context.SetParameter("channel", name);
         if (clip == null)
@@ -122,11 +117,7 @@ public class PlayClipBlock : ContainerBlock
 
         context.SetParameter("clipTitle", clip.Title);
         context.SetParameter("clipUrl", clip.Url);
-
-        // its own copy of the parameters as they are now, and the binding's cancellation (a removed binding never runs
-        // its end)
-        var end = new TriggerContext(TriggerPhase.Once, context.CancellationToken, context.Parameters);
-        widget.TryPlay(clip, () => RunWhenDone(end));
+        end = new TriggerContext(TriggerPhase.Once, context.CancellationToken, context.Parameters);
     }
 
 

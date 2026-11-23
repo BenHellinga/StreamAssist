@@ -14,12 +14,6 @@ namespace StreamAssist.Components.Chatbot.Background;
 
 
 
-// one of a channel's clips: its id (for the embed), link, title, channel's display name, length in seconds, a still of
-// it (its thumbnail's address) and how many times it's been watched
-public sealed record TwitchClip(string Id, string Url, string Title, string Channel, double Seconds, string Thumbnail, int Views);
-
-
-
 // thrown when twitch says the token isn't valid any more (expired or revoked)
 public class TwitchUnauthorizedException(string message) : Exception(message);
 
@@ -340,10 +334,10 @@ public static class TwitchApi
 
 
     // a channel's clips, most viewed first (at most 100: one page)
-    public static async Task<List<TwitchClip>> GetClipsAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    public static async Task<List<StreamAssist.Scripting.TwitchClip>> GetClipsAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
     {
         var result = await HelixAsync(session, HttpMethod.Get, $"clips?broadcaster_id={E(broadcasterId)}&first=100", null, ct);
-        return result.GetProperty("data").EnumerateArray().Select(clip => new TwitchClip(
+        return result.GetProperty("data").EnumerateArray().Select(clip => new StreamAssist.Scripting.TwitchClip(
             clip.GetProperty("id").GetString() ?? "",
             clip.GetProperty("url").GetString() ?? "",
             clip.GetProperty("title").GetString() ?? "",

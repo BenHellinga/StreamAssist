@@ -1,10 +1,11 @@
+using StreamAssist.Scripting;
+using StreamAssist.Components.CSharp.Api;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -117,24 +118,12 @@ public class ResizeObsSourceAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var mode = await _mode.EvaluateAsync(context);
-        var anchor = await _anchor.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
+        var anchor = ObsScriptApi.Parse<ObsAnchor>(await _anchor.EvaluateAsync(context));
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
+        var obs = Api(context).Obs;
 
-        System.Func<double, double, (double, double)> newSize;
-        if (mode == "Set size to")
-        {
-            var (width, height) = (await _width.EvaluateAsync(context), await _height.EvaluateAsync(context));
-            newSize = (_, _) => (width, height);
-        }
-        else
-        {
-            var factor = 1 + await _percent.EvaluateAsync(context) / 100;
-            if (factor <= 0) throw Fail("can't shrink by 100% or more");
-            newSize = (width, height) => (width * factor, height * factor);
-        }
-
-        if (!(await obs.TryResizeAsync(scene, source, newSize, anchor)).Ok) throw new BlockFailedException("not resized");
+        if (mode == "Set size to") await obs.ResizeAsync(source, await _width.EvaluateAsync(context), await _height.EvaluateAsync(context), anchor, scene);
+        else await obs.ScaleByAsync(source, await _percent.EvaluateAsync(context), anchor, scene);
     }
 }

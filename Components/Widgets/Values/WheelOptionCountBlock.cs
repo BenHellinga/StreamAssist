@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -70,10 +69,6 @@ public class WheelOptionCountBlock : ValueBlock<int>
 
 
 
-    protected override async Task<int> ComputeAsync(TriggerContext context)
-    {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Wheel, out var found, out var error)) throw Fail(error);
-        var wheel = (WheelWidget)found;
-        return wheel.FilledOptions.Count;
-    }
+    protected override async Task<int> ComputeAsync(TriggerContext context) =>
+        Api(context).Widgets.GetWheelOptions(await _widget.EvaluateAsync(context)).Count;
 }

@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Actions;
 
@@ -90,9 +88,7 @@ public class DeleteTableRowAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var row = await _row.EvaluateAsync(context);
-
-        if (!data.TryDeleteRow(await _table.EvaluateAsync(context), row)) throw new BlockFailedException("row not deleted");
+        Api(context).Data.DeleteRow(await _table.EvaluateAsync(context), row);
     }
 }

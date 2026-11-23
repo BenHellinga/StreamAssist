@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Values;
 
@@ -70,11 +67,6 @@ public class GetObsVolumeBlock : ValueBlock<double>
 
 
 
-    protected override async Task<double> ComputeAsync(TriggerContext context)
-    {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var source = await _source.EvaluateAsync(context);
-        var (ok, volume) = await obs.TryGetVolumeAsync(source);
-        return ok ? volume : throw new BlockFailedException("volume not read");
-    }
+    protected override async Task<double> ComputeAsync(TriggerContext context) =>
+        await Api(context).Obs.GetVolumeAsync(await _source.EvaluateAsync(context));
 }

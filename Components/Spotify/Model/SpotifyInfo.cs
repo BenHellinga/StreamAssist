@@ -46,5 +46,18 @@ public static class SpotifyInfos
 
 
 
+    // a song's Title, Artist, Album, Link or Length Seconds (no song: empty text, 0)
+    public static object Read(SpotifyInfo info, StreamAssist.Scripting.SpotifySong? song) => info.Name switch
+    {
+        "Title" => song?.Title ?? "",
+        "Artist" => song?.Artist ?? "",
+        "Album" => song?.Album ?? "",
+        "Link" => song?.Link ?? "",
+        "Length Seconds" => song?.LengthSeconds ?? 0,
+        _ => "",
+    };
+
+
+
     public static List<string> Names(IReadOnlyList<SpotifyInfo> list) => list.Select(i => i.Name).ToList();
 }

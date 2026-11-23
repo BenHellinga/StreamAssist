@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
+using StreamAssist.Core.Utilities;
 using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Values;
@@ -109,7 +110,8 @@ public class ChatHistoryBlock : ValueBlock<string>
 
         // the id is only read when it's used (Newest needs none)
         var id = step == ChatHistoryStep.Newest ? "" : await _messageId.EvaluateAsync(context);
-        if (!history.TryFind(step, id, out var message, out var error)) throw Fail(error);
+        var (found, message, error) = UiThread.Run(() => (history.TryFind(step, id, out var m, out var e), m, e)); // runs are on another thread
+        if (!found) throw Fail(error);
 
         return message.TryGetValue(give, out var value) ? value : "";
     }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -83,8 +82,7 @@ public class PlinkoResultsBlock : ValueBlock<string>
 
     protected override async Task<string> ComputeAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Plinko, out var found, out var error)) throw Fail(error);
-        var plinko = (PlinkoWidget)found;
-        return await _give.EvaluateAsync(context) == "Every Bucket" ? string.Join(", ", plinko.LastResults) : plinko.LastResult;
+        var result = Api(context).Widgets.GetPlinkoResult(await _widget.EvaluateAsync(context));
+        return await _give.EvaluateAsync(context) == "Every Bucket" ? string.Join(", ", result.Buckets) : result.Result;
     }
 }

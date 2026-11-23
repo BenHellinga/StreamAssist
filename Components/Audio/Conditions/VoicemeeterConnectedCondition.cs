@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Core.Connections;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Conditions;
 
@@ -26,6 +24,5 @@ public class VoicemeeterConnectedCondition : ConditionBlock
 
 
 
-    protected override Task<bool> CheckAsync(TriggerContext context) =>
-        Task.FromResult(GlobalContext.VoicemeeterManager?.Status == ConnectionStatus.Connected);
+    protected override Task<bool> CheckAsync(TriggerContext context) => Task.FromResult(Api(context).Voicemeeter.IsConnected);
 }

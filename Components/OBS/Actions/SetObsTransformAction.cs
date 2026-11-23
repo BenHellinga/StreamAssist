@@ -1,11 +1,10 @@
+using StreamAssist.Components.CSharp.Api;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
 using StreamAssist.Components.OBS.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -103,13 +102,10 @@ public class SetObsTransformAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var setting = await _setting.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var transform = ObsTransforms.Find(setting) ?? throw Fail($"unknown setting '{setting}'");
+        var setting = ObsScriptApi.Parse<StreamAssist.Scripting.ObsTransform>(await _setting.EvaluateAsync(context));
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
         var value = await _value.EvaluateAsync(context);
-
-        if (!(await obs.TrySetTransformAsync(scene, source, transform, value)).Ok) throw new BlockFailedException("transform not set");
+        await Api(context).Obs.SetTransformAsync(source, setting, value, scene);
     }
 }

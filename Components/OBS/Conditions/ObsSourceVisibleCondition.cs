@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Conditions;
 
@@ -81,11 +78,8 @@ public class ObsSourceVisibleCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
-
-        var (ok, visible) = await obs.TryGetSourceVisibleAsync(scene, source);
-        return ok ? visible : throw new BlockFailedException("visibility not read");
+        return await Api(context).Obs.IsSourceVisibleAsync(source, scene);
     }
 }

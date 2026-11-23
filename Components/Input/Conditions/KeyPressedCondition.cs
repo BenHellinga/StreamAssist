@@ -6,8 +6,6 @@ using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Input.Background;
 using StreamAssist.Components.Input.Model;
 using StreamAssist.Components.Input.UI;
-using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Input.Conditions;
 
@@ -108,29 +106,6 @@ public class KeyPressedCondition : ConditionBlock
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
         var keyboard = await _keyboard.EvaluateAsync(context);
-        var inputManager = GlobalContext.DeviceInputManager;
-        if (inputManager == null)
-        {
-            AppLog.WriteError($"{Name}: keyboard input not set up");
-            return false;
-        }
-
-        if (!KeyNames.TryParse(_key, out var vk))
-        {
-            AppLog.WriteError($"{Name}: '{_key}' isn't a key");
-            return false;
-        }
-
-        if (keyboard == AnyKeyboard)
-            return inputManager.IsKeyDown(vk);
-
-        var device = DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Keyboard && d.GetDisplayLabel() == keyboard);
-        if (device == null)
-        {
-            AppLog.WriteWarning($"{Name}: keyboard '{keyboard}' not connected");
-            return false;
-        }
-
-        return inputManager.IsKeyDown(device.DevicePath, vk);
+        return Quietly(() => Api(context).Input.IsKeyDown(_key, keyboard == AnyKeyboard ? null : keyboard));
     }
 }

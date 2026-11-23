@@ -1,9 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -75,9 +74,6 @@ public class SetSpotifyShuffleAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var change = await _change.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        bool? on = change == "On" ? true : change == "Off" ? false : null;
-
-        if (!await spotify.TrySetShuffleAsync(on, context.CancellationToken)) throw new BlockFailedException("shuffle not set");
+        await Api(context).Spotify.SetShuffleAsync(change == "On" ? Switch.On : change == "Off" ? Switch.Off : Switch.Toggle);
     }
 }

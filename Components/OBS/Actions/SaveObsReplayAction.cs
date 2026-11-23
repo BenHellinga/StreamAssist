@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -33,9 +32,5 @@ public class SaveObsReplayAction : ActionBlock
 
 
     // OBS requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        if (!(await obs.TrySaveReplayAsync()).Ok) throw new BlockFailedException("replay not saved");
-    }
+    protected override Task ExecuteAsync(TriggerContext context) => Api(context).Obs.SaveReplayAsync();
 }

@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Conditions;
 
@@ -71,11 +70,6 @@ public class VoicemeeterMutedCondition : ConditionBlock
 
 
 
-    protected override async Task<bool> CheckAsync(TriggerContext context)
-    {
-        var channel = await _channel.EvaluateAsync(context);
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        if (!voicemeeter.TryGetMute(channel, out var muted)) throw new BlockFailedException("mute not read");
-        return muted;
-    }
+    protected override async Task<bool> CheckAsync(TriggerContext context) =>
+        Api(context).Voicemeeter.IsMuted(await _channel.EvaluateAsync(context));
 }

@@ -6,6 +6,8 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.CSharp.Background;
+using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Core.Mvvm;
 using StreamAssist.Core.Utilities;
 using StreamAssist.Shell;
@@ -19,8 +21,9 @@ namespace StreamAssist.Components.Blocks.UI;
 // something with no binding yet (an unbound key or bind box) gets a draft: an unsaved binding that's only saved
 // (by the owner's save callback) on its first change, and thrown away if nothing was changed. Test runs the binding
 // once with the values in the Parameters list (each listed parameter's, plus extra name / value rows); the values are
-// remembered by name for the session, so switching bindings keeps what was typed
-public partial class BindableEditorViewModel : ViewModelBase
+// remembered by name for the session, so switching bindings keeps what was typed. A binding can be switched to C#: its
+// script (Config/Scripts/<id>.cs) runs instead of its blocks, edited in VS Code, and the panel shows whether it compiles
+public partial class BindableEditorViewModel : ViewModelBase, ICommitOnLeave
 {
     // shared by every editor while the app runs: Test's values by parameter name, and the extra rows
 
@@ -51,6 +54,11 @@ public partial class BindableEditorViewModel : ViewModelBase
     [ObservableProperty] private IReadOnlyList<ParameterInfo> _parameters; // what Get Parameter can read here
     [ObservableProperty] private bool _isParametersOpen; // the Parameters list is expanded (stays open between bindings)
     [ObservableProperty] private GridLength _blockListWidth; // bound two-way to the block list column
+    [ObservableProperty] private bool _isCSharp; // the binding runs its C# script: the panel shows the script's controls, not blocks
+    [ObservableProperty] private string _compileOutput; // the script's compiles this session, e.g. "[14:02:11] compiled"
+    [ObservableProperty] private string _loopLimitInput; // the script's limits in seconds, "Off" for none (applied on leave)
+    [ObservableProperty] private string _runLimitInput;
+    [ObservableProperty] private string _lockWaitInput;
 
 
 
@@ -87,6 +95,11 @@ public partial class BindableEditorViewModel : ViewModelBase
         _label = "";
         _parameters = [];
         _isParametersOpen = false;
+        _isCSharp = false;
+        _compileOutput = "";
+        _loopLimitInput = "";
+        _runLimitInput = "";
+        _lockWaitInput = "";
         TestParameters = [];
         ExtraParameters = [];
 
@@ -95,7 +108,13 @@ public partial class BindableEditorViewModel : ViewModelBase
         _blockListWidth = new(_layout.GetPanelSize(WindowLayoutModel.BlockListPanel, 200));
 
         _layout.PanelSizeChanged += OnLayoutPanelSizeChanged;
+        if (GlobalContext.ScriptManager is { } scripts) scripts.CompileLogChanged += OnScriptCompileLogChanged;
     }
+
+
+
+    // keys and microphones are held (pressed, then let go), so their scripts also get OnReleasedAsync
+    protected virtual bool IsHeldTrigger => false;
 
 
 
@@ -153,6 +172,8 @@ public partial class BindableEditorViewModel : ViewModelBase
             _bindable.LabelChanged -= OnBindableLabelChanged;
             _bindable.IsDisabledChanged -= OnBindableIsDisabledChanged;
             _bindable.Changed -= OnBindableChanged;
+            _bindable.ModeChanged -= OnBindableModeChanged;
+            _bindable.ScriptLimitsChanged -= OnBindableScriptLimitsChanged;
         }
 
         _bindable = null;
@@ -168,6 +189,40 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
     [RelayCommand] private void OnParametersTogglePressed() => IsParametersOpen = !IsParametersOpen;
+
+
+
+    // Switch to C# / Switch to Blocks: the other one is kept, only the one picked runs. The first switch to C# makes
+    // the script file (a draft gets saved by it, like any change)
+    [RelayCommand] private void OnModeTogglePressed()
+    {
+        if (_bindable == null) return;
+        if (_bindable.IsCSharp)
+        {
+            _bindable.SwitchToBlocks();
+            return;
+        }
+
+        _bindable.SwitchToCSharp();
+        if (_bindable.ScriptId is { } id) GlobalContext.ScriptManager?.TryCreateScript(id, Label, IsHeldTrigger);
+    }
+
+
+
+    // opens the script in VS Code (written from the template again if its file has gone)
+    [RelayCommand] private void OnOpenScriptPressed()
+    {
+        if (_bindable?.ScriptId is not { } id) return;
+        if (GlobalContext.ScriptManager is not { } scripts)
+        {
+            AppLog.WriteError("can't open script, scripts not set up");
+            return;
+        }
+
+        if (!scripts.TryCreateScript(id, Label, IsHeldTrigger)) return;
+        scripts.UpdateTitle(id, Label);
+        scripts.TryOpenInVsCode(id);
+    }
 
 
 
@@ -232,7 +287,7 @@ public partial class BindableEditorViewModel : ViewModelBase
     private void OnDraftChanged()
     {
         // e.g. the default On Pressed was deleted, there's still nothing worth saving
-        if (_bindable == null || _saveDraft == null || !_bindable.HasBlock) return;
+        if (_bindable == null || _saveDraft == null || !_bindable.HasContent) return;
 
         var save = _saveDraft;
         _bindable.Changed -= OnDraftChanged;
@@ -264,12 +319,70 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
 
+    private void OnBindableModeChanged()
+    {
+        IsCSharp = _bindable?.IsCSharp ?? false;
+        UpdateCompileOutput();
+    }
+
+
+
+    private void OnScriptCompileLogChanged(string id)
+    {
+        if (id == _bindable?.ScriptId) UpdateCompileOutput();
+    }
+
+
+
+    // what the script's compiles said this session, one text like the console's (so it can be selected across lines)
+    private void UpdateCompileOutput()
+    {
+        var lines = _bindable?.ScriptId is { } id ? GlobalContext.ScriptManager?.CompileLog(id) : null;
+        CompileOutput = string.Join('\n', lines ?? []);
+    }
+
+
+
+    // Clear above the compile output
+    [RelayCommand] private void OnClearCompileOutputPressed()
+    {
+        if (_bindable?.ScriptId is { } id) GlobalContext.ScriptManager?.ClearCompileLog(id);
+    }
+
+
+
+    private void OnBindableScriptLimitsChanged()
+    {
+        var limits = _bindable?.ScriptLimits ?? ScriptLimits.Default;
+        LoopLimitInput = LimitText(limits.LoopSeconds);
+        RunLimitInput = LimitText(limits.RunSeconds);
+        LockWaitInput = LimitText(limits.LockWaitSeconds);
+    }
+
+
+
+    // a limit box was left (Enter or clicking away): seconds, or empty / 0 / "off" for none; text that isn't a number
+    // and a value the binding refuses are put back
+    public void Commit()
+    {
+        if (_bindable == null) return;
+
+        var limits = _bindable.ScriptLimits;
+        _bindable.TrySetScriptLimits(new(
+            ReadLimit(LoopLimitInput, limits.LoopSeconds),
+            ReadLimit(RunLimitInput, limits.RunSeconds),
+            ReadLimit(LockWaitInput, limits.LockWaitSeconds)));
+        OnBindableScriptLimitsChanged();
+    }
+
+
+
     // e.g. its last block was removed
     private void OnBindableChanged() => UpdateCanEditBindLabel();
 
 
 
-    private void UpdateCanEditBindLabel() => CanEditBindLabel = _bindable != null && _saveDraft == null && _bindable.HasBlock;
+    private void UpdateCanEditBindLabel() => CanEditBindLabel = _bindable != null && _saveDraft == null && _bindable.HasContent;
 
 
 
@@ -282,6 +395,20 @@ public partial class BindableEditorViewModel : ViewModelBase
 
 
     // helpers
+
+
+
+    private static string LimitText(double? seconds) => seconds is { } value ? value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "Off";
+
+
+
+    private static double? ReadLimit(string text, double? current)
+    {
+        var trimmed = text.Trim().TrimEnd('s', 'S').Trim();
+        if (trimmed == "" || trimmed.Equals("off", StringComparison.OrdinalIgnoreCase)) return null;
+        if (!double.TryParse(trimmed, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds)) return current;
+        return seconds == 0 ? null : seconds;
+    }
 
 
 
@@ -325,7 +452,12 @@ public partial class BindableEditorViewModel : ViewModelBase
         _bindable.LabelChanged += OnBindableLabelChanged;
         _bindable.IsDisabledChanged += OnBindableIsDisabledChanged;
         _bindable.Changed += OnBindableChanged;
+        _bindable.ModeChanged += OnBindableModeChanged;
+        _bindable.ScriptLimitsChanged += OnBindableScriptLimitsChanged;
         OnBindableLabelChanged();
+        OnBindableModeChanged();
+        OnBindableScriptLimitsChanged();
+        if (bindable.IsCSharp && bindable.ScriptId is { } scriptId) GlobalContext.ScriptManager?.UpdateTitle(scriptId, label);
         UpdateCanEditBindLabel();
         IsBindDisabled = bindable.IsDisabled;
         SetParameters(parameters);
@@ -343,6 +475,7 @@ public partial class BindableEditorViewModel : ViewModelBase
         ClearBindable();
 
         _layout.PanelSizeChanged -= OnLayoutPanelSizeChanged;
+        if (GlobalContext.ScriptManager is { } scripts) scripts.CompileLogChanged -= OnScriptCompileLogChanged;
         _palette.Dispose();
 
         foreach (var row in TestParameters) row.Edited -= OnTestParameterEdited;

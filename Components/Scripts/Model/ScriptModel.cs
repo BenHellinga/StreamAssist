@@ -141,7 +141,7 @@ public sealed class ScriptModel : IDisposable
         _name = data.Name;
         if (data.Bindable == null) return;
 
-        if (data.Bindable.HasBlock) Bind(data.Bindable);
+        if (data.Bindable.HasContent) Bind(data.Bindable);
         else data.Bindable.Dispose();
     }
 

@@ -51,4 +51,6 @@ public static class GlobalContext
     public static WidgetsComponentModel? WidgetsComponentModel { get; set; } // e.g. for spinning a wheel
 
     public static ScriptsComponentModel? ScriptsComponentModel { get; set; } // Run Script finds scripts here
+
+    public static StreamAssist.Components.CSharp.Background.ScriptManager? ScriptManager { get; set; } // C# scripts: open, compile status
 }

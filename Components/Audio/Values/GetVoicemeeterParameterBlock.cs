@@ -2,9 +2,7 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Actions;
-using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Values;
 
@@ -69,13 +67,6 @@ public class GetVoicemeeterParameterBlock : ValueBlock<double>
 
 
 
-    protected override async Task<double> ComputeAsync(TriggerContext context)
-    {
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        var parameter = (await _parameter.EvaluateAsync(context)).Trim();
-        if (parameter == "") throw Fail("needs a parameter name");
-
-        if (!voicemeeter.TryGetParameter(parameter, out var value)) throw new BlockFailedException("parameter not read");
-        return value;
-    }
+    protected override async Task<double> ComputeAsync(TriggerContext context) =>
+        Api(context).Voicemeeter.GetParameter(await _parameter.EvaluateAsync(context));
 }

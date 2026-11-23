@@ -1,10 +1,11 @@
+using StreamAssist.Scripting;
+using StreamAssist.Components.CSharp.Api;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Values;
 
@@ -111,16 +112,13 @@ public class GetObsOutputBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
-        var output = await _output.EvaluateAsync(context);
+        var output = ObsScriptApi.Parse<ObsOutput>(await _output.EvaluateAsync(context));
         var setting = await _setting.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-
-        var (ok, status) = await obs.TryGetOutputAsync(output);
-        if (!ok) throw new BlockFailedException($"{output.ToLowerInvariant()} not read");
+        var status = await Api(context).Obs.GetOutputAsync(output);
 
         object value = setting == "Time"
-            ? status.Active ? Format(status.Time) : ""
-            : status.Active;
+            ? status.IsActive ? Format(status.Time) : ""
+            : status.IsActive;
         var kind = setting == "Time" ? ValueKind.Text : ValueKind.Bool;
         if (!ValueTypes.TryConvert(value, kind, Kind, out var result, out var error)) throw Fail(error);
         return result;

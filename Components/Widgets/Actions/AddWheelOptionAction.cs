@@ -100,11 +100,10 @@ public class AddWheelOptionAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Wheel, out var found, out var error)) throw Fail(error);
-        var wheel = (WheelWidget)found;
+        var widget = await _widget.EvaluateAsync(context);
         var option = await _option.EvaluateAsync(context);
         var weight = await _weight.EvaluateAsync(context);
         var color = await _color.EvaluateAsync(context);
-        if (!wheel.TryAddOption(option, weight, color)) throw new BlockFailedException("option not added");
+        Api(context).Widgets.AddWheelOption(widget, option, weight, color);
     }
 }

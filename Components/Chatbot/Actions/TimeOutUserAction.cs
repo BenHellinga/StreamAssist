@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -94,16 +93,9 @@ public class TimeOutUserAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-
         var user = await _user.EvaluateAsync(context);
         var seconds = await _seconds.EvaluateAsync(context);
         var reason = await _reason.EvaluateAsync(context);
-
-        if (seconds < 1 || seconds > MaxSeconds) throw Fail($"{seconds}s not allowed, 1 to {MaxSeconds}");
-
-        // waits its turn in the twitch action queue, a failure is already logged there
-        if (!await chatbot.TryTimeOutUserAsync(user, seconds, reason, context.CancellationToken))
-            throw new BlockFailedException($"'{user}' wasn't timed out");
+        await Api(context).Twitch.TimeOutAsync(user, seconds, reason);
     }
 }

@@ -85,9 +85,7 @@ public class SetVariableAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var variable = await _variable.EvaluateAsync(context);
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var (kind, value) = await _value.EvaluateRawAsync(context);
-
-        if (!data.TrySetVariable(variable, value, kind)) throw new BlockFailedException("variable not set");
+        Api(context).DataApi.SetVariable(variable, value, kind);
     }
 }

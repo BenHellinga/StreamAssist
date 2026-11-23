@@ -1,10 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -93,12 +91,9 @@ public class SetObsSourceVisibleAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var changeOption = await _change.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
+        var change = await _change.EvaluateAsync(context);
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
-        var change = changeOption == "Show" ? ObsToggle.On : changeOption == "Hide" ? ObsToggle.Off : ObsToggle.Toggle;
-
-        if (!(await obs.TrySetSourceVisibleAsync(scene, source, change)).Ok) throw new BlockFailedException("source not shown/hidden");
+        await Api(context).Obs.SetSourceVisibleAsync(source, change == "Show" ? Switch.On : change == "Hide" ? Switch.Off : Switch.Toggle, scene);
     }
 }

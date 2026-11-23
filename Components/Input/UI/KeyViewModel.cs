@@ -304,7 +304,7 @@ public partial class KeyViewModel : ViewModelBase, IDroppable, IEditButtons
 
 
     // a key shows as bound when its slot has a block in it
-    private void UpdateIsBound() => IsBound = _keybind?.HasBlock ?? false;
+    private void UpdateIsBound() => IsBound = _keybind?.HasContent ?? false;
 
 
 

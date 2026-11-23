@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -93,18 +91,9 @@ public class StartPredictionAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-
-        var title = (await _title.EvaluateAsync(context)).Trim();
-        if (title == "") throw Fail("needs a title");
-
-        var outcomes = (await _outcomes.EvaluateFilledAsync<string>(context)).Select(c => c.Trim()).Where(c => c != "").ToList();
-        if (outcomes.Count is < 2 or > 10) throw Fail($"{outcomes.Count} outcomes, twitch takes 2 to 10");
-
+        var title = await _title.EvaluateAsync(context);
+        var outcomes = await _outcomes.EvaluateFilledAsync<string>(context);
         var seconds = await _seconds.EvaluateAsync(context);
-        if (seconds is < 30 or > 1800) throw Fail($"{seconds}s not allowed, 30 to 1800");
-
-        // a failure (e.g. a prediction is already open) is already logged by the manager
-        if (!await chatbot.TryStartPredictionAsync(title, outcomes, seconds, context.CancellationToken)) throw new BlockFailedException("prediction not started");
+        await Api(context).Twitch.StartPredictionAsync(title, outcomes, seconds);
     }
 }

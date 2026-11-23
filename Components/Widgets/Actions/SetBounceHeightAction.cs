@@ -82,8 +82,7 @@ public class SetBounceHeightAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.MicBounce, out var found, out var error)) throw Fail(error);
-        var bounce = (MicBounceWidget)found;
-        if (!bounce.TrySetHeight(await _height.EvaluateAsync(context))) throw new BlockFailedException("height not set");
+        var widget = await _widget.EvaluateAsync(context);
+        Api(context).Widgets.SetBounceHeight(widget, await _height.EvaluateAsync(context));
     }
 }

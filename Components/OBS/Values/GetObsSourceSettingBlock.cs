@@ -1,11 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Values;
 
@@ -93,23 +90,11 @@ public class GetObsSourceSettingBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
         var setting = await _setting.EvaluateAsync(context);
-        if (setting.Trim() == "") throw Fail("needs a setting name");
+        var value = await Api(context).Obs.GetSourceSettingAsync(source, setting);
 
-        var (ok, json) = await obs.TryGetSourceSettingAsync(source, setting.Trim());
-        if (!ok) throw new BlockFailedException("setting not read");
-
-        // what OBS stores (text, a number, true/false; anything else as its json), then read as the chosen type
-        (ValueKind kind, object value) = json.ValueKind switch
-        {
-            JsonValueKind.String => (ValueKind.Text, (object)json.GetString()!),
-            JsonValueKind.Number => (ValueKind.Double, json.GetDouble()),
-            JsonValueKind.True or JsonValueKind.False => (ValueKind.Bool, json.GetBoolean()),
-            _ => (ValueKind.Text, json.GetRawText()),
-        };
-
+        var kind = value switch { double => ValueKind.Double, bool => ValueKind.Bool, _ => ValueKind.Text };
         if (!ValueTypes.TryConvert(value, kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }

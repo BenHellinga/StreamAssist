@@ -1,6 +1,6 @@
+using StreamAssist.Scripting;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -82,8 +82,8 @@ public class ShowWidgetAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), null, out var widget, out var error)) throw Fail(error);
+        var widget = await _widget.EvaluateAsync(context);
         var set = await _set.EvaluateAsync(context);
-        widget.SetIsHidden(set switch { "Show" => false, "Hide" => true, _ => !widget.IsHidden });
+        Api(context).Widgets.SetVisible(widget, set switch { "Show" => Switch.On, "Hide" => Switch.Off, _ => Switch.Toggle });
     }
 }

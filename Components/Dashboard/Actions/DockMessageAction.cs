@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Actions;
 
@@ -78,10 +77,8 @@ public class DockMessageAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
         var dock = await _dock.EvaluateAsync(context);
         var message = await _message.EvaluateAsync(context);
-
-        if (!dashboard.TryWriteToDock(dock, message, out var error)) throw Fail(error);
+        Api(context).Dashboard.WriteToDock(dock, message);
     }
 }

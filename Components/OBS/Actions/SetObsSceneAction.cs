@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -71,12 +68,6 @@ public class SetObsSceneAction : ActionBlock
 
 
     // OBS requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var scene = await _scene.EvaluateAsync(context);
-
-        // a failure is already logged by the manager
-        if (!(await obs.TrySetCurrentSceneAsync(scene)).Ok) throw new BlockFailedException("scene not switched");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).Obs.SetSceneAsync(await _scene.EvaluateAsync(context));
 }

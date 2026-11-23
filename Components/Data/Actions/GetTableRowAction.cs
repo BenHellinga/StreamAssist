@@ -1,9 +1,8 @@
+using StreamAssist.Components.CSharp.Api;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Actions;
 
@@ -99,17 +98,14 @@ public class GetTableRowAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        var tableName = await _table.EvaluateAsync(context);
-        var table = data.FindTable(tableName) ?? throw Fail($"no table '{tableName}'");
+        var table = await _table.EvaluateAsync(context);
         var id = await _row.EvaluateAsync(context);
-        var row = table.FindRow(id) ?? throw Fail($"{table.Name} has no row {id}");
-
         var prefix = _prefix.Trim();
         if (prefix != "" && !TriggerContext.IsValidName(prefix)) throw Fail($"prefix '{prefix}' isn't a valid name, use letters, digits, _");
 
+        var row = Api(context).Data.GetRow(table, id) ?? throw Fail($"{DataScriptApi.Shape(table).Name} has no row {id}");
         context.SetParameter(prefix + "id", row.Id.ToString());
-        foreach (var column in table.Columns)
-            context.SetParameter(prefix + column.Name, ValueTypes.ToText(row.Get(column.Name) ?? ""));
+        foreach (var (column, value) in row.Values)
+            context.SetParameter(prefix + column, ValueTypes.ToText(value ?? ""));
     }
 }

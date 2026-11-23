@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -91,14 +88,9 @@ public class SetObsSourceSettingAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
         var setting = await _setting.EvaluateAsync(context);
-        if (setting.Trim() == "") throw Fail("needs a setting name");
-
-        // typed text is passed as text, a block's value as its kind, the manager turns it into the setting's kind
         var (_, value) = await _value.EvaluateRawAsync(context);
-
-        if (!(await obs.TrySetSourceSettingAsync(source, setting.Trim(), value)).Ok) throw new BlockFailedException("setting not set");
+        await Api(context).Obs.SetSourceSettingAsync(source, setting, value);
     }
 }

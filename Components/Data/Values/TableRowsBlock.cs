@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.CSharp.Api;
+using StreamAssist.Scripting;
 using StreamAssist.Components.Data.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Values;
 
@@ -130,13 +131,10 @@ public class TableRowsBlock : ValueBlock<string>
     protected override async Task<string> ComputeAsync(TriggerContext context)
     {
         var order = await _order.EvaluateAsync(context);
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var tableName = await _table.EvaluateAsync(context);
-        var table = data.FindTable(tableName) ?? throw Fail($"no table '{tableName}'");
-
         var queryText = await _query.EvaluateAsync(context);
-        var query = RowQuery.TryParse(queryText, table, out var error) ?? throw Fail($"query '{queryText}' {error}");
-        IEnumerable<TableRow> rows = table.Rows.Where(r => query.Matches(table, r));
+        IEnumerable<DataRow> rows = Api(context).Data.GetRows(tableName, queryText);
+        var table = DataScriptApi.Shape(tableName);
 
         // sorted by a column (empty = id order), empty cells always last
         var sortName = (await _sortBy.EvaluateAsync(context)).Trim();
@@ -144,8 +142,8 @@ public class TableRowsBlock : ValueBlock<string>
         {
             var column = table.FindColumn(sortName) ?? throw Fail($"{table.Name} has no column '{sortName}'");
             var highest = order != "Lowest first";
-            rows = rows.OrderBy(r => r.Get(column.Name) == null)
-                .ThenBy(r => r.Get(column.Name), highest ? Comparer<object?>.Create((a, b) => CompareValues(b, a)) : Comparer<object?>.Create(CompareValues));
+            rows = rows.OrderBy(r => r[column.Name] == null)
+                .ThenBy(r => r[column.Name], highest ? Comparer<object?>.Create((a, b) => CompareValues(b, a)) : Comparer<object?>.Create(CompareValues));
         }
         else if (order != "Lowest first" && sortName != "") rows = rows.OrderByDescending(r => r.Id);
 
@@ -159,7 +157,7 @@ public class TableRowsBlock : ValueBlock<string>
         {
             var scope = context.WithLocals();
             scope.SetLocal("id", row.Id.ToString());
-            foreach (var column in table.Columns) scope.SetLocal(column.Name, CellText(numbers, row.Get(column.Name)));
+            foreach (var column in table.Columns) scope.SetLocal(column.Name, CellText(numbers, row[column.Name]));
             texts.Add(await _rowText.EvaluateAsync(scope));
         }
 

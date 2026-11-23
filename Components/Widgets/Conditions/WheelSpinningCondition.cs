@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -70,10 +69,6 @@ public class WheelSpinningCondition : ConditionBlock
 
 
 
-    protected override async Task<bool> CheckAsync(TriggerContext context)
-    {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Wheel, out var found, out var error)) throw Fail(error);
-        var wheel = (WheelWidget)found;
-        return wheel.IsSpinning;
-    }
+    protected override async Task<bool> CheckAsync(TriggerContext context) =>
+        Api(context).Widgets.IsWheelSpinning(await _widget.EvaluateAsync(context));
 }

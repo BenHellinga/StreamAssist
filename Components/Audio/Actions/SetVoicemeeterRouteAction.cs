@@ -1,9 +1,9 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Actions;
 
@@ -100,15 +100,6 @@ public class SetVoicemeeterRouteAction : ActionBlock
         var change = await _change.EvaluateAsync(context);
         var input = await _input.EvaluateAsync(context);
         var bus = await _bus.EvaluateAsync(context);
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        var routed = change == "On";
-        if (change == "Toggle")
-        {
-            if (!voicemeeter.TryGetRoute(input, bus, out var current)) throw new BlockFailedException("route not read");
-            routed = !current;
-        }
-
-        if (!voicemeeter.TrySetRoute(input, bus, routed)) throw new BlockFailedException("route not set");
-        return;
+        Api(context).Voicemeeter.SetRouted(input, bus, change == "On" ? Switch.On : change == "Toggle" ? Switch.Toggle : Switch.Off);
     }
 }

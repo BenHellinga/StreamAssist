@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Input.Background;
 using StreamAssist.Components.Input.Model;
-using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Input.Conditions;
 
@@ -103,28 +101,8 @@ public class MouseButtonPressedCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        var mouseOption = await _mouse.EvaluateAsync(context);
-        var buttonOption = await _button.EvaluateAsync(context);
-        if (GlobalContext.DeviceInputManager is not { } input)
-        {
-            AppLog.WriteError($"{Name}: input not set up");
-            return false;
-        }
-
-        if (InputDevices.MouseButtons.FirstOrDefault(b => b.Name == buttonOption) is not { Name: not null } button)
-        {
-            AppLog.WriteError($"{Name}: no mouse button '{buttonOption}'");
-            return false;
-        }
-
-        if (mouseOption == AnyMouse) return input.IsKeyDown(button.Code);
-
-        if (DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Mouse && d.GetDisplayLabel() == mouseOption) is not { } mouse)
-        {
-            AppLog.WriteWarning($"{Name}: mouse '{mouseOption}' not connected");
-            return false;
-        }
-
-        return input.IsKeyDown(mouse.DevicePath, button.Code);
+        var mouse = await _mouse.EvaluateAsync(context);
+        var button = await _button.EvaluateAsync(context);
+        return Quietly(() => Api(context).Input.IsMouseButtonDown(button, mouse == AnyMouse ? null : mouse));
     }
 }

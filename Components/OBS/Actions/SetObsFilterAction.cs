@@ -1,9 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -92,12 +91,9 @@ public class SetObsFilterAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var changeOption = await _change.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
+        var change = await _change.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
         var filter = await _filter.EvaluateAsync(context);
-        var change = changeOption == "On" ? ObsToggle.On : changeOption == "Off" ? ObsToggle.Off : ObsToggle.Toggle;
-
-        if (!(await obs.TrySetFilterEnabledAsync(source, filter, change)).Ok) throw new BlockFailedException("filter not changed");
+        await Api(context).Obs.SetFilterAsync(source, filter, change == "On" ? Switch.On : change == "Off" ? Switch.Off : Switch.Toggle);
     }
 }

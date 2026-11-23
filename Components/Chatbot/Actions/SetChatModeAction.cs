@@ -1,10 +1,10 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -98,9 +98,8 @@ public class SetChatModeAction : ActionBlock
     {
         var mode = await _mode.EvaluateAsync(context);
         var change = await _change.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        // empty duration = leave it as twitch has it
         var durationText = (await _duration.EvaluateAsync(context)).Trim();
+
         int? duration = null;
         if (durationText != "")
         {
@@ -108,7 +107,15 @@ public class SetChatModeAction : ActionBlock
             duration = parsed;
         }
 
-        bool? on = change == "On" ? true : change == "Off" ? false : null;
-        if (!await chatbot.TrySetChatModeAsync(mode, on, duration, context.CancellationToken)) throw new BlockFailedException("chat mode not set");
+        var chatMode = mode switch
+        {
+            "Slow Mode" => ChatMode.SlowMode,
+            "Followers Only" => ChatMode.FollowersOnly,
+            "Subscribers Only" => ChatMode.SubscribersOnly,
+            "Emote Only" => ChatMode.EmoteOnly,
+            "Unique Chat" => ChatMode.UniqueChat,
+            _ => throw Fail($"unknown chat mode '{mode}'"),
+        };
+        await Api(context).Twitch.SetChatModeAsync(chatMode, change switch { "On" => Switch.On, "Off" => Switch.Off, _ => Switch.Toggle }, duration);
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -82,8 +81,7 @@ public class WheelOptionsBlock : ValueBlock<string>
 
     protected override async Task<string> ComputeAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Wheel, out var found, out var error)) throw Fail(error);
-        var wheel = (WheelWidget)found;
-        return string.Join(await _separator.EvaluateAsync(context), wheel.FilledOptions.Select(o => o.Text));
+        var options = Api(context).Widgets.GetWheelOptions(await _widget.EvaluateAsync(context));
+        return string.Join(await _separator.EvaluateAsync(context), options);
     }
 }

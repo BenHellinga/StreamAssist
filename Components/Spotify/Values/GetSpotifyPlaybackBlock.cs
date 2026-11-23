@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Spotify.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Values;
 
@@ -101,13 +99,20 @@ public class GetSpotifyPlaybackBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var setting = await _setting.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
         var info = SpotifyInfos.Find(SpotifyInfos.Playback, setting) ?? throw Fail($"unknown setting '{setting}'");
-        var (ok, value) = await spotify.TryGetPlaybackAsync(info, context.CancellationToken);
-        if (!ok) throw new BlockFailedException("playback not read");
+        var playback = await Api(context).Spotify.GetPlaybackAsync();
 
-        // what spotify gave (text, a whole number or true/false), read as the chosen type
-        if (!ValueTypes.TryConvert(value!, info.Kind, Kind, out var result, out var error)) throw Fail(error);
+        // nothing playing anywhere reads as not playing, empty text and 0
+        object value = info.Name switch
+        {
+            "Playing" => playback?.IsPlaying ?? false,
+            "Progress Seconds" => playback?.ProgressSeconds ?? 0,
+            "Volume" => playback?.Volume ?? 0,
+            "Shuffle" => playback?.Shuffle ?? false,
+            "Repeat" => (playback?.Repeat ?? StreamAssist.Scripting.SpotifyRepeat.Off).ToString(),
+            _ => SpotifyInfos.Read(info, playback?.Song),
+        };
+        if (!ValueTypes.TryConvert(value, info.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -86,9 +85,7 @@ public class ChangeVariableAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var variable = await _variable.EvaluateAsync(context);
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var amount = await _amount.EvaluateAsync(context);
-
-        if (!data.TryChangeVariable(variable, amount, out _)) throw new BlockFailedException("variable not changed");
+        Api(context).Data.ChangeVariable(variable, amount);
     }
 }

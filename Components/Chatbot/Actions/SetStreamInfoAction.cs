@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -85,10 +83,10 @@ public class SetStreamInfoAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var setting = await _setting.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var value = (await _value.EvaluateAsync(context)).Trim();
-        if (value == "") throw Fail("Value is empty");
+        var value = await _value.EvaluateAsync(context);
+        var twitch = Api(context).Twitch;
 
-        if (!await chatbot.TrySetStreamInfoAsync(setting, value, context.CancellationToken)) throw new BlockFailedException("stream info not set");
+        if (setting == "Title") await twitch.SetTitleAsync(value);
+        else await twitch.SetCategoryAsync(value);
     }
 }

@@ -1,10 +1,11 @@
+using StreamAssist.Scripting;
+using StreamAssist.Components.CSharp.Api;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -87,11 +88,8 @@ public class SetObsOutputAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var output = await _output.EvaluateAsync(context);
-        var changeOption = await _change.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var change = changeOption == "Start" ? ObsToggle.On : changeOption == "Stop" ? ObsToggle.Off : ObsToggle.Toggle;
-
-        if (!(await obs.TrySetOutputAsync(output, change)).Ok) throw new BlockFailedException("output not changed");
+        var output = ObsScriptApi.Parse<ObsOutput>(await _output.EvaluateAsync(context));
+        var change = await _change.EvaluateAsync(context);
+        await Api(context).Obs.SetOutputAsync(output, change == "Start" ? Switch.On : change == "Stop" ? Switch.Off : Switch.Toggle);
     }
 }

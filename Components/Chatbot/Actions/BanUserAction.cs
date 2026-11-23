@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -82,13 +81,8 @@ public class BanUserAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-
         var user = await _user.EvaluateAsync(context);
         var reason = await _reason.EvaluateAsync(context);
-
-        // waits its turn in the twitch action queue, a failure is already logged there
-        if (!await chatbot.TryBanUserAsync(user, reason, context.CancellationToken))
-            throw new BlockFailedException($"'{user}' wasn't banned");
+        await Api(context).Twitch.BanAsync(user, reason);
     }
 }

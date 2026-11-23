@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -71,11 +69,6 @@ public class CreateStreamMarkerAction : ActionBlock
 
 
     // twitch requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var description = await _description.EvaluateAsync(context);
-
-        if (!await chatbot.TryCreateMarkerAsync(description, context.CancellationToken)) throw new BlockFailedException("no marker");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).Twitch.CreateMarkerAsync(await _description.EvaluateAsync(context));
 }

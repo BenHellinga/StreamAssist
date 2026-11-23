@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Values;
 
@@ -77,11 +75,6 @@ public class RandomTableRowBlock : ValueBlock<int>
 
 
 
-    protected override async Task<int> ComputeAsync(TriggerContext context)
-    {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        var tableName = await _table.EvaluateAsync(context);
-        var table = data.FindTable(tableName) ?? throw Fail($"no table '{tableName}'");
-        return table.Rows.Count == 0 ? 0 : table.Rows[Random.Shared.Next(table.Rows.Count)].Id;
-    }
+    protected override async Task<int> ComputeAsync(TriggerContext context) =>
+        Api(context).Data.RandomRow(await _table.EvaluateAsync(context));
 }

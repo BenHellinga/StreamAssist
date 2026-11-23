@@ -1,3 +1,4 @@
+using StreamAssist.Scripting;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -128,27 +129,17 @@ public class MuteVoicemeeterAction : ActionBlock
     {
         var setType = await _setType.EvaluateAsync(context);
         var channel = await _channel.EvaluateAsync(context);
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
+        var api = Api(context);
 
-        // one read of what Voicemeeter has now decides both the new state and the sound, so they always agree
-        // (e.g. after unmuting in Voicemeeter's own window, a toggle mutes and plays the mute sound)
-        if (!voicemeeter.TryGetMute(channel, out var muted)) throw new BlockFailedException("mute not read");
+        var wasMuted = api.Voicemeeter.IsMuted(channel);
+        var muted = api.Voicemeeter.SetMuted(channel, setType switch { "Mute" => Switch.On, "Unmute" => Switch.Off, _ => Switch.Toggle });
 
-        var newState = setType switch
-        {
-            "Mute" => true,
-            "Unmute" => false,
-            _ => !muted,
-        };
-
-        if (!voicemeeter.TrySetMute(channel, newState)) throw new BlockFailedException("mute not set");
-
-        var sound = newState ? _muteSound : _unmuteSound;
-        if (newState == muted || sound.Trim() == "") return;
+        // a sound only when it changed
+        var sound = muted ? _muteSound : _unmuteSound;
+        if (muted == wasMuted || sound.Trim() == "") return;
 
         var volume = await _soundVolume.EvaluateAsync(context);
         if (double.IsNaN(volume)) throw Fail("sound volume isn't a number");
-
-        AudioHelper.TryPlaySound(sound, (float)Math.Clamp(volume, 0, 1));
+        await api.Sound.PlayAsync(sound, volume);
     }
 }

@@ -17,7 +17,7 @@ public sealed class GrowingList<T> : IDisposable where T : class, IDisposable
 
 
 
-    private readonly List<T> _items;
+    private readonly SnapshotList<T> _items; // read by runs on other threads
     private readonly Func<T> _create;
     private readonly Func<T, bool> _isEmpty;
     private readonly Action<T> _attach;
@@ -29,7 +29,7 @@ public sealed class GrowingList<T> : IDisposable where T : class, IDisposable
 
 
 
-    public IReadOnlyList<T> Items => _items;
+    public IReadOnlyList<T> Items => _items.Snapshot;
 
     // what's worth saving: the trailing empty item is added back on load
     public IEnumerable<T> NonEmptyItems => _items.Where(item => !_isEmpty(item));
@@ -53,7 +53,7 @@ public sealed class GrowingList<T> : IDisposable where T : class, IDisposable
 
     public GrowingList(Func<T> create, Func<T, bool> isEmpty, Action<T> attach, Action<T> detach)
     {
-        _items = [];
+        _items = new();
         _create = create;
         _isEmpty = isEmpty;
         _attach = attach;

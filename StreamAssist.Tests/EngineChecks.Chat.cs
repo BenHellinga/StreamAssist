@@ -400,14 +400,14 @@ internal static partial class EngineChecks
         var e0 = Errors();
         // reward settings: read from and write to twitch's reward json
         var rewardJson = JsonDocument.Parse("""{"id":"abc","title":"Hydrate","prompt":"drink","cost":100,"is_enabled":true,"is_paused":false,"is_user_input_required":false,"should_redemptions_skip_request_queue":true,"background_color":"#9147FF","global_cooldown_setting":{"is_enabled":true,"global_cooldown_seconds":60},"max_per_stream_setting":{"is_enabled":false,"max_per_stream":0},"max_per_user_per_stream_setting":{"is_enabled":true,"max_per_user_per_stream":2}}""").RootElement;
-        object Read(string name) => RewardSettings.Find(name)!.Read(rewardJson);
+        object Read(string name) => RewardSettings.Find(name)!.Get(RewardSettings.Read(rewardJson));
         Check("reward json: plain values", Read("Cost") is 100 && Read("Title") is "Hydrate" && Read("Enabled") is true && Read("Skip request queue") is true && Read("Background color") is "#9147FF");
         Check("reward json: limits read 0 when off", Read("Cooldown seconds") is 60 && Read("Max per stream") is 0 && Read("Max per viewer per stream") is 2);
-        string Write(string name, object value) { var o = new System.Text.Json.Nodes.JsonObject(); RewardSettings.Find(name)!.Write(o, value); return o.ToJsonString(); }
+        string Write(string name, object value) => RewardSettings.Write(RewardSettings.Find(name)!.Change(value)).ToJsonString();
         Check("reward json: write cost", Write("Cost", 101) == """{"cost":101}""");
         Check("reward json: 0 turns a limit off", Write("Cooldown seconds", 0) == """{"is_global_cooldown_enabled":false}""");
         Check("reward json: a limit turns on with its value", Write("Max per stream", 5) == """{"is_max_per_stream_enabled":true,"max_per_stream":5}""");
-        Check("reward json: every setting has a matching kind", RewardSettings.All.All(s => ValueTypes.ClrType(s.Kind).IsInstanceOfType(s.Read(rewardJson))));
+        Check("reward json: every setting has a matching kind", RewardSettings.All.All(s => ValueTypes.ClrType(s.Kind).IsInstanceOfType(s.Get(RewardSettings.Read(rewardJson)))));
 
         // get / set blocks without a chatbot: fail with one error each, the run stops
         var e1 = Errors();

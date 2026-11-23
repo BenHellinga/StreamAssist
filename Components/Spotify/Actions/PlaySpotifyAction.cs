@@ -1,10 +1,9 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Spotify.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -84,12 +83,8 @@ public class PlaySpotifyAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var findOption = await _find.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
+        var find = await _find.EvaluateAsync(context);
         var what = await _what.EvaluateAsync(context);
-        if (what.Trim() == "") throw Fail("nothing to play");
-        var find = findOption == "Playlist" ? SpotifyFind.Playlist : findOption == "Album" ? SpotifyFind.Album : SpotifyFind.Song;
-
-        if (!await spotify.TryPlayAsync(what, find, context.CancellationToken)) throw new BlockFailedException("not played");
+        await Api(context).Spotify.PlayAsync(what, find == "Playlist" ? SpotifyKind.Playlist : find == "Album" ? SpotifyKind.Album : SpotifyKind.Song);
     }
 }

@@ -30,6 +30,7 @@ public class ChatbotComponentModel : ModelBase
     private bool _chatOnlyAsBot;
     private bool _isEnabled;
     private bool _isBotEnabled;
+    private string _commandError;
     private readonly ConfigSet<ChatConfigModel> _chatConfigs;
     private readonly ConfigSet<EventsConfigModel> _eventsConfigs;
     private readonly ChatHistoryModel _chatHistory; // the last chat messages, not saved
@@ -144,6 +145,7 @@ public class ChatbotComponentModel : ModelBase
         _chatOnlyAsBot = false;
         _isEnabled = false;
         _isBotEnabled = false;
+        _commandError = "";
         _chatConfigs = new("chat config", () => new ChatConfigModel());
         _eventsConfigs = new("events config", () => new EventsConfigModel());
         _chatHistory = new();
@@ -317,6 +319,11 @@ public class ChatbotComponentModel : ModelBase
 
 
 
+    // why the last add / edit / delete was refused, e.g. "can't add !hi, already exists" (for one asked not to log it)
+    [JsonIgnore] public string CommandError => _commandError;
+
+
+
     public bool TryAddCommand(string command, string response, bool logErrors = true) => TryAddCommand(command, response, out _, logErrors);
     public bool TryEditCommand(string command, string response, bool logErrors = true) => TryEditCommand(command, response, out _, logErrors);
     public bool TryDeleteCommand(string command, bool logErrors = true) => TryDeleteCommand(command, out _, logErrors);
@@ -442,8 +449,9 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    private static bool Refuse(bool logErrors, out CommandFailure failure, CommandFailure reason, string message)
+    private bool Refuse(bool logErrors, out CommandFailure failure, CommandFailure reason, string message)
     {
+        _commandError = message;
         if (logErrors) AppLog.WriteError(message);
         failure = reason;
         return false;

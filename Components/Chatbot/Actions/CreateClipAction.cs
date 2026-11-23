@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -67,13 +65,8 @@ public class CreateClipAction : ActionBlock
     // twitch requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var name = _parameterName.Trim();
         if (!TriggerContext.IsValidName(name)) throw Fail($"'{name}' isn't a valid name, use letters, digits, _");
-
-        var (ok, url) = await chatbot.TryCreateClipAsync(context.CancellationToken);
-        if (!ok) throw new BlockFailedException("no clip");
-
-        context.SetParameter(name, url!);
+        context.SetParameter(name, await Api(context).Twitch.CreateClipAsync());
     }
 }

@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Spotify.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Values;
 
@@ -110,16 +108,9 @@ public class FindSpotifySongBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var setting = await _setting.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
         var info = SpotifyInfos.Find(SpotifyInfos.Song, setting) ?? throw Fail($"unknown setting '{setting}'");
-        var song = await _song.EvaluateAsync(context);
-        if (song.Trim() == "") throw Fail("no song given");
-
-        var (ok, value) = await spotify.TryFindSongAsync(song, info, context.CancellationToken);
-        if (!ok) throw new BlockFailedException("song not found");
-
-        // what spotify gave (text, a whole number or true/false), read as the chosen type
-        if (!ValueTypes.TryConvert(value!, info.Kind, Kind, out var result, out var error)) throw Fail(error);
+        var song = await Api(context).Spotify.FindSongAsync(await _song.EvaluateAsync(context));
+        if (!ValueTypes.TryConvert(SpotifyInfos.Read(info, song), info.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

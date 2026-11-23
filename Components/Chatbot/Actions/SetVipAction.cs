@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -86,9 +84,7 @@ public class SetVipAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var change = await _change.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var user = await _user.EvaluateAsync(context);
-
-        if (!await chatbot.TrySetVipAsync(user, change == "Add", context.CancellationToken)) throw new BlockFailedException("vip not changed");
+        await Api(context).Twitch.SetVipAsync(user, change == "Add");
     }
 }

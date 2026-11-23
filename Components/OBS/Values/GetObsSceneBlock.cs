@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Values;
 
@@ -55,10 +52,5 @@ public class GetObsSceneBlock : ValueBlock<string>
 
 
 
-    protected override async Task<string> ComputeAsync(TriggerContext context)
-    {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var (ok, scene) = await obs.TryGetCurrentSceneAsync();
-        return ok ? scene! : throw new BlockFailedException("scene not read");
-    }
+    protected override Task<string> ComputeAsync(TriggerContext context) => Api(context).Obs.GetSceneAsync();
 }

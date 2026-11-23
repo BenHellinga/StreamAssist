@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Actions;
 
@@ -109,14 +107,10 @@ public class ChangeTableValueAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var table = await _table.EvaluateAsync(context);
-        var rowRef = await _row.EvaluateAsync(context);
+        var row = await _row.EvaluateAsync(context);
         var column = await _column.EvaluateAsync(context);
         var amount = await _amount.EvaluateAsync(context);
-
-        // a failure is already logged by the model
-        if (!data.TryFindRow(table, rowRef, addIfMissing: true, out var row)) throw new BlockFailedException("row not found");
-        if (!data.TryChangeValue(table, row!.Id, column, amount)) throw new BlockFailedException("value not changed");
+        Api(context).Data.ChangeValue(table, row, column, amount);
     }
 }

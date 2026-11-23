@@ -136,7 +136,7 @@ public class KeybindConfigModel : ModelBase, IJsonOnDeserialized
     {
         foreach (var (vk, keybind) in _keybinds.ToArray())
         {
-            if (!keybind.HasBlock)
+            if (!keybind.HasContent)
             {
                 _keybinds.Remove(vk);
                 keybind.Dispose();

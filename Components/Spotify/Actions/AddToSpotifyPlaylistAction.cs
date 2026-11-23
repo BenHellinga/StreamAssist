@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -81,11 +79,8 @@ public class AddToSpotifyPlaylistAction : ActionBlock
     // spotify requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
         var playlist = await _playlist.EvaluateAsync(context);
-        if (playlist.Trim() == "") throw Fail("no playlist given");
         var song = await _song.EvaluateAsync(context);
-
-        if (!await spotify.TryAddToPlaylistAsync(playlist, song, context.CancellationToken)) throw new BlockFailedException("not added");
+        await Api(context).Spotify.AddToPlaylistAsync(playlist, song);
     }
 }

@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -93,18 +91,9 @@ public class StartPollAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-
-        var title = (await _title.EvaluateAsync(context)).Trim();
-        if (title == "") throw Fail("needs a title");
-
-        var choices = (await _choices.EvaluateFilledAsync<string>(context)).Select(c => c.Trim()).Where(c => c != "").ToList();
-        if (choices.Count is < 2 or > 5) throw Fail($"{choices.Count} choices, twitch takes 2 to 5");
-
+        var title = await _title.EvaluateAsync(context);
+        var choices = await _choices.EvaluateFilledAsync<string>(context);
         var seconds = await _seconds.EvaluateAsync(context);
-        if (seconds is < 15 or > 1800) throw Fail($"{seconds}s not allowed, 15 to 1800");
-
-        // a failure (e.g. a poll is already running) is already logged by the manager
-        if (!await chatbot.TryStartPollAsync(title, choices, seconds, context.CancellationToken)) throw new BlockFailedException("poll not started");
+        await Api(context).Twitch.StartPollAsync(title, choices, seconds);
     }
 }

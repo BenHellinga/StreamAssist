@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Actions;
 
@@ -88,11 +86,9 @@ public class AddTableRowAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var name = _idName.Trim();
         if (name != "" && !TriggerContext.IsValidName(name)) throw Fail($"'{name}' isn't a valid name, use letters, digits, _");
-
-        if (!data.TryAddRow(await _table.EvaluateAsync(context), out var row)) throw new BlockFailedException("row not added");
-        if (name != "") context.SetParameter(name, row.Id.ToString());
+        var id = Api(context).Data.AddRow(await _table.EvaluateAsync(context));
+        if (name != "") context.SetParameter(name, id.ToString());
     }
 }

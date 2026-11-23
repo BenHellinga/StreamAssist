@@ -193,23 +193,25 @@ public class SpotifyManager : IDisposable
 
 
 
-    // what's playing (text, a whole number or true/false, see SpotifyInfos.Playback). Nothing playing anywhere reads as
-    // not playing, empty text and 0
-    public Task<(bool Ok, object? Value)> TryGetPlaybackAsync(SpotifyInfo info, CancellationToken ct = default) =>
-        TryRequestAsync<object>($"read spotify {info.Name.ToLowerInvariant()}", async (token, c) =>
+    // what's playing, Value null when nothing is playing anywhere
+    public Task<(bool Ok, StreamAssist.Scripting.SpotifyPlayback? Value)> TryGetPlaybackAsync(CancellationToken ct = default) =>
+        TryRequestAsync<StreamAssist.Scripting.SpotifyPlayback?>("read spotify playback", async (token, c) =>
         {
             var player = await SpotifyApi.GetPlayerAsync(token, c);
-            var song = player?.TryGetProperty("item", out var item) == true && item.ValueKind == JsonValueKind.Object ? item : (JsonElement?)null;
+            if (player is not { } p) return null;
 
-            return info.Name switch
-            {
-                "Playing" => player?.GetProperty("is_playing").GetBoolean() ?? false,
-                "Progress Seconds" => player?.TryGetProperty("progress_ms", out var p) == true && p.ValueKind == JsonValueKind.Number ? p.GetInt32() / 1000 : 0,
-                "Volume" => player?.GetProperty("device").TryGetProperty("volume_percent", out var v) == true && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0,
-                "Shuffle" => player?.GetProperty("shuffle_state").GetBoolean() ?? false,
-                "Repeat" => player?.GetProperty("repeat_state").GetString() switch { "track" => "Song", "context" => "Playlist", _ => "Off" },
-                _ => SongInfo(song, info.Name),
-            };
+            var song = p.TryGetProperty("item", out var item) && item.ValueKind == JsonValueKind.Object ? SongOf(item) : null;
+            return new(song,
+                p.GetProperty("is_playing").GetBoolean(),
+                p.TryGetProperty("progress_ms", out var progress) && progress.ValueKind == JsonValueKind.Number ? progress.GetInt32() / 1000 : 0,
+                p.GetProperty("device").TryGetProperty("volume_percent", out var volume) && volume.ValueKind == JsonValueKind.Number ? volume.GetInt32() : 0,
+                p.GetProperty("shuffle_state").GetBoolean(),
+                p.GetProperty("repeat_state").GetString() switch
+                {
+                    "track" => StreamAssist.Scripting.SpotifyRepeat.Song,
+                    "context" => StreamAssist.Scripting.SpotifyRepeat.Playlist,
+                    _ => StreamAssist.Scripting.SpotifyRepeat.Off,
+                });
         }, ct);
 
 
@@ -218,13 +220,13 @@ public class SpotifyManager : IDisposable
 
 
 
-    // a song from a link or the first one a search finds (see SpotifyInfos.Song)
-    public Task<(bool Ok, object? Value)> TryFindSongAsync(string song, SpotifyInfo info, CancellationToken ct = default) =>
-        TryRequestAsync<object>($"find '{song}'", async (token, c) =>
+    // a song from a link or the first one a search finds
+    public Task<(bool Ok, StreamAssist.Scripting.SpotifySong? Value)> TryFindSongAsync(string song, CancellationToken ct = default) =>
+        TryRequestAsync<StreamAssist.Scripting.SpotifySong>($"find '{song}'", async (token, c) =>
         {
             var uri = await FindUriAsync(token, song, SpotifyFind.Song, c);
             if (!uri.StartsWith("spotify:track:")) throw new Exception("that's not a song link");
-            return SongInfo(await SpotifyApi.GetTrackAsync(token, uri["spotify:track:".Length..], c), info.Name);
+            return SongOf(await SpotifyApi.GetTrackAsync(token, uri["spotify:track:".Length..], c));
         }, ct);
 
 
@@ -532,20 +534,12 @@ public class SpotifyManager : IDisposable
 
 
     // Title, Artist, Album, Link or Length Seconds of a song (empty / 0 without one)
-    private static object SongInfo(JsonElement? song, string name)
-    {
-        if (song is not { } s) return name == "Length Seconds" ? 0 : "";
-
-        return name switch
-        {
-            "Title" => s.GetProperty("name").GetString() ?? "",
-            "Artist" => string.Join(", ", s.GetProperty("artists").EnumerateArray().Select(a => a.GetProperty("name").GetString())),
-            "Album" => s.TryGetProperty("album", out var album) ? album.GetProperty("name").GetString() ?? "" : "",
-            "Link" => s.TryGetProperty("external_urls", out var urls) && urls.TryGetProperty("spotify", out var url) ? url.GetString() ?? "" : "",
-            "Length Seconds" => s.GetProperty("duration_ms").GetInt32() / 1000,
-            _ => "",
-        };
-    }
+    private static StreamAssist.Scripting.SpotifySong SongOf(JsonElement s) => new(
+        s.GetProperty("name").GetString() ?? "",
+        string.Join(", ", s.GetProperty("artists").EnumerateArray().Select(a => a.GetProperty("name").GetString())),
+        s.TryGetProperty("album", out var album) ? album.GetProperty("name").GetString() ?? "" : "",
+        s.TryGetProperty("external_urls", out var urls) && urls.TryGetProperty("spotify", out var url) ? url.GetString() ?? "" : "",
+        s.GetProperty("duration_ms").GetInt32() / 1000);
 
 
 

@@ -1,10 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Values;
 
@@ -101,14 +101,30 @@ public class GetStreamInfoBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var setting = await _setting.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var info = TwitchInfos.Find(TwitchInfos.Stream, setting) ?? throw Fail($"unknown setting '{setting}'");
+        var twitch = Api(context).Twitch;
 
-        var (ok, value) = await chatbot.TryGetStreamInfoAsync(info, context.CancellationToken);
-        if (!ok) throw new BlockFailedException("stream info not read");
+        object value;
+        switch (info.Name)
+        {
+            case "Title": value = (await twitch.GetChannelAsync()).Title; break;
+            case "Category": value = (await twitch.GetChannelAsync()).Category; break;
+            case "Followers": value = await twitch.GetFollowerCountAsync(); break;
+            default:
+                var stream = await twitch.GetLiveStreamAsync();
+                var uptime = stream?.Uptime ?? TimeSpan.Zero;
+                value = info.Name switch
+                {
+                    "Live" => stream != null,
+                    "Viewers" => stream?.Viewers ?? 0,
+                    "Uptime" => stream == null ? "" : $"{(int)uptime.TotalHours}:{uptime.Minutes:00}:{uptime.Seconds:00}",
+                    "Uptime Minutes" => (int)uptime.TotalMinutes,
+                    _ => throw Fail($"unknown setting '{info.Name}'"),
+                };
+                break;
+        }
 
-        // what twitch gave (text, a whole number or true/false), read as the chosen type
-        if (!ValueTypes.TryConvert(value!, info.Kind, Kind, out var result, out var error)) throw Fail(error);
+        if (!ValueTypes.TryConvert(value, info.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

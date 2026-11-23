@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Values;
 
@@ -71,11 +70,6 @@ public class GetVoicemeeterGainBlock : ValueBlock<double>
 
 
 
-    protected override async Task<double> ComputeAsync(TriggerContext context)
-    {
-        var channel = await _channel.EvaluateAsync(context);
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        if (!voicemeeter.TryGetGain(channel, out var gain)) throw new BlockFailedException("gain not read");
-        return (double)gain;
-    }
+    protected override async Task<double> ComputeAsync(TriggerContext context) =>
+        Api(context).Voicemeeter.GetGain(await _channel.EvaluateAsync(context));
 }

@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Input.Background;
 using StreamAssist.Components.Input.Model;
-using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Input.Conditions;
 
@@ -93,23 +91,6 @@ public class IsTalkingCondition : ConditionBlock
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
         var microphone = await _microphone.EvaluateAsync(context);
-        if (GlobalContext.InputComponentModel is not { } input)
-        {
-            AppLog.WriteError($"{Name}: input not set up");
-            return false;
-        }
-
-        var boxes = input.ListModel.Slots.Where(s => s.Layout == InputSlotModel.MicrophoneLayout && s.SelectedDevice != null).ToList();
-        if (microphone != AnyMicrophone)
-        {
-            boxes = boxes.Where(s => s.SelectedDevice!.GetDisplayLabel() == microphone).ToList();
-            if (boxes.Count == 0)
-            {
-                AppLog.WriteWarning($"{Name}: no Microphone box listens to '{microphone}'");
-                return false;
-            }
-        }
-
-        return boxes.Any(s => s.IsTalking);
+        return Quietly(() => Api(context).Input.IsTalking(microphone == AnyMicrophone ? null : microphone));
     }
 }

@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Spotify.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -88,17 +86,10 @@ public class SetSpotifyVolumeAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var mode = await _mode.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
         var volume = await _volume.EvaluateAsync(context);
+        var spotify = Api(context).Spotify;
 
-        // Spotify may report the old volume for a moment after a change, so quick presses can land on the same step
-        if (mode == "Change by")
-        {
-            var (ok, now) = await spotify.TryGetPlaybackAsync(SpotifyInfos.Find(SpotifyInfos.Playback, "Volume")!, context.CancellationToken);
-            if (!ok) throw new BlockFailedException("volume not read");
-            volume += now is int percent ? percent : 0;
-        }
-
-        if (!await spotify.TrySetVolumeAsync(volume, context.CancellationToken)) throw new BlockFailedException("volume not set");
+        if (mode == "Change by") volume += (await spotify.GetPlaybackAsync())?.Volume ?? 0;
+        await spotify.SetVolumeAsync(volume);
     }
 }

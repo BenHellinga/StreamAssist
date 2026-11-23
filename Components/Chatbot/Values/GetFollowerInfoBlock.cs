@@ -1,10 +1,9 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Values;
 
@@ -111,15 +110,18 @@ public class GetFollowerInfoBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var setting = await _setting.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var info = TwitchInfos.Find(TwitchInfos.Follower, setting) ?? throw Fail($"unknown setting '{setting}'");
         var user = await _user.EvaluateAsync(context);
+        var followedAt = await Api(context).Twitch.GetFollowedAtAsync(user);
 
-        var (ok, value) = await chatbot.TryGetFollowerInfoAsync(user, info, context.CancellationToken);
-        if (!ok) throw new BlockFailedException("follower info not read");
-
-        // what twitch gave (text, a whole number or true/false), read as the chosen type
-        if (!ValueTypes.TryConvert(value!, info.Kind, Kind, out var result, out var error)) throw Fail(error);
+        object value = info.Name switch
+        {
+            "Following" => followedAt != null,
+            "Days Following" => followedAt == null ? 0 : (int)(DateTime.UtcNow - followedAt.Value).TotalDays,
+            "Followed On" => followedAt?.ToString("yyyy-MM-dd") ?? "",
+            _ => throw Fail($"unknown setting '{info.Name}'"),
+        };
+        if (!ValueTypes.TryConvert(value, info.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

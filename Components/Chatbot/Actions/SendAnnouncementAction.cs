@@ -1,10 +1,11 @@
+using StreamAssist.Scripting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -85,10 +86,7 @@ public class SendAnnouncementAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var color = await _color.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var message = await _message.EvaluateAsync(context);
-        if (string.IsNullOrWhiteSpace(message)) return;
-
-        if (!await chatbot.TrySendAnnouncementAsync(message, color, context.CancellationToken)) throw new BlockFailedException("announcement not sent");
+        await Api(context).Twitch.SendAnnouncementAsync(message, Enum.Parse<AnnouncementColor>(color));
     }
 }

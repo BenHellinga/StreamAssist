@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Blocks.Model;
 using System.Text.Json.Serialization;
 
@@ -67,8 +66,6 @@ public class ConsoleMessageAction : ActionBlock
 
 
 
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        AppLog.WriteLine(await _message.EvaluateAsync(context));
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        Api(context).App.Log(await _message.EvaluateAsync(context));
 }

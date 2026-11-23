@@ -23,7 +23,14 @@ public abstract class ExecutableBlock : BlockModel
         context.CancellationToken.ThrowIfCancellationRequested();
 
         RaiseTriggered();
-        await ExecuteAsync(context);
+        try
+        {
+            await ExecuteAsync(context);
+        }
+        catch (StreamAssist.Scripting.StreamAssistException ex)
+        {
+            throw Failed(ex);
+        }
     }
 
 
@@ -75,9 +82,10 @@ public abstract class ContainerBlock : ExecutableBlock
 
 
 
-    // loops call this before each pass: blocks run on the UI thread, so a loop that never waits would freeze the app.
-    // It lets everything else waiting (drawing, input, other runs) go first, and stops the loop once the run is cancelled.
-    // Only a run inside the UI's loop waits for it (anywhere else, e.g. the tests, nothing may be running that loop)
+    // loops call this before each pass: it stops the loop once the run is cancelled, and lets whatever else is waiting
+    // for the thread go first. Runs are on background threads (UiThread), but one started on the UI thread (in place,
+    // when background runs are off) yields to the UI's loop so a loop never freezes it (only inside that loop: anywhere
+    // else, e.g. the tests, nothing may be running it)
     protected static async Task NextPassAsync(TriggerContext context)
     {
         if (SynchronizationContext.Current is AvaloniaSynchronizationContext) await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);

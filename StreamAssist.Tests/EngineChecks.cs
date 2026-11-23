@@ -74,6 +74,8 @@ internal static partial class EngineChecks
         Spotify();
         VoicemeeterAndTwitchInfo();
         ParseParameterSpacing();
+        CSharpScripts();
+        BackgroundRuns();
         await BindLabels(); // the first await: every section above counts console errors
         await Bindables();
         await IfBranches();

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -99,15 +98,8 @@ public class SendChatMessageAction : ActionBlock
     {
         var reply = await _reply.EvaluateAsync(context);
         var sharedChat = await _sharedChat.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager;
-        if (chatbot == null) throw Fail("chatbot not set up");
-
         var message = await _message.EvaluateAsync(context);
-        if (string.IsNullOrWhiteSpace(message)) return;
-
-        // waits its turn in the twitch action queue, a failure is already logged there
-        var replyTo = reply == "Yes" && context.Parameters.TryGetValue("messageId", out var id) ? id : null;
-        if (!await chatbot.TrySendChatMessageAsync(message, context.CancellationToken, replyTo, sharedChat == ThisChannelOnly))
-            throw new BlockFailedException("the message wasn't sent");
+        await Api(context).Twitch.SendMessageAsync(message, reply == "Yes",
+            sharedChat == ThisChannelOnly ? StreamAssist.Scripting.SharedChat.ThisChannelOnly : StreamAssist.Scripting.SharedChat.AllChannels);
     }
 }

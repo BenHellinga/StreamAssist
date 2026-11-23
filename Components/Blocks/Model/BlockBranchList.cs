@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Blocks.Model;
 
@@ -16,7 +17,7 @@ public sealed class BlockBranchList : BlockSlotBase
 
 
 
-    private readonly List<BlockBranch> _branches;
+    private readonly SnapshotList<BlockBranch> _branches; // read by runs on other threads
 
 
 
@@ -24,7 +25,7 @@ public sealed class BlockBranchList : BlockSlotBase
 
 
 
-    public IReadOnlyList<BlockBranch> Branches => _branches;
+    public IReadOnlyList<BlockBranch> Branches => _branches.Snapshot;
     public override IReadOnlyList<BlockModel> Blocks => [];
     public override IReadOnlyList<BlockSlotBase> InnerSlots => _branches.SelectMany(b => new BlockSlotBase[] { b.Condition, b.Then }).ToList();
 
@@ -46,7 +47,7 @@ public sealed class BlockBranchList : BlockSlotBase
     // the list itself only accepts conditions (dropping one in a gap makes a new branch)
     public BlockBranchList(string label) : base(label, typeof(ConditionBlock))
     {
-        _branches = [];
+        _branches = new();
     }
 
 

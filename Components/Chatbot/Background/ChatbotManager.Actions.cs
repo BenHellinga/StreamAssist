@@ -156,79 +156,62 @@ public partial class ChatbotManager
 
 
 
-    // a TwitchInfos.Stream entry, as its kind (string, bool or int)
-    public Task<(bool Ok, object? Value)> TryGetStreamInfoAsync(TwitchInfo info, CancellationToken ct = default) =>
-        TryRunActionAsync<object>($"read stream {info.Name.ToLowerInvariant()}", async (account, channelId, token) =>
+    // a channel's title and category: the streamer's (user null), or another user's (what their channel is set to)
+    public Task<(bool Ok, StreamAssist.Scripting.TwitchChannel? Value)> TryGetChannelAsync(string? user, CancellationToken ct = default) =>
+        TryRunActionAsync<StreamAssist.Scripting.TwitchChannel>(user == null ? "read stream info" : $"read channel of '{user}'", async (account, channelId, token) =>
         {
-            switch (info.Name)
-            {
-                case "Title": return (await TwitchApi.GetChannelAsync(account, channelId, token)).GetProperty("title").GetString() ?? "";
-                case "Category": return (await TwitchApi.GetChannelAsync(account, channelId, token)).GetProperty("game_name").GetString() ?? "";
-                case "Followers": return await TwitchApi.GetFollowerCountAsync(account, channelId, token);
-            }
-
-            var stream = await TwitchApi.GetStreamAsync(account, channelId, token);
-            var uptime = stream == null ? TimeSpan.Zero : DateTime.UtcNow - stream.Value.GetProperty("started_at").GetDateTime().ToUniversalTime();
-            return info.Name switch
-            {
-                "Live" => stream != null,
-                "Viewers" => stream?.GetProperty("viewer_count").GetInt32() ?? 0,
-                "Uptime" => stream == null ? "" : $"{(int)uptime.TotalHours}:{uptime.Minutes:00}:{uptime.Seconds:00}",
-                "Uptime Minutes" => (int)uptime.TotalMinutes,
-                _ => throw new Exception($"unknown setting '{info.Name}'"),
-            };
+            var id = user == null ? channelId : await FindUserIdAsync(account, user, token);
+            var channel = await TwitchApi.GetChannelAsync(account, id, token);
+            return new(channel.GetProperty("title").GetString() ?? "", channel.GetProperty("game_name").GetString() ?? "");
         }, ct, asStreamer: true);
 
 
 
-    // a TwitchInfos.Follower entry for a user (login name), as its kind
-    public Task<(bool Ok, object? Value)> TryGetFollowerInfoAsync(string user, TwitchInfo info, CancellationToken ct = default) =>
-        TryRunActionAsync<object>($"read if '{user}' follows", async (account, channelId, token) =>
+    // the streamer's stream while live, Value null while offline
+    public Task<(bool Ok, StreamAssist.Scripting.TwitchLiveStream? Value)> TryGetLiveStreamAsync(CancellationToken ct = default) =>
+        TryRunActionAsync<StreamAssist.Scripting.TwitchLiveStream?>("read stream", async (account, channelId, token) =>
+        {
+            var stream = await TwitchApi.GetStreamAsync(account, channelId, token);
+            return stream == null ? null
+                : new(stream.Value.GetProperty("viewer_count").GetInt32(), stream.Value.GetProperty("started_at").GetDateTime().ToUniversalTime());
+        }, ct, asStreamer: true);
+
+
+
+    public Task<(bool Ok, int Value)> TryGetFollowerCountAsync(CancellationToken ct = default) =>
+        TryRunActionAsync<int>("read follower count", (account, channelId, token) => TwitchApi.GetFollowerCountAsync(account, channelId, token), ct, asStreamer: true);
+
+
+
+    // when a user (login name) followed the streamer, Value null if they don't
+    public Task<(bool Ok, DateTime? Value)> TryGetFollowedAtAsync(string user, CancellationToken ct = default) =>
+        TryRunActionAsync<DateTime?>($"read if '{user}' follows", async (account, channelId, token) =>
         {
             var follow = await TwitchApi.GetFollowAsync(account, channelId, await FindUserIdAsync(account, user, token), token);
-            var followedAt = follow?.GetProperty("followed_at").GetDateTime().ToUniversalTime();
-            return info.Name switch
-            {
-                "Following" => follow != null,
-                "Days Following" => followedAt == null ? 0 : (int)(DateTime.UtcNow - followedAt.Value).TotalDays,
-                "Followed On" => followedAt?.ToString("yyyy-MM-dd") ?? "",
-                _ => throw new Exception($"unknown setting '{info.Name}'"),
-            };
+            return follow?.GetProperty("followed_at").GetDateTime().ToUniversalTime();
         }, ct, asStreamer: true);
 
 
 
-    // a TwitchInfos.User entry for a user (login name), as its kind
-    public Task<(bool Ok, object? Value)> TryGetUserInfoAsync(string user, TwitchInfo info, CancellationToken ct = default) =>
-        TryRunActionAsync<object>($"read twitch user '{user}'", async (account, channelId, token) =>
+    // a twitch account by login name, Value null if there's none
+    public Task<(bool Ok, StreamAssist.Scripting.TwitchUser? Value)> TryGetUserAsync(string user, CancellationToken ct = default) =>
+        TryRunActionAsync<StreamAssist.Scripting.TwitchUser?>($"read twitch user '{user}'", async (account, channelId, token) =>
         {
             var login = user.Trim().TrimStart('@').ToLowerInvariant();
-            var found = await TwitchApi.GetUserInfoAsync(account, login, token) ?? throw new Exception($"there's no twitch user '{login}'");
-            var created = found.GetProperty("created_at").GetDateTime().ToUniversalTime();
+            if (login == "") throw new Exception("no user given");
+            var found = await TwitchApi.GetUserInfoAsync(account, login, token);
+            if (found == null) return null;
 
-            // what their channel is set to: only read, it's kept even while they're offline (a shoutout's "last playing")
-            if (info.Name is "Last Category" or "Last Title")
-            {
-                var channel = await TwitchApi.GetChannelAsync(account, found.GetProperty("id").GetString()!, token);
-                return channel.GetProperty(info.Name == "Last Category" ? "game_name" : "title").GetString() ?? "";
-            }
-
-            return info.Name switch
-            {
-                "Display Name" => found.GetProperty("display_name").GetString() ?? "",
-                "Id" => found.GetProperty("id").GetString() ?? "",
-                "Account Age Days" => (int)(DateTime.UtcNow - created).TotalDays,
-                "Created On" => created.ToString("yyyy-MM-dd"),
-                "Description" => found.GetProperty("description").GetString() ?? "",
-                _ => throw new Exception($"unknown setting '{info.Name}'"),
-            };
+            return new(found.Value.GetProperty("id").GetString() ?? "", found.Value.GetProperty("login").GetString() ?? login,
+                found.Value.GetProperty("display_name").GetString() ?? "", found.Value.GetProperty("created_at").GetDateTime().ToUniversalTime(),
+                found.Value.GetProperty("description").GetString() ?? "");
         }, ct);
 
 
 
     // another channel's clips (only read: its most viewed 100), as the streamer; an unknown channel is an error
-    public Task<(bool Ok, List<TwitchClip>? Value)> TryGetClipsAsync(string channel, CancellationToken ct = default) =>
-        TryRunActionAsync<List<TwitchClip>>($"read twitch clips of '{channel}'", async (account, channelId, token) =>
+    public Task<(bool Ok, List<StreamAssist.Scripting.TwitchClip>? Value)> TryGetClipsAsync(string channel, CancellationToken ct = default) =>
+        TryRunActionAsync<List<StreamAssist.Scripting.TwitchClip>>($"read twitch clips of '{channel}'", async (account, channelId, token) =>
         {
             var login = channel.Trim().TrimStart('@').ToLowerInvariant();
             var user = await TwitchApi.GetUserAsync(account, login, token) ?? throw new Exception($"there's no twitch user '{login}'");
@@ -321,24 +304,21 @@ public partial class ChatbotManager
 
 
 
-    // a reward's setting, as the setting's kind (int, string or bool), e.g. the Cost of "Hydrate"
-    public Task<(bool Ok, object? Value)> TryGetRewardSettingAsync(string reward, RewardSetting setting, CancellationToken ct = default) =>
-        TryRunActionAsync<object>($"read '{setting.Name}' of reward '{reward}'", async (account, channelId, token) =>
-            setting.Read(await FindRewardAsync(account, channelId, reward, token)), ct, asStreamer: true);
+    // a reward with every setting, e.g. "Hydrate"
+    public Task<(bool Ok, StreamAssist.Scripting.TwitchReward? Value)> TryGetRewardAsync(string reward, CancellationToken ct = default) =>
+        TryRunActionAsync<StreamAssist.Scripting.TwitchReward>($"read reward '{reward}'", async (account, channelId, token) =>
+            RewardSettings.Read(await FindRewardAsync(account, channelId, reward, token)), ct, asStreamer: true);
 
 
 
-    // value is the setting's kind (int, string or bool). Only works on rewards this app created
-    public Task<bool> TrySetRewardSettingAsync(string reward, RewardSetting setting, object value, CancellationToken ct = default) =>
-        TryRunActionAsync($"change '{setting.Name}' of reward '{reward}'", async (account, channelId, token) =>
+    // changes the settings that are set in changes. Only works on rewards this app created
+    public Task<bool> TryUpdateRewardAsync(string reward, StreamAssist.Scripting.RewardChanges changes, CancellationToken ct = default) =>
+        TryRunActionAsync($"change reward '{reward}'", async (account, channelId, token) =>
         {
             var found = await FindRewardAsync(account, channelId, reward, token);
-            var changes = new JsonObject();
-            setting.Write(changes, value);
-
             try
             {
-                await TwitchApi.UpdateCustomRewardAsync(account, channelId, found.GetProperty("id").GetString()!, changes, token);
+                await TwitchApi.UpdateCustomRewardAsync(account, channelId, found.GetProperty("id").GetString()!, RewardSettings.Write(changes), token);
             }
             catch (Exception ex) when (ex.Message.StartsWith("403"))
             {

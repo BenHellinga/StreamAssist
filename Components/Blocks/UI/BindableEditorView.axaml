@@ -5,6 +5,7 @@
 
              xmlns:ui="using:StreamAssist.Components.Blocks.UI"
              xmlns:model="using:StreamAssist.Components.Blocks.Model"
+             xmlns:console="using:StreamAssist.Components.OutputConsole.UI"
         xmlns:s="using:StreamAssist.Styles">
 
     <!-- editor | block list -->
@@ -37,22 +38,25 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- header: what's being edited, its label, Test (runs it once with the Parameters list's values) | the
-                     Parameters toggle -->
+                <!-- header: what's being edited and its label, then Test (runs it once with the Parameters list's values),
+                     the Parameters toggle, and Switch to C# / Blocks (which one runs) -->
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="{DynamicResource LargeHorizontalGap}"
-                            Margin="{s:Gap PadAll}" Height="{DynamicResource ControlHeight}">
-                    <!-- what it is | "Label:" and its box, Test, Parameters -->
-                    <TextBlock Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="0" Spacing="{DynamicResource SmallVerticalGap}" Margin="{s:Gap PadAll}">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource LargeHorizontalGap}" Height="{DynamicResource ControlHeight}">
+                        <!-- what it is | "Label:" and its box -->
+                        <TextBlock Classes="Label" Text="{Binding Label}" VerticalAlignment="Center"/>
 
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
-                        <TextBlock Classes="Label Colon" Text="Label:" VerticalAlignment="Center"/>
-                        <!-- greyed out until there's a saved binding with blocks (a draft or an empty one can't be labelled) -->
-                        <TextBox MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
-                                 Text="{Binding BindLabel}" PlaceholderText="Optional"
-                                 IsEnabled="{Binding CanEditBindLabel}"
-                                 Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                            <TextBlock Classes="Label Colon" Text="Label:" VerticalAlignment="Center"/>
+                            <!-- greyed out until there's a saved binding with blocks or a script (a draft or an empty one can't be labelled) -->
+                            <TextBox MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                     Text="{Binding BindLabel}" PlaceholderText="Optional"
+                                     IsEnabled="{Binding CanEditBindLabel}"
+                                     Classes="BindLabel" Classes.Disabled="{Binding IsBindDisabled}"/>
+                        </StackPanel>
+                    </StackPanel>
 
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Height="{DynamicResource ControlHeight}">
                         <Button Content="Test" Command="{Binding TestPressedCommand}"
                                 Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center"/>
 
@@ -61,6 +65,15 @@
                             <Panel>
                                 <TextBlock Text="Parameters ▸" IsVisible="{Binding !IsParametersOpen}"/>
                                 <TextBlock Text="Parameters ▾" IsVisible="{Binding IsParametersOpen}"/>
+                            </Panel>
+                        </Button>
+
+                        <!-- the blocks and the script are both kept, only the one picked runs -->
+                        <Button Command="{Binding ModeTogglePressedCommand}"
+                                Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center">
+                            <Panel>
+                                <TextBlock Text="Switch to C#" IsVisible="{Binding !IsCSharp}"/>
+                                <TextBlock Text="Switch to Blocks" IsVisible="{Binding IsCSharp}"/>
                             </Panel>
                         </Button>
                     </StackPanel>
@@ -129,12 +142,50 @@
                 <ScrollViewer Grid.Row="3"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Auto"
-                              Classes="Gapped">
+                              Classes="Gapped"
+                              IsVisible="{Binding !IsCSharp}">
                     <!-- the padding is room to scroll the last block up (Spacing.axaml ScrollEndPadding) -->
                     <Border Padding="{StaticResource ScrollEndPadding}">
                         <ContentControl Content="{Binding RootSlot}" Margin="{s:Gap ScrollInset}"/>
                     </Border>
                 </ScrollViewer>
+
+                <!-- C#: the script is edited in VS Code (saving there recompiles it), here its limits and what its compiles said -->
+
+                <DockPanel Grid.Row="3" IsVisible="{Binding IsCSharp}">
+                    <StackPanel DockPanel.Dock="Top" Spacing="{DynamicResource MediumVerticalGap}" Margin="{s:Gap PadAll}">
+                        <Button Content="Open in VS Code" Command="{Binding OpenScriptPressedCommand}"
+                                Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center"/>
+
+                        <!-- how far the script may go before it's stopped, in seconds (empty or Off: no limit): a loop going on
+                             without waiting, the whole run, and waiting for a table, variable or lock another run has locked.
+                             One a row, the boxes lined up -->
+                        <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto" HorizontalAlignment="Left"
+                              ColumnSpacing="{DynamicResource SmallHorizontalGap}" RowSpacing="{DynamicResource SmallVerticalGap}">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label Colon" Text="Loop limit (s):" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" HorizontalAlignment="Left" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                     Classes="Commit" Text="{Binding LoopLimitInput}" PlaceholderText="Off"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label Colon" Text="Run limit (s):" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" HorizontalAlignment="Left" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                     Classes="Commit" Text="{Binding RunLimitInput}" PlaceholderText="Off"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label Colon" Text="Lock wait (s):" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" Height="{DynamicResource ControlHeight}" MinHeight="0" HorizontalAlignment="Left" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                     Classes="Commit" Text="{Binding LockWaitInput}" PlaceholderText="Off"/>
+                        </Grid>
+
+                        <!-- title, Clear beside it (as on the output console) -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}" Height="{DynamicResource ControlHeight}">
+                            <TextBlock Classes="Label" Text="Compile Output" VerticalAlignment="Center"/>
+                            <Button Content="Clear" Command="{Binding ClearCompileOutputPressedCommand}"
+                                    Height="{DynamicResource ControlHeight}" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border DockPanel.Dock="Top" Classes="Divider"/>
+
+                    <!-- this session's compiles of the script ([time]s muted, scrolls to new lines), like the console -->
+                    <console:LogView Text="{Binding CompileOutput}"/>
+                </DockPanel>
 
             </Grid>
         </Grid>

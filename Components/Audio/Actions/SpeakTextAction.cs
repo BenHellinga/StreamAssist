@@ -1,17 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.Versioning;
-using System.Speech.Synthesis;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using NAudio.Wave;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Shell;
+using StreamAssist.Components.CSharp.Api;
 
 namespace StreamAssist.Components.Audio.Actions;
 
@@ -27,7 +21,7 @@ public class SpeakTextAction : ActionBlock
 
 
 
-    private const string DefaultVoice = "Default";
+    private const string DefaultVoice = SoundScriptApi.DefaultVoice;
 
 
 
@@ -146,18 +140,7 @@ public class SpeakTextAction : ActionBlock
 
 
 
-    public static List<string> GetVoiceMenuItems()
-    {
-        try
-        {
-            using var synth = new SpeechSynthesizer();
-            return [DefaultVoice, .. synth.GetInstalledVoices().Where(v => v.Enabled).Select(v => v.VoiceInfo.Name), .. KokoroVoices.VoiceNames];
-        }
-        catch (Exception)
-        {
-            return [DefaultVoice, .. KokoroVoices.VoiceNames]; // no Windows speech on this PC
-        }
-    }
+    public static List<string> GetVoiceMenuItems() => SoundScriptApi.VoiceNames();
 
 
 
@@ -171,7 +154,7 @@ public class SpeakTextAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var voiceOption = await _voice.EvaluateAsync(context);
+        var voice = await _voice.EvaluateAsync(context);
         var outputDevice = await _outputDevice.EvaluateAsync(context);
         var text = await _text.EvaluateAsync(context);
         if (text.Trim() == "") return; // nothing to say
@@ -179,90 +162,8 @@ public class SpeakTextAction : ActionBlock
         var speed = await _speed.EvaluateAsync(context);
         var volume = await _volume.EvaluateAsync(context);
         if (double.IsNaN(speed)) throw Fail("speed isn't a number");
-        if (double.IsNaN(volume)) throw Fail("volume isn't a number");
+        var dock = await _dock.EvaluateAsync(context);
 
-        var voice = voiceOption;
-        var rate = (int)Math.Round(Math.Clamp(speed, -10, 10));
-        var device = outputDevice;
-
-        // a named sound dock is found first, so the speech takes its place in the queue now, before it's made
-        var dockName = await _dock.EvaluateAsync(context);
-        SoundsModel? queue = null;
-        if (dockName.Trim() != "" && !(GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard")).TryFindSoundQueue(dockName, out queue, out var dockError))
-            throw Fail(dockError);
-
-        // making the speech takes a moment (as long as a short sound), so off the UI thread. A Kokoro voice's speed is
-        // a factor: -10 half, 0 normal, 10 twice as fast
-        var made = Task.Run(() => KokoroVoices.TryFind(voice, out var speaker)
-            ? KokoroVoices.Synthesize(text, speaker, Math.Pow(2, rate / 10.0))
-            : Synthesize(text, voice, rate));
-
-        if (queue != null)
-        {
-            var queued = queue.Enqueue(Label(text), OpenWhenMadeAsync(made, (float)Math.Clamp(volume, 0, 1), device));
-            if (_waitUntilDone && queued != null) await queued.Done.WaitAsync(context.CancellationToken);
-            return;
-        }
-
-        var (wave, error) = await made;
-        if (wave == null) throw Fail(error);
-        if (AudioHelper.TryOpenWave(wave, (float)Math.Clamp(volume, 0, 1), device) is not { } playback) throw Fail("couldn't play the speech");
-
-        var played = new TaskCompletionSource();
-        playback.Start(() => played.TrySetResult());
-        if (_waitUntilDone) await played.Task.WaitAsync(context.CancellationToken);
-    }
-
-
-
-    // the speech, ready to play once it's made (null if it couldn't be: that's logged here, the queue moves on)
-    private async Task<ISoundPlayback?> OpenWhenMadeAsync(Task<(WaveStream? Wave, string Error)> made, float volume, string device)
-    {
-        var (wave, error) = await made;
-        if (wave == null)
-        {
-            AppLog.WriteError($"{Name}: {error}");
-            return null;
-        }
-
-        return AudioHelper.TryOpenWave(wave, volume, device);
-    }
-
-
-
-    // how it shows on a sound dock: what it says on one line (the dock cuts it to its width)
-    private static string Label(string text) => text.Trim().ReplaceLineEndings(" ");
-
-
-
-    // helpers
-
-
-
-    private static (WaveStream? Wave, string Error) Synthesize(string text, string voice, int rate)
-    {
-        try
-        {
-            using var synth = new SpeechSynthesizer();
-            if (voice != DefaultVoice)
-            {
-                if (!synth.GetInstalledVoices().Any(v => v.Enabled && v.VoiceInfo.Name == voice)) return (null, $"no voice '{voice}' on this PC");
-                synth.SelectVoice(voice);
-            }
-
-            synth.Rate = rate;
-
-            var memory = new MemoryStream();
-            synth.SetOutputToWaveStream(memory);
-            synth.Speak(text);
-            synth.SetOutputToNull();
-
-            memory.Position = 0;
-            return (new WaveFileReader(memory), "");
-        }
-        catch (Exception ex)
-        {
-            return (null, $"speech failed ({ex.Message})");
-        }
+        await Api(context).Sound.SpeakAsync(text, voice, (int)Math.Round(Math.Clamp(speed, -10, 10)), volume, dock, outputDevice, _waitUntilDone);
     }
 }

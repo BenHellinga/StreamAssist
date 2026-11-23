@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Actions;
 
@@ -99,15 +97,13 @@ public class SetTableRowAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var table = await _table.EvaluateAsync(context);
-        var rowRef = await _row.EvaluateAsync(context);
-        if (!data.TryFindRow(table, rowRef, addIfMissing: true, out var row)) throw new BlockFailedException("row not found"); // logged
-
+        var row = await _row.EvaluateAsync(context);
+        var data = Api(context).DataApi;
         foreach (var (column, kind, value) in await _values.EvaluateFilledAsync(context))
         {
             if (column == "") throw Fail("a row needs a column name");
-            if (!data.TrySetValue(table, row!.Id, column, value, kind)) throw new BlockFailedException("value not set");
+            data.SetValue(table, row, column, value, kind);
         }
     }
 }

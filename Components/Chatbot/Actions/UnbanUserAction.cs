@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -72,12 +70,6 @@ public class UnbanUserAction : ActionBlock
 
 
     // twitch requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var user = await _user.EvaluateAsync(context);
-
-        // a failure is already logged by the manager
-        if (!await chatbot.TryUnbanUserAsync(user, context.CancellationToken)) throw new BlockFailedException("not unbanned");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).Twitch.UnbanAsync(await _user.EvaluateAsync(context));
 }

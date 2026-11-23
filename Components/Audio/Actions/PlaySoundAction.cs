@@ -4,8 +4,6 @@ using StreamAssist.Components.Blocks.Model;
 using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using StreamAssist.Components.Audio.Background;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Actions;
 
@@ -119,21 +117,7 @@ public class PlaySoundAction : ActionBlock
     {
         var outputDevice = await _outputDevice.EvaluateAsync(context);
         var volume = await _volume.EvaluateAsync(context);
-        if (double.IsNaN(volume)) throw Fail("volume isn't a number");
-
-        var dashboard = GlobalContext.DashboardComponentModel;
-        var dockName = await _dock.EvaluateAsync(context);
-        SoundsModel? queue = null;
-        if (dockName.Trim() != "" && !(dashboard ?? throw Fail("no dashboard")).TryFindSoundQueue(dockName, out queue, out var dockError))
-            throw Fail(dockError);
-
-        if (queue == null)
-        {
-            AudioHelper.TryPlaySound(_filepath, (float)Math.Clamp(volume, 0, 1), outputDevice);
-            return;
-        }
-
-        if (AudioHelper.TryOpenSound(_filepath, (float)Math.Clamp(volume, 0, 1), outputDevice) is { } playback)
-            queue.Enqueue(System.IO.Path.GetFileNameWithoutExtension(_filepath.TrimEnd('/', '\\')), Task.FromResult<ISoundPlayback?>(playback));
+        var dock = await _dock.EvaluateAsync(context);
+        await Api(context).Sound.PlayAsync(_filepath, volume, dock, outputDevice);
     }
 }

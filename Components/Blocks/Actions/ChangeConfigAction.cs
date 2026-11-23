@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
+using StreamAssist.Scripting;
 
 namespace StreamAssist.Components.Blocks.Actions;
 
@@ -37,7 +36,7 @@ public class ChangeConfigAction : ActionBlock
 
 
 
-    public static List<string> GetTabMenuItems() => ["Input", "Chat", "Events", "Dashboard", "Themes"];
+    public static List<string> GetTabMenuItems() => ["Input", "Chat", "Events", "Dashboard", "Scripts", "Themes"];
 
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
 
@@ -84,30 +83,9 @@ public class ChangeConfigAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var tabOption = await _tab.EvaluateAsync(context);
-        var configs = ConfigsOf(tabOption) ?? throw Fail($"no {tabOption} tab");
-        var name = (await _config.EvaluateAsync(context)).Trim();
-
-        if (!configs.Names.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)))
-            throw Fail($"no {tabOption} config '{name}'");
-
-        configs.TrySelect(name);
+        var tab = await _tab.EvaluateAsync(context);
+        var name = await _config.EvaluateAsync(context);
+        if (!Enum.TryParse<ConfigTab>(tab, out var configTab)) throw Fail($"no {tab} tab");
+        Api(context).App.SetConfig(configTab, name);
     }
-
-
-
-    // helpers
-
-
-
-    // the tab's configs (null if the app hasn't made that tab's model, e.g. in the tests)
-    private static IConfigSet? ConfigsOf(string tab) => tab switch
-    {
-        "Input" => GlobalContext.InputComponentModel?.ListModel.Configs,
-        "Chat" => GlobalContext.ChatbotComponentModel?.ChatConfigs,
-        "Events" => GlobalContext.ChatbotComponentModel?.EventsConfigs,
-        "Dashboard" => GlobalContext.DashboardComponentModel?.Configs,
-        "Themes" => GlobalContext.ThemeComponentModel?.Configs,
-        _ => null,
-    };
 }

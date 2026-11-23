@@ -188,7 +188,7 @@ public sealed class ChatTarget : BlockSlotBase
 
         if (data.Bindable != null)
         {
-            if (data.Bindable.HasBlock) Bind(data.Bindable);
+            if (data.Bindable.HasContent) Bind(data.Bindable);
             else data.Bindable.Dispose();
             return;
         }

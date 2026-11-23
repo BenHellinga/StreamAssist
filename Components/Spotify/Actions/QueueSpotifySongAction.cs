@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -70,12 +68,6 @@ public class QueueSpotifySongAction : ActionBlock
 
 
     // spotify requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        var song = await _song.EvaluateAsync(context);
-        if (song.Trim() == "") throw Fail("no song given");
-
-        if (!await spotify.TryQueueAsync(song, context.CancellationToken)) throw new BlockFailedException("not queued");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).Spotify.QueueAsync(await _song.EvaluateAsync(context));
 }

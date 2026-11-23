@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Input.Background;
 using StreamAssist.Components.Input.Model;
-using StreamAssist.Components.OutputConsole.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Input.Conditions;
 
@@ -103,28 +101,8 @@ public class ControllerButtonPressedCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        var controllerOption = await _controller.EvaluateAsync(context);
-        var buttonOption = await _button.EvaluateAsync(context);
-        if (GlobalContext.DeviceInputManager is not { } input)
-        {
-            AppLog.WriteError($"{Name}: input not set up");
-            return false;
-        }
-
-        if (InputDevices.ControllerButtons.FirstOrDefault(b => b.Name == buttonOption) is not { Name: not null } button)
-        {
-            AppLog.WriteError($"{Name}: no controller button '{buttonOption}'");
-            return false;
-        }
-
-        if (controllerOption == AnyController) return input.IsKeyDown(button.Code);
-
-        if (DeviceInputManager.Devices.FirstOrDefault(d => d.Kind == DeviceKind.Controller && d.GetDisplayLabel() == controllerOption) is not { } controller)
-        {
-            AppLog.WriteWarning($"{Name}: controller '{controllerOption}' not connected");
-            return false;
-        }
-
-        return input.IsKeyDown(controller.DevicePath, button.Code);
+        var controller = await _controller.EvaluateAsync(context);
+        var button = await _button.EvaluateAsync(context);
+        return Quietly(() => Api(context).Input.IsControllerButtonDown(button, controller == AnyController ? null : controller));
     }
 }

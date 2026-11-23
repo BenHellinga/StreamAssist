@@ -1,10 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Actions;
 
@@ -92,12 +90,8 @@ public class PauseTimerAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var setType = await _setType.EvaluateAsync(context);
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Timer, out var dock, out var dockError)) throw Fail(dockError);
-        var timers = dock.Timers;
+        var dock = await _dock.EvaluateAsync(context);
         var name = await _timerName.EvaluateAsync(context);
-
-        foreach (var timer in timers.Find(name).ToList())
-            timers.SetIsPaused(timer, setType switch { "Pause" => true, "Resume" => false, _ => !timer.IsPaused });
+        Api(context).Dashboard.SetTimersPaused(dock, name, setType switch { "Pause" => Switch.On, "Resume" => Switch.Off, _ => Switch.Toggle });
     }
 }

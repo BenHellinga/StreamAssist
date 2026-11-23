@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -19,7 +20,7 @@ public class TriggerContext
 
 
 
-    private readonly Dictionary<string, string> _parameters;
+    private readonly ConcurrentDictionary<string, string> _parameters; // a run's callbacks (a timer's When Done) may use it at the same time
     private readonly Dictionary<string, string> _locals; // a String Builder's rows, only while its text is worked out
 
 
@@ -30,6 +31,10 @@ public class TriggerContext
 
     public TriggerPhase Phase { get; }
     public CancellationToken CancellationToken { get; }
+
+    // the token without any time limit put on this run (WithCancellation): for what the run leaves going after it ends,
+    // e.g. a timer's When Done, which is still stopped with its binding
+    public CancellationToken LastingCancellationToken { get; }
 
     // named values from whatever triggered this run, e.g. a chat command's parameters, or "user" / "message",
     // plus any a Set Parameter block added earlier in this run
@@ -49,7 +54,8 @@ public class TriggerContext
     {
         Phase = phase;
         CancellationToken = cancellationToken;
-        _parameters = parameters == null ? [] : new Dictionary<string, string>(parameters);
+        LastingCancellationToken = cancellationToken;
+        _parameters = parameters == null ? new() : new ConcurrentDictionary<string, string>(parameters);
         _locals = [];
     }
 
@@ -61,8 +67,21 @@ public class TriggerContext
     {
         Phase = outer.Phase;
         CancellationToken = outer.CancellationToken;
+        LastingCancellationToken = outer.LastingCancellationToken;
         _parameters = outer._parameters;
         _locals = new Dictionary<string, string>(outer._locals);
+    }
+
+
+
+    // the same run (sharing its parameters and locals) stopped by another token, e.g. one that also ends it at a time limit
+    private TriggerContext(TriggerContext outer, CancellationToken cancellationToken)
+    {
+        Phase = outer.Phase;
+        CancellationToken = cancellationToken;
+        LastingCancellationToken = outer.LastingCancellationToken;
+        _parameters = outer._parameters;
+        _locals = outer._locals;
     }
 
 
@@ -77,6 +96,10 @@ public class TriggerContext
 
 
     public TriggerContext WithLocals() => new(this);
+
+
+
+    public TriggerContext WithCancellation(CancellationToken cancellationToken) => new(this, cancellationToken);
 
 
 

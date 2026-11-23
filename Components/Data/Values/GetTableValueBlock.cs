@@ -1,10 +1,9 @@
+using StreamAssist.Components.CSharp.Api;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Values;
 
@@ -110,17 +109,14 @@ public class GetTableValueBlock : AdaptableValueBlock
 
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        var tableName = await _table.EvaluateAsync(context);
-        var table = data.FindTable(tableName) ?? throw Fail($"no table '{tableName}'");
-        var rowRef = await _row.EvaluateAsync(context);
-        var columnName = await _column.EvaluateAsync(context);
-        var column = table.FindColumn(columnName) ?? throw Fail($"{table.Name} has no column '{columnName}'");
-        if (!data.TryFindRow(table.Name, rowRef, addIfMissing: false, out var row)) throw new BlockFailedException("row not found"); // logged
-
-        var value = row?.Get(column.Name); // no row with that value reads like an empty cell
+        var table = await _table.EvaluateAsync(context);
+        var row = await _row.EvaluateAsync(context);
+        var column = await _column.EvaluateAsync(context);
+        var value = Api(context).Data.GetValue(table, row, column);
         if (value == null) return Kind switch { ValueKind.Int => 0, ValueKind.Double => 0.0, ValueKind.Bool => false, _ => "" };
-        if (!ValueTypes.TryConvert(value, column.Kind, Kind, out var result, out var error)) throw Fail(error);
+
+        var columnKind = DataScriptApi.Shape(table).FindColumn(column)!.Value.Kind;
+        if (!ValueTypes.TryConvert(value, columnKind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

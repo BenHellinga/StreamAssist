@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -84,13 +83,8 @@ public class EditCommandAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var model = GlobalContext.ChatbotComponentModel ?? throw Fail("chatbot not set up");
-
         var command = await _command.EvaluateAsync(context);
         var response = await _response.EvaluateAsync(context);
-
-        // from chat the chatter is told what went wrong, anywhere else the model logs it to the console
-        if (!model.TryEditCommand(command, response, out var failure, logErrors: !ChatEvents.IsFromChat(context.Parameters)))
-            throw await CommandActionHelper.FailAsync(context, failure, "the command wasn't edited");
+        await CommandActionHelper.RunAsync(context, twitch => twitch.EditCommand(command, response));
     }
 }

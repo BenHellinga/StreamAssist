@@ -1,11 +1,10 @@
+using StreamAssist.Components.CSharp.Api;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
 using StreamAssist.Components.OBS.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Values;
 
@@ -93,13 +92,9 @@ public class GetObsTransformBlock : ValueBlock<double>
 
     protected override async Task<double> ComputeAsync(TriggerContext context)
     {
-        var setting = await _setting.EvaluateAsync(context);
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var transform = ObsTransforms.Find(setting) ?? throw Fail($"unknown setting '{setting}'");
+        var setting = ObsScriptApi.Parse<StreamAssist.Scripting.ObsTransform>(await _setting.EvaluateAsync(context));
         var scene = await _scene.EvaluateAsync(context);
         var source = await _source.EvaluateAsync(context);
-
-        var (ok, value) = await obs.TryGetTransformAsync(scene, source, transform);
-        return ok ? value : throw new BlockFailedException("transform not read");
+        return await Api(context).Obs.GetTransformAsync(source, setting, scene);
     }
 }

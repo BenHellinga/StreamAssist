@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Conditions;
 
@@ -79,11 +77,8 @@ public class IndicatorIsOnCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Indicator, out var dock, out var dockError)) throw Fail(dockError);
+        var dock = await _dock.EvaluateAsync(context);
         var name = await _indicator.EvaluateAsync(context);
-        if (!dock.HasIndicator(name)) throw Fail($"no indicator '{name.Trim()}' on dock '{dock.Name}'");
-
-        return dock.IndicatorState(name) == true;
+        return Api(context).Dashboard.IsIndicatorOn(dock, name);
     }
 }

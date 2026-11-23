@@ -1,32 +1,41 @@
+using System;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
+using StreamAssist.Components.CSharp.Api;
+using StreamAssist.Scripting;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
 
 
 // shared by Add / Edit / Delete Command: when a chat message ran it, the chatter gets a short reply instead of a console
-// error (the model logs only when it wasn't chat), then the run stops either way so nothing after it (e.g. "Added!") runs
+// error, anywhere else the block logs why; the run stops either way, so nothing after it (e.g. "Added!") runs
 public static class CommandActionHelper
 {
-    public static async Task<BlockFailedException> FailAsync(TriggerContext context, CommandFailure failure, string reason)
+    public static async Task RunAsync(TriggerContext context, Action<ITwitch> change)
     {
-        var reply = failure switch
+        var twitch = new ScriptApi(context).Twitch;
+        try
         {
-            CommandFailure.NotFound => "command not found",
-            CommandFailure.AlreadyExists => "command already exists",
-            CommandFailure.NotSimple => "could not edit command",
-            CommandFailure.NotEditable => "command can't be edited",
-            CommandFailure.NoPlace => "command can't be added",
-            _ => null, // a typo in the command itself (no name, no response) gets no reply
-        };
+            change(twitch);
+        }
+        catch (ChatCommandException ex) when (ChatEvents.IsFromChat(context.Parameters))
+        {
+            // the reply waits its turn in the twitch action queue, a failure to send is logged there
+            if (ex.ChatReply != null)
+            {
+                try
+                {
+                    await twitch.SendMessageAsync(ex.ChatReply);
+                }
+                catch (StreamAssistException)
+                {
+                    // already logged
+                }
+            }
 
-        // the reply waits its turn in the twitch action queue, a failure to send is logged there
-        if (reply != null && ChatEvents.IsFromChat(context.Parameters) && GlobalContext.ChatbotManager is { } chatbot)
-            await chatbot.TrySendChatMessageAsync(reply, context.CancellationToken, context.Parameters.TryGetValue("messageId", out var id) ? id : null);
-
-        return new BlockFailedException(reason);
+            throw new BlockFailedException(ex.Message);
+        }
     }
 }

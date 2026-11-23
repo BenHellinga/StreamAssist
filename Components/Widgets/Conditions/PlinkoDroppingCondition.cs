@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -70,10 +69,6 @@ public class PlinkoDroppingCondition : ConditionBlock
 
 
 
-    protected override async Task<bool> CheckAsync(TriggerContext context)
-    {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Plinko, out var found, out var error)) throw Fail(error);
-        var plinko = (PlinkoWidget)found;
-        return plinko.IsDropping;
-    }
+    protected override async Task<bool> CheckAsync(TriggerContext context) =>
+        Api(context).Widgets.IsPlinkoDropping(await _widget.EvaluateAsync(context));
 }

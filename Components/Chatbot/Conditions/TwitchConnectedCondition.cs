@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Core.Connections;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Conditions;
 
@@ -74,8 +72,7 @@ public class TwitchConnectedCondition : ConditionBlock
 
     protected override async Task<bool> CheckAsync(TriggerContext context)
     {
-        var chatbot = GlobalContext.ChatbotManager;
-        var status = await _account.EvaluateAsync(context) == "Bot" ? chatbot?.BotConnection : chatbot?.StreamerConnection;
-        return status == ConnectionStatus.Connected;
+        var twitch = Api(context).Twitch;
+        return await _account.EvaluateAsync(context) == "Bot" ? twitch.IsBotConnected : twitch.IsConnected;
     }
 }

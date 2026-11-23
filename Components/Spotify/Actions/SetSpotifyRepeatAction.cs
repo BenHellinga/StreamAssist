@@ -1,9 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Spotify.Actions;
 
@@ -75,7 +74,6 @@ public class SetSpotifyRepeatAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var repeat = await _repeat.EvaluateAsync(context);
-        var spotify = GlobalContext.SpotifyManager ?? throw Fail("spotify not set up");
-        if (!await spotify.TrySetRepeatAsync(repeat, context.CancellationToken)) throw new BlockFailedException("repeat not set");
+        await Api(context).Spotify.SetRepeatAsync(repeat == "Song" ? SpotifyRepeat.Song : repeat == "Playlist" ? SpotifyRepeat.Playlist : SpotifyRepeat.Off);
     }
 }

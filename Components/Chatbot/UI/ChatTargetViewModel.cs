@@ -164,7 +164,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
 
 
 
-    private void OnBindableChanged() => IsBound = _bindable?.HasBlock ?? false;
+    private void OnBindableChanged() => IsBound = _bindable?.HasContent ?? false;
 
 
 
@@ -194,7 +194,7 @@ public partial class ChatTargetViewModel : ViewModelBase, IDroppable, IEditButto
         UnsubscribeFromBindable(_bindable);
 
         _bindable = bindable;
-        IsBound = _bindable?.HasBlock ?? false;
+        IsBound = _bindable?.HasContent ?? false;
         IsDisabled = _bindable?.IsDisabled ?? false;
         BindLabel = _bindable?.Label.Trim() ?? "";
 

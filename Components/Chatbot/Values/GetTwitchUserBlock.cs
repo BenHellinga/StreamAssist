@@ -1,10 +1,9 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Values;
 
@@ -111,15 +110,32 @@ public class GetTwitchUserBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var setting = await _setting.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var info = TwitchInfos.Find(TwitchInfos.User, setting) ?? throw Fail($"unknown setting '{setting}'");
         var user = await _user.EvaluateAsync(context);
+        var twitch = Api(context).Twitch;
 
-        var (ok, value) = await chatbot.TryGetUserInfoAsync(user, info, context.CancellationToken);
-        if (!ok) throw new BlockFailedException("user not read");
+        object value;
+        if (info.Name is "Last Category" or "Last Title")
+        {
+            // what their channel is set to: kept even while they're offline (a shoutout's "last playing")
+            var channel = await twitch.GetChannelAsync(user);
+            value = info.Name == "Last Category" ? channel.Category : channel.Title;
+        }
+        else
+        {
+            var found = await twitch.GetUserAsync(user) ?? throw Fail($"there's no twitch user '{user.Trim().TrimStart('@').ToLowerInvariant()}'");
+            value = info.Name switch
+            {
+                "Display Name" => found.DisplayName,
+                "Id" => found.Id,
+                "Account Age Days" => (int)(DateTime.UtcNow - found.CreatedAt).TotalDays,
+                "Created On" => found.CreatedAt.ToString("yyyy-MM-dd"),
+                "Description" => found.Description,
+                _ => throw Fail($"unknown setting '{info.Name}'"),
+            };
+        }
 
-        // what twitch gave (text, a whole number or true/false), read as the chosen type
-        if (!ValueTypes.TryConvert(value!, info.Kind, Kind, out var result, out var error)) throw Fail(error);
+        if (!ValueTypes.TryConvert(value, info.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

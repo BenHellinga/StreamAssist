@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Actions;
 
@@ -92,15 +89,8 @@ public class StopTimerAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var mode = await _mode.EvaluateAsync(context);
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Timer, out var dock, out var dockError)) throw Fail(dockError);
-        var timers = dock.Timers;
+        var dock = await _dock.EvaluateAsync(context);
         var name = await _timerName.EvaluateAsync(context);
-
-        foreach (var timer in timers.Find(name).ToList())
-        {
-            if (mode == "Cancel") timers.Kill(timer);
-            else timers.Finish(timer);
-        }
+        Api(context).Dashboard.StopTimers(dock, name, runWhenDone: mode != "Cancel");
     }
 }

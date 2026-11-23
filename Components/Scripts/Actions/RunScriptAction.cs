@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using System.Threading;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Shell;
@@ -12,17 +11,9 @@ namespace StreamAssist.Components.Scripts.Actions;
 // runs one of the Scripts tab's scripts (in the config in use) with this run's parameters, plus any set in its rows
 // (set top to bottom like Set Parameters, so a later row can use an earlier one's {name}). Waiting until done, the
 // run carries on once the script has finished; otherwise straight away. A script that's off, or has no blocks, does
-// nothing. Scripts calling scripts are stopped past MaxDepth (one running itself, say)
+// nothing. Scripts calling scripts are stopped past AppScriptApi.MaxScriptDepth (one running itself, say)
 public class RunScriptAction : ActionBlock
 {
-    // constants
-
-
-
-    private const int MaxDepth = 20;
-
-
-
     // info
 
 
@@ -36,8 +27,6 @@ public class RunScriptAction : ActionBlock
     // private
 
 
-
-    private static readonly AsyncLocal<int> Depth = new(); // how many scripts deep this run is
 
     private readonly MenuSlot _script;
     private bool _waitUntilDone;
@@ -107,11 +96,8 @@ public class RunScriptAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var name = await _script.EvaluateAsync(context);
-        var scripts = GlobalContext.ScriptsComponentModel ?? throw Fail("scripts not set up");
-        if (!scripts.TryFindScript(name, out var script, out var error)) throw Fail(error);
-        if (Depth.Value >= MaxDepth) throw Fail($"scripts calling scripts went past {MaxDepth} deep (a script running itself?)");
 
-        // this run's parameters, then the rows on top of them
+        // the rows on top of this run's parameters, top to bottom (a later row can use an earlier one's {name})
         var call = new TriggerContext(TriggerPhase.Once, context.CancellationToken, context.Parameters);
         foreach (var row in _rows.Items)
         {
@@ -125,19 +111,8 @@ public class RunScriptAction : ActionBlock
             call.SetParameter(key, ValueTypes.ToText(value));
         }
 
-        if (script.Bindable is not { } bindable) return;
-
-        // the script's run (and anything it starts) sees one more level
-        var depth = Depth.Value;
-        Depth.Value = depth + 1;
-        try
-        {
-            if (_waitUntilDone) await bindable.RunOnceAsync(call.Parameters, context.CancellationToken);
-            else script.TryRun(call.Parameters);
-        }
-        finally
-        {
-            Depth.Value = depth;
-        }
+        var app = Api(context).App;
+        if (_waitUntilDone) await app.RunScriptAsync(name, call.Parameters);
+        else app.StartScript(name, call.Parameters);
     }
 }

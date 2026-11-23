@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Values;
 
@@ -97,14 +95,9 @@ public class FindTableRowBlock : ValueBlock<int>
 
     protected override async Task<int> ComputeAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        var tableName = await _table.EvaluateAsync(context);
-        var table = data.FindTable(tableName) ?? throw Fail($"no table '{tableName}'");
-        var columnName = await _column.EvaluateAsync(context);
-        var column = table.FindColumn(columnName) ?? throw Fail($"{table.Name} has no column '{columnName}'");
-        var wanted = (await _value.EvaluateAsync(context)).Trim();
-
-        var row = table.Rows.FirstOrDefault(r => string.Equals(ValueTypes.ToText(r.Get(column.Name) ?? "").Trim(), wanted, StringComparison.OrdinalIgnoreCase));
-        return row?.Id ?? 0;
+        var table = await _table.EvaluateAsync(context);
+        var column = await _column.EvaluateAsync(context);
+        var value = await _value.EvaluateAsync(context);
+        return Api(context).Data.FindRow(table, column, value);
     }
 }

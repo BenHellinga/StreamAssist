@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Values;
 
@@ -113,15 +112,9 @@ public class GetRewardSettingBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var settingOption = await _setting.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var setting = RewardSettings.Find(settingOption) ?? throw Fail($"unknown setting '{settingOption}'");
-        var reward = await _reward.EvaluateAsync(context);
-
-        // waits its turn in the twitch action queue, a failure is already logged there
-        var (ok, value) = await chatbot.TryGetRewardSettingAsync(reward, setting, context.CancellationToken);
-        if (!ok) throw new BlockFailedException($"'{setting.Name}' of reward '{reward}' wasn't read");
-
-        if (!ValueTypes.TryConvert(value!, setting.Kind, Kind, out var result, out var error)) throw Fail(error);
+        var reward = await Api(context).Twitch.GetRewardAsync(await _reward.EvaluateAsync(context));
+        if (!ValueTypes.TryConvert(setting.Get(reward), setting.Kind, Kind, out var result, out var error)) throw Fail(error);
         return result;
     }
 }

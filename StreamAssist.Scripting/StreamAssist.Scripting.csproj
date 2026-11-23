@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- what C# scripts can use (Config/Scripts/*.cs): the script base class and the app's API, nothing else of the app.
+       The app implements it; scripts and VS Code only ever see this assembly (and its doc comments, for IntelliSense) -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn> <!-- self-explanatory members (enum values, records) go without -->
+    <RootNamespace>StreamAssist.Scripting</RootNamespace>
+  </PropertyGroup>
+
+</Project>

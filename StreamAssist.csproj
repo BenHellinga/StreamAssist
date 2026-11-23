@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <!-- the test project lives inside this folder, its files aren't part of the app -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);StreamAssist.Tests/**</DefaultItemExcludes>
+    <!-- the test project and the scripting API live inside this folder, their files aren't part of the app -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);StreamAssist.Tests/**;StreamAssist.Scripting/**;Config/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,10 +19,15 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <PackageReference Include="DynamicExpresso.Core" Version="2.19.5" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.8" />
     <PackageReference Include="RawInput.Sharp" Version="0.1.3" />
     <PackageReference Include="System.Speech" Version="10.0.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="StreamAssist.Scripting\StreamAssist.Scripting.csproj" />
   </ItemGroup>
 </Project>

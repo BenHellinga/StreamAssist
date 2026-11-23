@@ -1,9 +1,8 @@
+using StreamAssist.Scripting;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Actions;
 
@@ -91,11 +90,8 @@ public class SetIndicatorAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var set = await _set.EvaluateAsync(context);
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Indicator, out var dock, out var dockError)) throw Fail(dockError);
+        var dock = await _dock.EvaluateAsync(context);
         var name = await _indicator.EvaluateAsync(context);
-
-        bool? isOn = set switch { "Off" => false, "Toggle" => null, _ => true };
-        if (!dock.TrySetIndicator(name, isOn, out var error)) throw Fail(error);
+        Api(context).Dashboard.SetIndicator(dock, name, set switch { "Off" => Switch.Off, "Toggle" => Switch.Toggle, _ => Switch.On });
     }
 }

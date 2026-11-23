@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Actions;
 
@@ -82,10 +80,8 @@ public class StopSoundsAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var which = await _which.EvaluateAsync(context);
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Sound, out var dock, out var dockError)) throw Fail(dockError);
-
-        if (which == "Playing") dock.Sounds.StopPlaying();
-        else dock.Sounds.StopAll();
+        var dock = await _dock.EvaluateAsync(context);
+        if (which == "Playing") Api(context).Dashboard.SkipSound(dock);
+        else Api(context).Dashboard.StopSounds(dock);
     }
 }

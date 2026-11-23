@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -70,10 +69,6 @@ public class ClipPlayingCondition : ConditionBlock
 
 
 
-    protected override async Task<bool> CheckAsync(TriggerContext context)
-    {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Clip, out var found, out var error)) throw Fail(error);
-        var clip = (ClipWidget)found;
-        return clip.IsPlaying;
-    }
+    protected override async Task<bool> CheckAsync(TriggerContext context) =>
+        Api(context).Widgets.IsClipPlaying(await _widget.EvaluateAsync(context));
 }

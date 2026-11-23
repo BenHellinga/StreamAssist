@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -81,8 +80,7 @@ public class RemovePartyItemAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.ImageParty, out var found, out var error)) throw Fail(error);
-        var party = (ImagePartyWidget)found;
-        if (!party.TryRemoveItems(await _file.EvaluateAsync(context))) throw new BlockFailedException("item not removed");
+        var widget = await _widget.EvaluateAsync(context);
+        Api(context).Widgets.RemovePartyItems(widget, await _file.EvaluateAsync(context));
     }
 }

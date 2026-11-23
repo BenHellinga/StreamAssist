@@ -25,6 +25,9 @@ using StreamAssist.Components.Data.Background;
 using StreamAssist.Components.Data.Model;
 using StreamAssist.Components.Data.UI;
 using StreamAssist.Components.Blocks.Model;
+using StreamAssist.Components.CSharp.Api;
+using StreamAssist.Components.CSharp.Background;
+using StreamAssist.Core.Utilities;
 using StreamAssist.Components.Spotify.Model;
 using StreamAssist.Components.Dashboard.Background;
 using StreamAssist.Components.Dashboard.Model;
@@ -80,6 +83,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private WidgetsSaveManager _widgetsSaveManager;
     private WidgetManager _widgetManager;
     private ScriptsSaveManager _scriptsSaveManager;
+    private readonly ScriptManager _scriptManager;
 
     // main view models
     private PanelViewModel _outputConsolePanelViewModel;
@@ -115,6 +119,9 @@ public partial class MainWindowViewModel : ViewModelBase
         JsonFileStore.ReportWarning = AppLog.WriteWarning;
         AppPaths.EnsureAssetFolders(); // Assets/Sounds, Images, Videos, for the user's files
 
+        // runs (blocks, C# scripts) go on background threads from here on, so a busy one never freezes the app
+        UiThread.RunsInBackground = true;
+
         // the theme next, so the window is drawn with it from the start
 
         var freshTheme = !JsonFileStore.Exists(ThemeManager.FileName);
@@ -127,8 +134,18 @@ public partial class MainWindowViewModel : ViewModelBase
         _dataModel = new();
         _dataStore = new(_dataModel, System.IO.Path.Combine(JsonFileStore.RootDir, "data.db")); // loads it, then saves every change
         GlobalContext.DataModel = _dataModel;
+        // {var.name} in a block's text: read on the UI thread, after waiting while another run has the variable locked
         TriggerContext.VariableText = name =>
-            _dataModel.VariableKind(name) != null && _dataModel.TryGetVariable(name, out _, out var value) ? ValueTypes.ToText(value) : null;
+        {
+            ScriptLocks.WaitUntilFree(DataScriptApi.VariableKey(name), $"variable {name}", default);
+            return UiThread.Run(() => _dataModel.VariableKind(name) != null && _dataModel.TryGetVariable(name, out _, out var value) ? ValueTypes.ToText(value) : null);
+        };
+
+        // C# scripts (Config/Scripts) before the models: a binding loaded as a copy of another gets its own script file
+
+        _scriptManager = new(System.IO.Path.Combine(JsonFileStore.RootDir, "Scripts"));
+        BindableModel.Scripts = _scriptManager;
+        GlobalContext.ScriptManager = _scriptManager;
 
         // models (a tab whose file doesn't exist yet, the first time, starts with a config named Default so it can be used
         // right away; deleting every config later leaves it with none, and that's what's saved)
@@ -158,6 +175,11 @@ public partial class MainWindowViewModel : ViewModelBase
         if (freshDashboard) _dashboardComponentModel.Configs.TryCreate(ConfigSet<DashboardConfigModel>.DefaultName);
         if (freshWidgets) _widgetsComponentModel.Configs.TryCreate(ConfigSet<WidgetsConfigModel>.DefaultName);
         if (freshScripts) _scriptsComponentModel.Configs.TryCreate(ConfigSet<ScriptsConfigModel>.DefaultName);
+
+        // every binding is loaded: scripts none of them has go to Scripts/Removed (unless a file couldn't be read, then
+        // its bindings' scripts would look unused), and the rest compile in the background
+        if (!JsonFileStore.AnyBroken) _scriptManager.SweepUnused(BindableModel.LiveScriptIds);
+        _scriptManager.CompileAll();
 
         // managers
 
@@ -336,6 +358,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _widgetsComponentModel.Dispose();
         _scriptsSaveManager.Dispose();
         _scriptsComponentModel.Dispose();
+        _scriptManager.Dispose();
 
         _timerManager.Dispose();
         _appStartedManager.Dispose();

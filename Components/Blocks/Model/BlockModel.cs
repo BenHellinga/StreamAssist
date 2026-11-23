@@ -171,7 +171,18 @@ public abstract class BlockModel : ModelBase
 
 
 
-    protected void RaiseTriggered() => Triggered?.Invoke();
+    // the app's API for this run: blocks do their work through it, like C# scripts (see CSharp.Api.ScriptApi)
+    protected static StreamAssist.Components.CSharp.Api.ScriptApi Api(TriggerContext context) => new(context);
+
+
+
+    // an API call that failed: logged under this block's name, unless the app already logged why
+    protected internal BlockFailedException Failed(StreamAssist.Scripting.StreamAssistException ex) =>
+        ex.IsLogged ? new BlockFailedException(ex.Message) : Fail(ex.Message);
+
+
+
+    protected void RaiseTriggered() => StreamAssist.Core.Utilities.UiThread.Post(() => Triggered?.Invoke()); // runs are on other threads
 
 
 

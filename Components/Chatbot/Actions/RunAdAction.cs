@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -72,12 +70,6 @@ public class RunAdAction : ActionBlock
 
 
     // twitch requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        var seconds = await _seconds.EvaluateAsync(context);
-        if (seconds is < 30 or > 180) throw Fail($"{seconds}s not allowed, 30 to 180");
-
-        if (!await chatbot.TryRunAdAsync(seconds, context.CancellationToken)) throw new BlockFailedException("no ad");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).Twitch.RunAdAsync(await _seconds.EvaluateAsync(context));
 }

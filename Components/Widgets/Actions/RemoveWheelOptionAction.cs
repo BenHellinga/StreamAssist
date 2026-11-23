@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -81,8 +80,7 @@ public class RemoveWheelOptionAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Wheel, out var found, out var error)) throw Fail(error);
-        var wheel = (WheelWidget)found;
-        if (!wheel.TryRemoveOption(await _option.EvaluateAsync(context))) throw new BlockFailedException("option not removed");
+        var widget = await _widget.EvaluateAsync(context);
+        Api(context).Widgets.RemoveWheelOption(widget, await _option.EvaluateAsync(context));
     }
 }

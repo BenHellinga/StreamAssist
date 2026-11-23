@@ -1,3 +1,4 @@
+using StreamAssist.Scripting;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -122,29 +123,20 @@ public class StartTimerBlock : ContainerBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var ifRunning = await _ifRunning.EvaluateAsync(context);
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        var dockName = await _dock.EvaluateAsync(context);
-        TimersModel timers;
-        if (dockName.Trim() == "") timers = dashboard.BackgroundTimers;
-        else if (dashboard.TryFindDock(dockName, DockKind.Timer, out var dock, out var dockError)) timers = dock.Timers;
-        else throw Fail(dockError);
+        var dock = await _dock.EvaluateAsync(context);
         var name = await _timerName.EvaluateAsync(context);
         var seconds = await _seconds.EvaluateAsync(context);
-        if (double.IsNaN(seconds) || seconds > 1e9) throw Fail($"can't time {seconds} seconds");
-
-        var repeat = ifRunning switch
+        var mode = ifRunning switch
         {
-            "Add Time" => TimerRepeat.AddTime,
-            "Ignore" => TimerRepeat.Ignore,
-            "Run Another" => TimerRepeat.RunAnother,
-            _ => TimerRepeat.Restart,
+            "Add Time" => TimerIfRunning.AddTime,
+            "Ignore" => TimerIfRunning.Ignore,
+            "Run Another" => TimerIfRunning.RunAnother,
+            _ => TimerIfRunning.Restart,
         };
 
-        // its own copy of the parameters as they are now, and the binding's cancellation (a removed binding never
-        // runs its end)
+        // When Done gets this run's parameters as they are now
         var endContext = new TriggerContext(TriggerPhase.Once, context.CancellationToken, context.Parameters);
-        if (!timers.TryStart(name, TimeSpan.FromSeconds(seconds), repeat, () => RunWhenDone(endContext), this, out var error, _repeat))
-            throw Fail(error);
+        Api(context).DashboardApi.StartTimer(dock, name, seconds, mode, _repeat, () => RunWhenDone(endContext), owner: this);
     }
 
 

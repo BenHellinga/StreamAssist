@@ -13,6 +13,11 @@ namespace StreamAssist.Components.Input.UI;
 // (an unbound key gets the editor's draft, bound to the key on its first change)
 public class KeybindViewModel : BindableEditorViewModel
 {
+    // keys (and microphones) are held, so their scripts get OnReleasedAsync too
+    protected override bool IsHeldTrigger => true;
+
+
+
     // private
 
 

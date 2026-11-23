@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -73,11 +71,6 @@ public class EndPollAction : ActionBlock
 
 
     // twitch requests log their own failure, then the run stops
-    protected override async Task ExecuteAsync(TriggerContext context)
-    {
-        var results = await _results.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
-        // a failure (e.g. no poll is running) is already logged by the manager
-        if (!await chatbot.TryEndPollAsync(results == "Show", context.CancellationToken)) throw new BlockFailedException("poll not ended");
-    }
+    protected override async Task ExecuteAsync(TriggerContext context) =>
+        await Api(context).Twitch.EndPollAsync(await _results.EvaluateAsync(context) == "Show");
 }

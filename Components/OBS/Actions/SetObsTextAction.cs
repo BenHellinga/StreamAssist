@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Actions;
 
@@ -82,10 +79,8 @@ public class SetObsTextAction : ActionBlock
     // OBS requests log their own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
         var source = await _source.EvaluateAsync(context);
         var text = await _text.EvaluateAsync(context);
-
-        if (!(await obs.TrySetSourceSettingAsync(source, "text", text)).Ok) throw new BlockFailedException("text not set");
+        await Api(context).Obs.SetTextAsync(source, text);
     }
 }

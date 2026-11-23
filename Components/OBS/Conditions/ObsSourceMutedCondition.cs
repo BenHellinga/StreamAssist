@@ -1,10 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.OBS.Background;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.OBS.Conditions;
 
@@ -70,12 +67,6 @@ public class ObsSourceMutedCondition : ConditionBlock
 
 
 
-    protected override async Task<bool> CheckAsync(TriggerContext context)
-    {
-        var obs = GlobalContext.ObsManager ?? throw Fail("obs not set up");
-        var source = await _source.EvaluateAsync(context);
-
-        var (ok, muted) = await obs.TryGetMutedAsync(source);
-        return ok ? muted : throw new BlockFailedException("mute not read");
-    }
+    protected override async Task<bool> CheckAsync(TriggerContext context) =>
+        await Api(context).Obs.IsMutedAsync(await _source.EvaluateAsync(context));
 }

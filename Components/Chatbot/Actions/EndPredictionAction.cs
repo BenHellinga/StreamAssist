@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
 using StreamAssist.Components.Chatbot.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Chatbot.Actions;
 
@@ -85,10 +83,11 @@ public class EndPredictionAction : ActionBlock
     protected override async Task ExecuteAsync(TriggerContext context)
     {
         var change = await _change.EvaluateAsync(context);
-        var chatbot = GlobalContext.ChatbotManager ?? throw Fail("chatbot not set up");
         var winner = await _winner.EvaluateAsync(context);
-        if (change == "Resolve" && winner.Trim() == "") throw Fail("Resolve needs a Winner");
+        var twitch = Api(context).Twitch;
 
-        if (!await chatbot.TryEndPredictionAsync(change, winner, context.CancellationToken)) throw new BlockFailedException("prediction not ended");
+        if (change == "Lock") await twitch.LockPredictionAsync();
+        else if (change == "Resolve") await twitch.ResolvePredictionAsync(winner);
+        else await twitch.CancelPredictionAsync();
     }
 }

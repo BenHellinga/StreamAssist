@@ -129,6 +129,17 @@ public static class JsonFileStore
 
 
 
+    // any file that couldn't be read this session (e.g. so nothing is cleaned up on the strength of a partial load)
+    public static bool AnyBroken
+    {
+        get
+        {
+            lock (BrokenLock) return Broken.Count > 0;
+        }
+    }
+
+
+
     public static bool IsBroken(string name)
     {
         lock (BrokenLock) return Broken.ContainsKey(name);

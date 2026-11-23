@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -100,10 +99,6 @@ public class GetVariableBlock : AdaptableValueBlock
     protected override async Task<object> ComputeAsync(TriggerContext context)
     {
         var variable = await _variable.EvaluateAsync(context);
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
-        if (!data.TryGetVariable(variable, out var kind, out var value)) throw new BlockFailedException("no variable");
-
-        if (!ValueTypes.TryConvert(value, kind, Kind, out var result, out var error)) throw Fail(error);
-        return result;
+        return Api(context).DataApi.GetVariable(variable, ValueTypes.ClrType(Kind));
     }
 }

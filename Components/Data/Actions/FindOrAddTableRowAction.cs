@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Data.Actions;
 
@@ -104,16 +103,11 @@ public class FindOrAddTableRowAction : ActionBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var data = GlobalContext.DataModel ?? throw Fail("data not set up");
         var name = _idName.Trim();
         if (!TriggerContext.IsValidName(name)) throw Fail($"'{name}' isn't a valid name, use letters, digits, _");
-
         var table = await _table.EvaluateAsync(context);
         var column = await _column.EvaluateAsync(context);
         var value = await _value.EvaluateAsync(context);
-
-        // a failure is already logged by the model
-        if (!data.TryFindOrAddRow(table, column, value, out var row)) throw new BlockFailedException("row not found or added");
-        context.SetParameter(name, row.Id.ToString());
+        context.SetParameter(name, Api(context).Data.FindOrAddRow(table, column, value).ToString());
     }
 }

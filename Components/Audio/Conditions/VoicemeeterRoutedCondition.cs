@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using StreamAssist.Components.Audio.Actions;
 using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Conditions;
 
@@ -87,8 +86,6 @@ public class VoicemeeterRoutedCondition : ConditionBlock
     {
         var input = await _input.EvaluateAsync(context);
         var bus = await _bus.EvaluateAsync(context);
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        if (!voicemeeter.TryGetRoute(input, bus, out var routed)) throw new BlockFailedException("route not read");
-        return routed;
+        return Api(context).Voicemeeter.IsRouted(input, bus);
     }
 }

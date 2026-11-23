@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using StreamAssist.Components.OutputConsole.Model;
+using StreamAssist.Core.Utilities;
 
 namespace StreamAssist.Components.Blocks.Model;
 
@@ -15,7 +16,7 @@ public sealed class BlockSlotList : BlockSlotBase
 
 
 
-    private readonly List<BlockModel> _blocks;
+    private readonly SnapshotList<BlockModel> _blocks; // read by runs on other threads
 
 
 
@@ -23,7 +24,7 @@ public sealed class BlockSlotList : BlockSlotBase
 
 
 
-    public override IReadOnlyList<BlockModel> Blocks => _blocks;
+    public override IReadOnlyList<BlockModel> Blocks => _blocks.Snapshot;
 
 
 
@@ -42,7 +43,7 @@ public sealed class BlockSlotList : BlockSlotBase
 
     public BlockSlotList(string label, Type acceptedType) : base(label, acceptedType)
     {
-        _blocks = [];
+        _blocks = new();
     }
 
 

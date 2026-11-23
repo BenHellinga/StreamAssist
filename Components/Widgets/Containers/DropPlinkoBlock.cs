@@ -98,14 +98,12 @@ public class DropPlinkoBlock : ContainerBlock
 
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Plinko, out var found, out var error)) throw Fail(error);
-        var plinko = (PlinkoWidget)found;
+        var widget = await _widget.EvaluateAsync(context);
         var balls = await _balls.EvaluateAsync(context);
 
-        // the parameters as they are now, and the binding's cancellation (a removed binding never runs its ends)
+        // the callbacks get this run's parameters as they are now
         var start = new TriggerContext(TriggerPhase.Once, context.CancellationToken, context.Parameters);
-        if (!plinko.TryDrop(balls, (bucket, ball) => RunWhenEachLands(start, bucket, ball), (results, result) => RunWhenDone(start, results, result), out var dropError)
-            && dropError != "") throw Fail(dropError);
+        Api(context).WidgetsApi.DropPlinko(widget, balls, (bucket, ball) => RunWhenEachLands(start, bucket, ball), (results, result) => RunWhenDone(start, results, result));
     }
 
 

@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Components.Dashboard.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Dashboard.Values;
 
@@ -81,13 +78,8 @@ public class TimerLeftBlock : ValueBlock<int>
 
     protected override async Task<int> ComputeAsync(TriggerContext context)
     {
-        var dashboard = GlobalContext.DashboardComponentModel ?? throw Fail("no dashboard");
-        if (!dashboard.TryFindDock(await _dock.EvaluateAsync(context), DockKind.Timer, out var dock, out var dockError)) throw Fail(dockError);
-        var timers = dock.Timers;
+        var dock = await _dock.EvaluateAsync(context);
         var name = await _timerName.EvaluateAsync(context);
-        var now = timers.Now;
-
-        var left = timers.Find(name).Select(t => t.LeftAt(now)).DefaultIfEmpty(TimeSpan.Zero).Min();
-        return (int)Math.Ceiling(left.TotalSeconds);
+        return (int)Math.Ceiling(Api(context).Dashboard.TimerSecondsLeft(dock, name));
     }
 }

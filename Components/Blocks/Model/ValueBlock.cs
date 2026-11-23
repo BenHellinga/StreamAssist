@@ -49,7 +49,14 @@ public abstract class ValueBlock<T> : ValueBlock where T : notnull
         context.CancellationToken.ThrowIfCancellationRequested();
 
         RaiseTriggered();
-        return await ComputeAsync(context);
+        try
+        {
+            return await ComputeAsync(context);
+        }
+        catch (StreamAssist.Scripting.StreamAssistException ex)
+        {
+            throw Failed(ex);
+        }
     }
 
 

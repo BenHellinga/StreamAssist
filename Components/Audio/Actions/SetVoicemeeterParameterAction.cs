@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using StreamAssist.Components.Audio.Background;
 using StreamAssist.Components.Blocks.Model;
-using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Audio.Actions;
 
@@ -80,11 +78,8 @@ public class SetVoicemeeterParameterAction : ActionBlock
     // Voicemeeter logs its own failure, then the run stops
     protected override async Task ExecuteAsync(TriggerContext context)
     {
-        var voicemeeter = GlobalContext.VoicemeeterManager ?? throw Fail("voicemeeter not set up");
-        var parameter = (await _parameter.EvaluateAsync(context)).Trim();
-        if (parameter == "") throw Fail("needs a parameter name");
+        var parameter = await _parameter.EvaluateAsync(context);
         var value = await _value.EvaluateAsync(context);
-
-        if (!voicemeeter.TrySetParameter(parameter, (float)value)) throw new BlockFailedException("parameter not set");
+        Api(context).Voicemeeter.SetParameter(parameter, value);
     }
 }

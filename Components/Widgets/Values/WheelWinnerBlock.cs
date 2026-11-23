@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StreamAssist.Components.Blocks.Model;
@@ -70,10 +69,6 @@ public class WheelWinnerBlock : ValueBlock<string>
 
 
 
-    protected override async Task<string> ComputeAsync(TriggerContext context)
-    {
-        if (!WidgetBlocks.TryFind(await _widget.EvaluateAsync(context), WidgetKind.Wheel, out var found, out var error)) throw Fail(error);
-        var wheel = (WheelWidget)found;
-        return wheel.LastWinner;
-    }
+    protected override async Task<string> ComputeAsync(TriggerContext context) =>
+        Api(context).Widgets.GetWheelWinner(await _widget.EvaluateAsync(context));
 }
