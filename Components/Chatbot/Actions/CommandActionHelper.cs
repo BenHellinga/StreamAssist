@@ -18,6 +18,8 @@ public static class CommandActionHelper
             CommandFailure.NotFound => "command not found",
             CommandFailure.AlreadyExists => "command already exists",
             CommandFailure.NotSimple => "could not edit command",
+            CommandFailure.NotEditable => "command can't be edited",
+            CommandFailure.NoPlace => "command can't be added",
             _ => null, // a typo in the command itself (no name, no response) gets no reply
         };
 

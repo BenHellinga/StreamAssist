@@ -54,6 +54,7 @@ public sealed class WidgetServer : IDisposable
 
 
     public event Action<string>? Joined; // a page for that widget connected (send it everything)
+    public event Action<string, string>? Received; // a page for that widget sent this (on the server's thread)
 
 
 
@@ -198,7 +199,7 @@ public sealed class WidgetServer : IDisposable
 
 
 
-    // a page's connection: kept until it closes, anything it sends is ignored
+    // a page's connection: kept until it closes; a short text message it sends is passed on (e.g. a video's shape)
     private async Task ListenAsync(WebSocket socket, string name, CancellationToken ct)
     {
         var client = new Client(socket, name);
@@ -212,6 +213,8 @@ public sealed class WidgetServer : IDisposable
             {
                 var result = await socket.ReceiveAsync(buffer, ct);
                 if (result.MessageType == WebSocketMessageType.Close) break;
+                if (result.MessageType == WebSocketMessageType.Text && result.EndOfMessage)
+                    Received?.Invoke(name, System.Text.Encoding.UTF8.GetString(buffer, 0, result.Count));
             }
         }
         catch (Exception)

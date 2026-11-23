@@ -10,7 +10,7 @@ namespace StreamAssist.Components.Chatbot.ChatBlocks;
 
 
 // lets only some chatters past this point (e.g. moderators for # commands), everyone else falls through to the next row
-public class HasPermissionChatBlock : ChatBlock
+public class HasPermissionChatBlock : FilterChatBlock
 {
     // info
 
@@ -42,7 +42,6 @@ public class HasPermissionChatBlock : ChatBlock
 
 
     private string _level;
-    private readonly ChatTarget _target;
     private readonly IReadOnlyList<BlockSlotBase> _slots;
 
 
@@ -58,21 +57,7 @@ public class HasPermissionChatBlock : ChatBlock
         set => SetParameter(ref _level, value);
     }
 
-    [JsonIgnore] public ChatTarget Target => _target;
     [JsonIgnore] public override IReadOnlyList<BlockSlotBase> Slots => _slots;
-
-
-
-    // json
-
-
-
-    [JsonInclude] [JsonPropertyName("target")]
-    private ChatTargetData JsonTarget
-    {
-        get => _target.GetData();
-        set => _target.LoadData(value);
-    }
 
 
 
@@ -83,8 +68,7 @@ public class HasPermissionChatBlock : ChatBlock
     public HasPermissionChatBlock()
     {
         _level = "Moderator";
-        _target = new();
-        _slots = [_target];
+        _slots = [Target];
 
         TrackSlots();
     }
@@ -103,22 +87,8 @@ public class HasPermissionChatBlock : ChatBlock
 
 
 
-    public override bool TryMatch(ChatMatchState state)
-    {
-        if (!HasLevel(state.Parameters)) return false;
-
-        RaiseTriggered(); // the chatter is allowed, flashes like a pressed key (even if nothing after it matches)
-        return _target.TryMatch(state);
-    }
-
-
-
-    // helpers
-
-
-
     // the chosen level or any higher one (an unknown level lets nobody through)
-    private bool HasLevel(IReadOnlyDictionary<string, string> parameters)
+    protected override bool Allows(IReadOnlyDictionary<string, string> parameters)
     {
         var index = Array.FindIndex(Levels, l => l.Level == _level);
         if (index < 0) return false;

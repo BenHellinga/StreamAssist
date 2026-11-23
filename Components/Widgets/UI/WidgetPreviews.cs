@@ -306,3 +306,47 @@ public sealed class PlinkoPreview : Control
         if (text.BuildGeometry(at) is { } geometry) context.DrawGeometry(Brushes.White, outline, geometry);
     }
 }
+
+
+
+// an Image Party's preview: its canvas (a thin outline) fitted in at the left, each item where it is: an image as it is
+// (a gif's first frame), a video (or a file it can't show) as a box with its name
+public sealed class PartyPreview : Control
+{
+    public static readonly StyledProperty<PartyPreviewFrame?> FrameProperty = AvaloniaProperty.Register<PartyPreview, PartyPreviewFrame?>(nameof(Frame));
+
+    public PartyPreviewFrame? Frame { get => GetValue(FrameProperty); set => SetValue(FrameProperty, value); }
+
+
+
+    static PartyPreview() => AffectsRender<PartyPreview>(FrameProperty);
+
+
+
+    public override void Render(DrawingContext context)
+    {
+        if (Frame is not { } frame || frame.CanvasWidth <= 0 || frame.CanvasHeight <= 0) return;
+        var scale = Math.Min(Bounds.Width / frame.CanvasWidth, Bounds.Height / frame.CanvasHeight);
+        if (scale <= 0) return;
+
+        var top = (Bounds.Height - frame.CanvasHeight * scale) / 2;
+        var line = new Pen(new SolidColorBrush(Color.FromArgb(128, 255, 255, 255)), 1);
+        context.DrawRectangle(null, line, new Rect(0.5, top + 0.5, frame.CanvasWidth * scale - 1, frame.CanvasHeight * scale - 1));
+
+        using (context.PushClip(new Rect(0, top, frame.CanvasWidth * scale, frame.CanvasHeight * scale)))
+            foreach (var item in frame.Items)
+            {
+                var rect = new Rect(item.X * scale, top + item.Y * scale, item.Width * scale, item.Height * scale);
+                if (frame.Images.TryGetValue(item.Path, out var image) && image != null)
+                {
+                    context.DrawImage(image, new Rect(image.Size), rect);
+                    continue;
+                }
+
+                context.DrawRectangle(null, line, rect);
+                var name = new FormattedText(System.IO.Path.GetFileName(item.Path), CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                    new Typeface("Segoe UI"), Math.Max(8, rect.Height * 0.15), Brushes.White) { MaxTextWidth = Math.Max(1, rect.Width - 4), MaxLineCount = 2 };
+                context.DrawText(name, new Point(rect.X + 2, rect.Y + 2));
+            }
+    }
+}

@@ -19,6 +19,7 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
     private readonly ValueKind _kind;
+    private readonly string? _typedOnly;
     private readonly GrowingList<ValueSlot> _items;
     private BlockModel? _owner;
 
@@ -73,10 +74,13 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    public ValueSlotList(string label, ValueKind kind = ValueKind.Text) : base(label, typeof(ValueBlock))
+    // typedOnly: why the items take no value blocks (e.g. names read while chat is matched, which can't run blocks),
+    // null when they do
+    public ValueSlotList(string label, ValueKind kind = ValueKind.Text, string? typedOnly = null) : base(label, typeof(ValueBlock))
     {
         _owner = null;
         _kind = kind;
+        _typedOnly = typedOnly;
         _items = new(CreateItem, IsEmpty, SubscribeToItem, UnsubscribeFromItem);
         _items.Changed += RaiseChanged;
     }
@@ -105,6 +109,11 @@ public sealed class ValueSlotList : BlockSlotBase
 
         return true;
     }
+
+
+
+    // the filled items' typed text, trimmed, top to bottom (for a typedOnly list, read without running anything)
+    public List<string> FilledTexts() => _items.Items.Select(item => item.Text.Trim()).Where(text => text != "").ToList();
 
 
 
@@ -148,14 +157,20 @@ public sealed class ValueSlotList : BlockSlotBase
 
 
 
-    private ValueSlot CreateItem() => _kind switch
+    private ValueSlot CreateItem()
     {
-        ValueKind.Int => new ValueSlot<int>(""),
-        ValueKind.Double => new ValueSlot<double>(""),
-        ValueKind.Bool => new ValueSlot<bool>(""),
-        ValueKind.Char => new ValueSlot<char>(""),
-        _ => new ValueSlot<string>(""),
-    };
+        ValueSlot item = _kind switch
+        {
+            ValueKind.Int => new ValueSlot<int>(""),
+            ValueKind.Double => new ValueSlot<double>(""),
+            ValueKind.Bool => new ValueSlot<bool>(""),
+            ValueKind.Char => new ValueSlot<char>(""),
+            _ => new ValueSlot<string>(""),
+        };
+
+        if (_typedOnly != null) item.BlockSlot.Lock = () => _typedOnly;
+        return item;
+    }
 
 
 

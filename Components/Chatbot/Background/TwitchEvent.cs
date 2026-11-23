@@ -69,6 +69,11 @@ public sealed class TwitchEvent(string type, JsonElement data, DateTimeOffset ti
             ["channel"] = GetString("broadcaster_user_name") ?? "",
             ["channelLogin"] = GetString("broadcaster_user_login") ?? "",
             ["channelId"] = GetString("broadcaster_user_id") ?? "",
+            // in a shared chat, broadcaster_user_* is always your channel, source_broadcaster_user_* is where it was
+            // typed (null when that's your own chat)
+            ["fromChannel"] = GetString("source_broadcaster_user_name") ?? GetString("broadcaster_user_name") ?? "",
+            ["fromChannelLogin"] = GetString("source_broadcaster_user_login") ?? GetString("broadcaster_user_login") ?? "",
+            ["fromChannelId"] = GetString("source_broadcaster_user_id") ?? GetString("broadcaster_user_id") ?? "",
             ["timestamp"] = Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"),
             ["color"] = GetString("color") ?? "",
             ["badges"] = string.Join(",", badges),

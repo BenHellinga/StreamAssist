@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.ClipBodyView"
+             x:DataType="ui:ClipBodyViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- a Clip's settings (a label and a box per row), a divider, then its preview. Laid out like the other widgets: the
+         divider runs the body's full height, both sides pad ContentPadding -->
+
+    <Grid ColumnDefinitions="Auto,Auto,*">
+
+        <Grid Grid.Column="0" ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto" VerticalAlignment="Top" Margin="{s:Gap PadAll}"
+              RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label Colon" Text="Max Length (s):" VerticalAlignment="Center"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Classes="Commit" Text="{Binding MaxSecondsInput}" HorizontalAlignment="Left"
+                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}" PlaceholderText="Empty: any length"/>
+
+            <!-- a clip is picked from this many of the channel's most viewed (1 to 100) -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label Colon" Text="Top:" VerticalAlignment="Center"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Classes="Commit" Text="{Binding TopInput}" HorizontalAlignment="Left"
+                     MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+        </Grid>
+
+        <Border Grid.Column="1" Classes="VerticalDivider"/>
+
+        <!-- the preview: blank, or the playing clip's still, fitted to the room at the left (like the others' previews) -->
+        <Image Grid.Column="2" Source="{Binding Preview}" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="{s:Gap PadAll}"
+               MinWidth="{DynamicResource WidgetPreviewMinWidth}" MinHeight="{DynamicResource WidgetPreviewMinHeight}"/>
+
+    </Grid>
+
+</UserControl>

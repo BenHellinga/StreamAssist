@@ -237,6 +237,162 @@ internal static partial class EngineChecks
 
 
 
+    // ---- clip: a queue (Next, Stop), its status, ended only by its own timing, its max length, saving ----
+    private static void ClipModels()
+    {
+        var clip = new ClipWidget();
+        var a = new ClipInfo("a", "https://clips.twitch.tv/a", "First", "KingSirBigHoss", 20);
+        var b = new ClipInfo("b", "https://clips.twitch.tv/b", "Second", "Hoss", 45);
+        var c = new ClipInfo("c", "https://clips.twitch.tv/c", "Third", "Other", 10);
+        var done = new List<string>();
+        var idle = clip.Status == "Idle";
+        clip.TryPlay(a, () => done.Add("a"));
+        var one = clip.Status == "Now playing: KingSirBigHoss";
+        var first = clip.Playing;
+        clip.TryPlay(b, () => done.Add("b"));
+        clip.TryPlay(c, () => done.Add("c"));
+        Check("clip: clips asked for while one plays wait their turn, the status says so", idle && one && clip.Playing!.Clip == a && clip.QueueCount == 2
+            && clip.Status == "Now playing: KingSirBigHoss, and 2 more");
+
+        clip.FinishPlay(first)?.Invoke();
+        var second = clip.Playing;
+        var oldTimingIgnored = clip.FinishPlay(first) == null && clip.Playing == second;
+        Check("clip: when one ends its When Done runs and the next plays; an old clip's timing doesn't end a newer one",
+            second!.Clip == b && clip.QueueCount == 1 && done.SequenceEqual(["a"]) && oldTimingIgnored);
+
+        clip.Next();
+        Check("clip: Next ends this one (its When Done runs) and plays the next", clip.Playing!.Clip == c && done.SequenceEqual(["a", "b"]));
+        clip.TryPlay(a, () => done.Add("a2"));
+        clip.Stop();
+        Check("clip: Stop ends this one (its When Done runs) and drops the waiting ones", !clip.IsPlaying && clip.QueueCount == 0
+            && done.SequenceEqual(["a", "b", "c"]) && clip.Status == "Idle" && clip.LastClip == c);
+        Check("clip: Play Clip in its box needs a channel", !clip.TryRequestClip("  "));
+
+        Check("clip: no max length takes any clip", clip.Allows(b));
+        clip.TrySetMaxClipSeconds(30);
+        Check("clip: a max length leaves longer clips out, a bad one is refused", clip.Allows(a) && !clip.Allows(b) && !clip.TrySetMaxClipSeconds(0) && clip.MaxClipSeconds == 30);
+
+        clip.SetIsDisabled(true);
+        Check("clip: off, quietly nothing", !clip.TryPlay(a, null));
+        clip.SetIsDisabled(false);
+
+        var reloaded = (ClipWidget)JsonSerializer.Deserialize<WidgetModel>(JsonSerializer.Serialize<WidgetModel>(clip))!;
+        clip.TrySetMaxClipSeconds(null);
+        var noMax = (ClipWidget)JsonSerializer.Deserialize<WidgetModel>(JsonSerializer.Serialize<WidgetModel>(clip))!;
+        Check("clip: its max length is saved (empty: any)", reloaded.MaxClipSeconds == 30 && !reloaded.IsPlaying && noMax.MaxClipSeconds == null);
+        Check("clip: top starts at 100 (all Twitch gives), 1 to 100, saved", reloaded.TopClips == 100 && clip.TrySetTopClips(10) && !clip.TrySetTopClips(0)
+            && !clip.TrySetTopClips(101) && ((ClipWidget)JsonSerializer.Deserialize<WidgetModel>(JsonSerializer.Serialize<WidgetModel>(clip))!).TopClips == 10);
+        clip.Dispose();
+    }
+
+
+
+    // ---- image party: copies, bouncing inside the canvas at a steady speed, mirror bounces, corners, saving ----
+    private static async Task ImagePartyModels()
+    {
+        var party = new ImagePartyWidget();
+        party.TryAddItem("Images/a.png");
+        party.TryAddItem("Images/a.png", 150);
+        party.TryAddItem("Videos/b.mp4", 300, 50, muted: true);
+        Check("image party: the same file twice is two copies, a video is known by its file", party.FilledItems.Count == 3 && party.Items.Count == 4
+            && party.FilledItems[2].IsVideo && party.FilledItems[2].Muted && !party.FilledItems[0].IsVideo && party.FilledItems.Select(i => i.Id).Distinct().Count() == 3);
+        Check("image party: no file or a bad size or speed is refused", !party.TryAddItem("  ") && !party.TryAddItem("x.png", 0) && !party.TryAddItem("x.png", 100, -1)
+            && party.FilledItems.Count == 3 && party.FilledItems[2].Speed == 50 && party.FilledItems[0].Speed == ImagePartyWidget.DefaultSpeed);
+
+        party.SetItemAspect(party.FilledItems[0].Id, 0.5);
+        party.TrySetSizeMultiplier(2);
+        var (w, h) = party.SizeOf(party.FilledItems[0]);
+        Check("image party: an item is its size times the multiplier wide, its shape tall", w == 400 && h == 200);
+        party.TrySetSizeMultiplier(1);
+
+        party.TrySetCanvas(1000, 600);
+        party.TrySetSpeedMultiplier(2.5);
+        party.TrySetRandomness(0.6);
+        var inside = true;
+        var steady = true;
+        for (var i = 0; i < 1000; i++)
+        {
+            party.Step(0.02);
+            foreach (var item in party.FilledItems)
+            {
+                var (iw, ih) = party.SizeOf(item);
+                inside &= item.X >= -1e-9 && item.Y >= -1e-9 && item.X + iw <= 1000 + 1e-9 && item.Y + ih <= 600 + 1e-9;
+                steady &= Math.Abs(item.DirX * item.DirX + item.DirY * item.DirY - 1) < 1e-9;
+            }
+        }
+        Check("image party: everything stays inside the canvas at a steady speed, random bounces and all", inside && steady);
+
+        // a short step that didn't bounce (its direction unchanged) covers its speed times the multiplier
+        var mover = new ImagePartyWidget();
+        mover.TryAddItem("x.png", 10, 100);
+        mover.TrySetCanvas(ImagePartyWidget.MaxCanvas, ImagePartyWidget.MaxCanvas);
+        mover.TrySetSpeedMultiplier(3);
+        mover.Step(0.0001);
+        var movedRight = false;
+        for (var i = 0; i < 20 && !movedRight; i++)
+        {
+            var item = mover.FilledItems[0];
+            var (x0, y0, dx, dy) = (item.X, item.Y, item.DirX, item.DirY);
+            mover.Step(0.1);
+            if (item.DirX != dx || item.DirY != dy) continue;
+            movedRight = Math.Abs(Math.Sqrt(Math.Pow(item.X - x0, 2) + Math.Pow(item.Y - y0, 2)) - 30) < 1e-6;
+        }
+        Check("image party: an item moves at its speed times the multiplier", movedRight);
+        mover.Dispose();
+
+        var mirror = new ImagePartyWidget();
+        mirror.TryAddItem("x.png", 100);
+        mirror.TrySetCanvas(1000, 700);
+        mirror.TrySetSpeedMultiplier(4);
+        mirror.Step(0.001);
+        var start = (Math.Abs(mirror.FilledItems[0].DirX), Math.Abs(mirror.FilledItems[0].DirY));
+        for (var i = 0; i < 500; i++) mirror.Step(0.02);
+        var now = (Math.Abs(mirror.FilledItems[0].DirX), Math.Abs(mirror.FilledItems[0].DirY));
+        Check("image party: at randomness 0 a bounce is a mirror (the angle never changes)", Math.Abs(start.Item1 - now.Item1) < 1e-9 && Math.Abs(start.Item2 - now.Item2) < 1e-9);
+
+        // on a wide canvas, random bounces still come off the sides about as often as off the top and bottom
+        foreach (var randomness in new[] { 0.3, 1.0 })
+        {
+            var wide = new ImagePartyWidget();
+            for (var i = 0; i < 20; i++) wide.TryAddItem("x.png", 100, 400);
+            wide.TrySetRandomness(randomness);
+            for (var i = 0; i < 30000; i++) wide.Step(0.02);
+            double sides = wide.FilledItems.Sum(i => i.SideBounces), tops = wide.FilledItems.Sum(i => i.TopBottomBounces);
+            var share = sides / (sides + tops);
+            Log($"image party: randomness {randomness}: {share:P0} of {sides + tops} bounces off the sides");
+            Check($"image party: at randomness {randomness} about half the bounces are off the sides on a wide canvas", share is > 0.42 and < 0.58);
+            wide.Dispose();
+        }
+
+        // a square item as big as the canvas hits two walls every step: a corner, which runs When Corner Hit with {image}
+        var corner = new ImagePartyWidget();
+        corner.TryAddItem("Images/dvd.png", 100);
+        corner.TrySetCanvas(100, 100);
+        var bindable = new BindableModel();
+        bindable.TryAddBlock(new FormatRecordBlock { Template = "corner {image}" });
+        var bound = corner.TryBindCorner(bindable);
+        FormatRecordBlock.Log.Clear();
+        var hits = corner.Step(0.02);
+        await Task.Delay(100); // the binding runs on its own
+        Check("image party: hitting a corner runs When Corner Hit with {image}", bound && hits.Count == 1 && FormatRecordBlock.Log.Contains("corner Images/dvd.png"));
+
+        var reloaded = (ImagePartyWidget)JsonSerializer.Deserialize<WidgetModel>(JsonSerializer.Serialize<WidgetModel>(corner))!;
+        Check("image party: items, canvas and When Corner Hit are saved", reloaded.FilledItems.Single().Path == "Images/dvd.png" && reloaded.CanvasWidth == 100
+            && reloaded.CornerBindable is { HasBlock: true });
+
+        Check("image party: remove takes every copy, clear takes the rest, something not in it is an error", party.TryRemoveItems("images/A.png")
+            && party.FilledItems.Single().IsVideo && !party.TryRemoveItems("nope.png") && (ClearAll(party) && party.FilledItems.Count == 0));
+        static bool ClearAll(ImagePartyWidget p) { p.ClearItems(); return true; }
+
+        corner.SetIsDisabled(true);
+        var before = corner.FilledItems[0].X;
+        Check("image party: off, nothing moves", corner.Step(1).Count == 0 && corner.FilledItems[0].X == before);
+
+        foreach (var widget in new WidgetModel[] { party, mirror, corner, reloaded }) widget.Dispose();
+    }
+
+
+
     // ---- widget blocks: they find their widget by name, Spin Wheel's When Done gets {winner} ----
     private static async Task WidgetBlockChecks()
     {
@@ -293,6 +449,36 @@ internal static partial class EngineChecks
         ((ValueSlot)none.Slots[1]).SetText("0");
         Check("widget blocks: Drop Plinko with 0 balls fails the run", !await none.SafeRunAsync(ctx));
 
+        // clip: Play Clip asks Twitch through the chatbot (none here: an error, also while one plays: it queues)
+        widgets.Config!.TryAddWidget(WidgetKind.Clip, 2, out var foundClip);
+        var clipWidget = (ClipWidget)foundClip;
+        var oldChatbot = StreamAssist.Shell.GlobalContext.ChatbotManager;
+        StreamAssist.Shell.GlobalContext.ChatbotManager = null;
+        var play = Named(new PlayClipBlock(), "Clip");
+        var noChatbot = !await play.SafeRunAsync(new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["target"] = "kingsirbighoss" }));
+        clipWidget.TryPlay(new ClipInfo("x", "", "Playing", "Someone", 30), null);
+        var playing = await Named(new ClipPlayingCondition(), "Clip").EvaluateAsync(ctx);
+        var stillAsks = !await play.SafeRunAsync(new TriggerContext(TriggerPhase.Once, default, new Dictionary<string, string> { ["target"] = "kingsirbighoss" }));
+        clipWidget.Stop();
+        StreamAssist.Shell.GlobalContext.ChatbotManager = oldChatbot;
+        Check("widget blocks: Play Clip needs the chatbot (an error), also while a clip plays (it'd queue)", noChatbot && playing && stillAsks
+            && !await Named(new ClipPlayingCondition(), "Clip").EvaluateAsync(ctx));
+
+        // image party: Add needs a file that's there, Remove and Clear take items off
+        widgets.Config!.TryAddWidget(WidgetKind.ImageParty, 3, out var foundParty);
+        var partyWidget = (ImagePartyWidget)foundParty;
+        var addMissing = Named(new AddPartyItemAction(), "Image Party");
+        ((ValueSlot)addMissing.Slots[1]).SetText("Images/not-there.png");
+        var addFailed = !await addMissing.SafeRunAsync(ctx);
+        partyWidget.TryAddItem("Images/a.png");
+        partyWidget.TryAddItem("Images/a.png");
+        partyWidget.TryAddItem("Images/b.png");
+        var remove = Named(new RemovePartyItemAction(), "Image Party");
+        ((ValueSlot)remove.Slots[1]).SetText("Images/a.png");
+        var removed = await remove.SafeRunAsync(ctx) && partyWidget.FilledItems.Single().Path == "Images/b.png";
+        var cleared = await Named(new ClearPartyAction(), "Image Party").SafeRunAsync(ctx) && partyWidget.FilledItems.Count == 0;
+        Check("widget blocks: Add Party Item needs a file that's there, Remove takes every copy, Clear takes the rest", addFailed && removed && cleared);
+
         var missing = Named(new ClearWheelAction(), "Nope");
         Check("widget blocks: an unknown widget fails the run", !await missing.SafeRunAsync(ctx));
 
@@ -319,7 +505,7 @@ internal static partial class EngineChecks
         var twitch = palette.Groups.Single(g => g.Group == BlockGroup.Twitch);
         Check("subgroups: a group's blocks split into subgroups, its count is all of them",
             twitch.Subgroups.Any(s => s.Title == "Moderation") && twitch.Count == twitch.Cards.Count + twitch.Subgroups.Sum(s => s.Cards.Count)
-            && twitch.HeadingText == $"Twitch ({twitch.Count})" && palette.Groups.Single(g => g.Group == BlockGroup.Widgets).Subgroups.Select(s => s.Title).SequenceEqual(["Mic Bounce", "Plinko", "Wheel"]));
+            && twitch.HeadingText == $"Twitch ({twitch.Count})" && palette.Groups.Single(g => g.Group == BlockGroup.Widgets).Subgroups.Select(s => s.Title).SequenceEqual(["Clip", "Image Party", "Mic Bounce", "Plinko", "Wheel"]));
         palette.Dispose();
     }
 

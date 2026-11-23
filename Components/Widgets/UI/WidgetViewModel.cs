@@ -16,7 +16,7 @@ namespace StreamAssist.Components.Widgets.UI;
 
 // one widget's box: its header (the name, applied when the box is left, a refused one puts the old one back; its address
 // copied or opened in a browser; shown / hidden on stream; then a row of its kind's own buttons: Spin for a wheel, a ball
-// count and Drop for plinko), the
+// count and Drop for plinko; for a clip a channel box, Play Clip, Next and Stop), the
 // corner buttons blocks and docks have (copy, collapse, on / off, drag, remove), then its kind's settings and preview (Body)
 public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLeave
 {
@@ -34,6 +34,9 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HideButtonText))] private bool _isHidden; // its page draws nothing
     [ObservableProperty] private bool _isCollapsed; // only its header shows
     [ObservableProperty] private string _dropCountInput; // plinko: how many balls Drop drops
+    [ObservableProperty] private bool _isClipPlaying; // a clip: Next and Stop work
+    [ObservableProperty] private string _clipChannelInput; // a clip: the channel Play Clip plays one of
+    [ObservableProperty] private string _clipStatus; // a clip: what it's doing, the channel box's ghost text
 
 
 
@@ -44,7 +47,8 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
     public ViewModelBase Body => _body;
     public bool IsWheel => _widget is WheelWidget;
     public bool IsPlinko => _widget is PlinkoWidget;
-    public bool HasOwnButtons => IsWheel || IsPlinko; // the header's second row
+    public bool IsClip => _widget is ClipWidget;
+    public bool HasOwnButtons => IsWheel || IsPlinko || IsClip; // the header's second row
     public string HideButtonText => IsHidden ? "Show" : "Hide"; // what pressing it does
     public bool CanCollapse => true;
     public bool CanCopy => true;
@@ -66,6 +70,8 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
             WheelWidget wheel => new WheelBodyViewModel(wheel),
             MicBounceWidget bounce => new MicBounceBodyViewModel(bounce, inputs),
             PlinkoWidget plinko => new PlinkoBodyViewModel(plinko),
+            ClipWidget clip => new ClipBodyViewModel(clip),
+            ImagePartyWidget party => new ImagePartyBodyViewModel(party),
             _ => throw new ArgumentException($"no view for widget kind {widget.Kind}"),
         };
 
@@ -74,6 +80,9 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
         _isHidden = _widget.IsHidden;
         _isCollapsed = _widget.IsCollapsed;
         _dropCountInput = "1";
+        _isClipPlaying = _widget is ClipWidget { IsPlaying: true };
+        _clipChannelInput = "";
+        _clipStatus = (_widget as ClipWidget)?.Status ?? "";
 
         SubscribeToWidget(_widget);
     }
@@ -117,6 +126,25 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
             return;
         }
         if (!plinko.TryDrop(count, null, null, out var error) && error != "") AppLog.WriteError($"can't drop, {error}");
+    }
+
+
+
+    // a clip: ended now, its When Done runs
+    [RelayCommand] private void OnStopClipPressed() => (_widget as ClipWidget)?.Stop();
+
+
+
+    // a clip: the next queued one now
+    [RelayCommand] private void OnNextClipPressed() => (_widget as ClipWidget)?.Next();
+
+
+
+    // a clip: a random clip of the typed channel, played or queued; the box empties so its ghost text shows the status
+    [RelayCommand]
+    private void OnPlayClipPressed()
+    {
+        if (_widget is ClipWidget clip && clip.TryRequestClip(ClipChannelInput)) ClipChannelInput = "";
     }
 
 
@@ -191,6 +219,15 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
 
 
 
+    private void OnClipPlaybackChanged()
+    {
+        if (_widget is not ClipWidget clip) return;
+        IsClipPlaying = clip.IsPlaying;
+        ClipStatus = clip.Status;
+    }
+
+
+
     // helpers
 
 
@@ -201,6 +238,10 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
         widget.IsDisabledChanged += OnWidgetIsDisabledChanged;
         widget.IsHiddenChanged += OnWidgetIsHiddenChanged;
         widget.IsCollapsedChanged += OnWidgetIsCollapsedChanged;
+        if (widget is ClipWidget clip)
+        {
+            clip.PlaybackChanged += OnClipPlaybackChanged;
+        }
     }
 
 
@@ -211,6 +252,10 @@ public partial class WidgetViewModel : ViewModelBase, IEditButtons, ICommitOnLea
         widget.IsDisabledChanged -= OnWidgetIsDisabledChanged;
         widget.IsHiddenChanged -= OnWidgetIsHiddenChanged;
         widget.IsCollapsedChanged -= OnWidgetIsCollapsedChanged;
+        if (widget is ClipWidget clip)
+        {
+            clip.PlaybackChanged -= OnClipPlaybackChanged;
+        }
     }
 
 

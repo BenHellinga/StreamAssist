@@ -75,6 +75,9 @@ public static class ChatEvents
         new("isModerator", ValueKind.Bool, "true if the chatter is a moderator"),
         new("isVip", ValueKind.Bool, "true if the chatter is a VIP"),
         new("isSubscriber", ValueKind.Bool, "true if the chatter is subscribed"),
+        new("fromChannel", ValueKind.Text, "the display name of the channel it was typed in: yours, or another one in a shared chat", "TestChannel"),
+        new("fromChannelLogin", ValueKind.Text, "the login name (lowercase) of the channel it was typed in", "testchannel"),
+        new("fromChannelId", ValueKind.Text, "the twitch id of the channel it was typed in", "0"),
         .. Common,
     ];
 
@@ -210,6 +213,9 @@ public static class ChatEvents
         parameters["isModerator"] = isModerator ? "true" : "false";
         parameters["isVip"] = isVip ? "true" : "false";
         parameters["isSubscriber"] = isSubscriber ? "true" : "false";
+        parameters["fromChannel"] = parameters["channel"]; // typed in your own chat
+        parameters["fromChannelLogin"] = parameters["channelLogin"];
+        parameters["fromChannelId"] = parameters["channelId"];
         return parameters;
     }
 }

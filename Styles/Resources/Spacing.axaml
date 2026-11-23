@@ -15,7 +15,9 @@
 
          content to content (set on the container: StackPanel Spacing, Grid Column/RowSpacing, by the direction it stacks):
            Small / Medium / Large Horizontal / Vertical Gap   5 / 10 / 15: a button to the next, a label to its box, rows
-                                   of a list: Small; around a subheading: Medium; around a big title: Large
+                                   of a list: Small; around a subheading: Medium; around a big title: Large. The Themes
+                                   tab sets only Small (Horizontal / Vertical gap), Medium and Large are always 2x and 3x
+                                   it (Gap.cs), so keep them that way here
 
          small fixed ones inside controls:
            CornerGap           2   a box's corner buttons from its edge and from each other

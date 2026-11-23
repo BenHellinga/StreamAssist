@@ -80,10 +80,10 @@ public class ThemeManager : IDisposable
         var info = SpacingRecipes.AllValues.FirstOrDefault(v => v.Key == key);
         if (app == null || info == null) return;
 
-        foreach (var resource in new[] { key }.Concat(info.AlsoSets ?? []))
+        foreach (var resource in new[] { new ScaledResource(key, 1) }.Concat(info.AlsoSets ?? []))
         {
-            if (_model.IsValueChanged(key)) app.Resources[resource] = _model.GetValue(key);
-            else app.Resources.Remove(resource); // back to the resource file's
+            if (_model.IsValueChanged(key)) app.Resources[resource.Key] = _model.GetValue(key) * resource.Times;
+            else app.Resources.Remove(resource.Key); // back to the resource file's
         }
     }
 

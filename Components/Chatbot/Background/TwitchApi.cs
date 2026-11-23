@@ -14,6 +14,12 @@ namespace StreamAssist.Components.Chatbot.Background;
 
 
 
+// one of a channel's clips: its id (for the embed), link, title, channel's display name, length in seconds, a still of
+// it (its thumbnail's address) and how many times it's been watched
+public sealed record TwitchClip(string Id, string Url, string Title, string Channel, double Seconds, string Thumbnail, int Views);
+
+
+
 // thrown when twitch says the token isn't valid any more (expired or revoked)
 public class TwitchUnauthorizedException(string message) : Exception(message);
 
@@ -84,6 +90,21 @@ public static class TwitchApi
 
 
 
+    // an app access token (the app's own, no user, client credentials), returns (token, seconds until it expires).
+    // Chat sent with one can stay in the streamer's channel during shared chat (see SendChatMessageAsync)
+    public static async Task<(string Token, int ExpiresIn)> GetAppTokenAsync(string clientId, string clientSecret, CancellationToken ct)
+    {
+        var result = await PostFormAsync($"{AuthUrl}/token", WithSecret(new Dictionary<string, string>
+        {
+            ["client_id"] = clientId,
+            ["grant_type"] = "client_credentials",
+        }, clientSecret), ct) ?? throw new Exception("twitch didn't return an app token");
+
+        return (result.GetProperty("access_token").GetString() ?? "", result.GetProperty("expires_in").GetInt32());
+    }
+
+
+
     // checks a token, returns its login/user_id/scopes, or null if it's no longer valid
     public static async Task<JsonElement?> ValidateAsync(string accessToken, CancellationToken ct)
     {
@@ -132,7 +153,11 @@ public static class TwitchApi
 
     // sends a chat message as the logged in account, throws if twitch accepted it but didn't post it (e.g. automod)
     // replyTo: a chat message's id to answer as a threaded reply, null for a plain message
-    public static async Task SendChatMessageAsync(TwitchSession session, string broadcasterId, string message, CancellationToken ct, string? replyTo = null)
+    // appToken: send it with the app's token instead of the account's, only into broadcasterId's channel during shared
+    // chat (twitch only allows for_source_only with an app token; the account needs user:bot, the channel channel:bot
+    // unless the account is its broadcaster or a moderator). Null: the account's own token, every shared chat sees it
+    public static async Task SendChatMessageAsync(TwitchSession session, string broadcasterId, string message, CancellationToken ct,
+        string? replyTo = null, string? appToken = null)
     {
         var body = new JsonObject
         {
@@ -141,8 +166,9 @@ public static class TwitchApi
             ["message"] = message,
         };
         if (!string.IsNullOrEmpty(replyTo)) body["reply_parent_message_id"] = replyTo;
+        if (appToken != null) body["for_source_only"] = true;
 
-        var result = await HelixAsync(session, HttpMethod.Post, "chat/messages", body, ct);
+        var result = await HelixAsync(appToken == null ? session : session with { AccessToken = appToken }, HttpMethod.Post, "chat/messages", body, ct);
 
         if (result.ValueKind == JsonValueKind.Object && result.TryGetProperty("data", out var data) && data.GetArrayLength() > 0
             && data[0].TryGetProperty("is_sent", out var isSent) && !isSent.GetBoolean())
@@ -309,6 +335,22 @@ public static class TwitchApi
     {
         var result = await HelixAsync(session, HttpMethod.Get, $"users?login={E(login)}", null, ct);
         return result.GetProperty("data").GetArrayLength() > 0 ? result.GetProperty("data")[0] : null;
+    }
+
+
+
+    // a channel's clips, most viewed first (at most 100: one page)
+    public static async Task<List<TwitchClip>> GetClipsAsync(TwitchSession session, string broadcasterId, CancellationToken ct)
+    {
+        var result = await HelixAsync(session, HttpMethod.Get, $"clips?broadcaster_id={E(broadcasterId)}&first=100", null, ct);
+        return result.GetProperty("data").EnumerateArray().Select(clip => new TwitchClip(
+            clip.GetProperty("id").GetString() ?? "",
+            clip.GetProperty("url").GetString() ?? "",
+            clip.GetProperty("title").GetString() ?? "",
+            clip.GetProperty("broadcaster_name").GetString() ?? "",
+            clip.GetProperty("duration").GetDouble(),
+            clip.TryGetProperty("thumbnail_url", out var thumbnail) ? thumbnail.GetString() ?? "" : "",
+            clip.TryGetProperty("view_count", out var views) ? views.GetInt32() : 0)).Where(c => c.Id != "").ToList();
     }
 
 

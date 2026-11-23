@@ -73,6 +73,12 @@ internal static partial class EngineChecks
 
 
 
+    // a fresh config's Try All children: its Match Text and its Editable Commands
+    private static MatchTextChatBlock Top(ChatbotComponentModel m) => (MatchTextChatBlock)((TryAllChatBlock)m.Root!.Block!).Children.Blocks[0];
+    private static EditableCommandsChatBlock Editable(ChatbotComponentModel m) => (EditableCommandsChatBlock)((TryAllChatBlock)m.Root!.Block!).Children.Blocks[1];
+
+
+
     private static BindableModel B(string tag) { var b = new BindableModel(); b.TryAddBlock(new ChatLogBlock { Tag = tag }); return b; }
 
 
@@ -90,11 +96,12 @@ internal static partial class EngineChecks
             return p;
         }
 
-        // protected: "#" -> Has Permission (mod) -> Match Text [x -> rec X], "!clash" -> rec P
-        // editable: Match Text [!lurk -> send, !sub -> Match Text [a -> rec A], !rec -> rec R, !clash -> rec E, /.*/ -> anything else]
+        // a fresh config's tree: Try All [Match Text, Editable Commands]
+        // top: "#" -> Has Permission (mod) -> Match Text [x -> rec X], "!clash" -> rec P
+        // editable: Editable Commands [!lurk -> send, !sub -> Match Text [a -> rec A], !rec -> rec R, !clash -> rec E, /.*/ -> anything else]
         var model = Chatbot();
-        var top = (MatchTextChatBlock)model.Root.Block!;
-        var custom = (MatchTextChatBlock)model.EditableRoot.Block!;
+        var top = Top(model);
+        var custom = Editable(model);
         MatchTextRow? Cmd(string pattern) => custom.Rows.Rows.FirstOrDefault(r => r.Pattern == pattern);
         var lurkSend = new SendChatMessageAction(); lurkSend.Message.SetText("LURK");
         custom.Rows.AddRow("!lurk").Target.TryBind(Bind(lurkSend));
@@ -120,9 +127,9 @@ internal static partial class EngineChecks
         }
 
         // the roots
-        Check("roots: a fresh chatbot has an empty Match Text in the custom root", Chatbot().EditableRoot.Block is MatchTextChatBlock);
-        Check("roots: the custom root only takes a Match Text", !model.EditableRoot.Accepts(new HasPermissionChatBlock()) && !model.EditableRoot.Accepts(new ParameterChatBlock()));
-        Check("roots: built-in wins over custom", Send("!clash", Chat()) == "P");
+        Check("tree: a fresh config tries an empty Match Text and an empty Editable Commands", Chatbot().Root!.Block is TryAllChatBlock { Children.Blocks: [MatchTextChatBlock, EditableCommandsChatBlock] }
+            && Top(Chatbot()).Rows.Rows.Count == 1 && Editable(Chatbot()).Rows.Rows.Count == 1);
+        Check("tree: both run under the Try All", Send("!clash", Chat()) == "PE");
 
         // matching
         Check("custom: plain row matches the whole word", Send("!rec", Chat()) == "R" && Send("!REC and more", Chat()) == "R");
@@ -164,6 +171,10 @@ internal static partial class EngineChecks
         Check("edit: a plain typed row is a command", model.TryEditCommand("!LURK", "lurking") && lurkSend.Message.Text == "lurking");
         Check("delete: a row leading into blocks is refused", !model.TryDeleteCommand("!sub") && Cmd("!sub") != null);
         Check("delete: built-in commands can't be touched", !model.TryDeleteCommand("#x") && !model.TryDeleteCommand("#") && xTarget.Bindable != null);
+        Check("not editable: a command outside Editable Commands is refused with why", !model.TryDeleteCommand("#x", out var notEditable, logErrors: false)
+            && notEditable == CommandFailure.NotEditable && !model.TryEditCommand("#X", "y") && LastError().Contains("can't edit #X, not in an Editable Commands block"));
+        Check("not editable: the first one in the tree counts (!clash in the Match Text before the editable one)", !model.TryDeleteCommand("!clash", logErrors: false));
+        Check("add: a command anywhere in the tree already exists", !model.TryAddCommand("#x", "y", out var exists, logErrors: false) && exists == CommandFailure.AlreadyExists);
         var rowsBefore = custom.Rows.Rows.Count;
         Check("delete: whole command", model.TryDeleteCommand("!hello") && Cmd("!hello") == null && custom.Rows.Rows.Count == rowsBefore - 1);
         Check("delete: still one empty row at the end", custom.Rows.Rows.Count(r => r.IsEmpty) == 1 && custom.Rows.Rows[^1].IsEmpty);
@@ -186,10 +197,10 @@ internal static partial class EngineChecks
         Check("action: from a key fails with one error", RunAdd("!fresh", new Dictionary<string, string>()) == "" && Errors() == e3 + 1);
         StreamAssist.Shell.GlobalContext.ChatbotComponentModel = null;
 
-        // no Match Text (removed from the editable root)
+        // no Editable Commands block (removed from the Try All)
         var bare = Chatbot();
-        bare.EditableRoot.RemoveBlock(bare.EditableRoot.Block!);
-        Check("no block: refused", !bare.TryAddCommand("!a", "b") && LastError().Contains("no custom Match Text"));
+        ((TryAllChatBlock)bare.Root!.Block!).Children.RemoveBlock(Editable(bare));
+        Check("no block: refused", !bare.TryAddCommand("!a", "b", out var noPlace) && noPlace == CommandFailure.NoPlace && LastError().Contains("no Editable Commands block fits it"));
 
         // save round trip
         var savedJson = JsonSerializer.Serialize(model);
@@ -197,14 +208,14 @@ internal static partial class EngineChecks
         Check("round trip: json stable", JsonSerializer.Serialize(loadedModel) == savedJson);
         Check("round trip: custom commands still work", loadedModel.TryAddCommand("!again", "x") && !loadedModel.TryAddCommand("!fresh", "x"));
         var emptyEditable = JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(bare))!;
-        Check("round trip: a removed Match Text stays removed", emptyEditable.EditableRoot.Block == null);
+        Check("round trip: a removed Editable Commands stays removed", emptyEditable.Root!.Block is TryAllChatBlock { Children.Blocks.Count: 1 });
         var noConfig = JsonSerializer.Deserialize<ChatbotComponentModel>("{}")!;
         Check("no config: a fresh chatbot has none, so nothing runs or can be bound", noConfig.ChatConfigs.SelectedName == null && noConfig.Root == null
             && noConfig.EventsConfigs.SelectedName == null && noConfig.Redeems == null && noConfig.Events.Count == 0
             && !noConfig.TryMatchMessage(new ChatMatchState("!x", 0, Chat())) && !noConfig.TryRunEvent("raid", Chat())
             && !noConfig.TryAddCommand("!x", "y", logErrors: false) && !new ChatbotComponentModel().TryRequestCreateReward("Hydrate", "100", "", false));
-        Check("no config: the first one starts with empty Match Texts", noConfig.ChatConfigs.TryCreate("First") && noConfig.Root!.Block is MatchTextChatBlock
-            && noConfig.EditableRoot!.Block is MatchTextChatBlock && noConfig.EventsConfigs.TryCreate("First") && noConfig.Redeems != null);
+        Check("no config: the first one starts with an empty Match Text and Editable Commands", noConfig.ChatConfigs.TryCreate("First")
+            && noConfig.Root!.Block is TryAllChatBlock { Children.Blocks: [MatchTextChatBlock, EditableCommandsChatBlock] } && noConfig.EventsConfigs.TryCreate("First") && noConfig.Redeems != null);
         model = loadedModel;
         Check("round trip: permission still gates", Send("#x", Chat()) == "" && Send("#x", Chat(mod: true)) == "X");
 
@@ -212,11 +223,53 @@ internal static partial class EngineChecks
         var levels = Chatbot();
         var gate = new HasPermissionChatBlock { Level = "Anyone" };
         gate.Target.TryBind(Bind(new RecordBlock { Tag = "A" }));
-        ((MatchTextChatBlock)levels.Root.Block!).Rows.AddRow("?").Target.Child.TrySetBlock(gate);
+        Top(levels).Rows.AddRow("?").Target.Child.TrySetBlock(gate);
         RecordBlock.Log.Clear();
         levels.TryMatchMessage(new ChatMatchState("?", 0, Chat()));
         Check("has permission: Anyone lets everyone through", string.Join("", RecordBlock.Log) == "A"
             && HasPermissionChatBlock.GetLevelMenuItems().SequenceEqual(new[] { "Anyone", "Subscriber", "VIP", "Moderator", "Broadcaster" }));
+
+        // Try All: every child gets the message, so a // row doesn't stop the ones after it
+        var all = Chatbot();
+        var tryAll = new TryAllChatBlock();
+        var everything = new MatchTextChatBlock(); everything.Rows.AddRow("//").Target.TryBind(Bind(new RecordBlock { Tag = "L" }));
+        var commands = new MatchTextChatBlock();
+        var hiTarget = commands.Rows.AddRow("!hi").Target; hiTarget.TryBind(Bind(new RecordBlock { Tag = "H" }));
+        commands.Rows.AddRow("!hi").Target.TryBind(Bind(new RecordBlock { Tag = "2" })); // a second !hi row: still first wins inside a Match Text
+        tryAll.Children.TryInsertBlock(everything, 0);
+        tryAll.Children.TryInsertBlock(commands, 1);
+        all.Root!.TrySetBlock(tryAll);
+        string Try(string text, Dictionary<string, string> p) { RecordBlock.Log.Clear(); all.TryMatchMessage(new ChatMatchState(text, 0, p)); return string.Join("", RecordBlock.Log); }
+        Check("try all: every child that matches runs", Try("!hi", Chat()) == "LH" && Try("hello", Chat()) == "L");
+        everything.SetIsDisabled(true);
+        Check("try all: a disabled child is skipped", Try("!hi", Chat()) == "H");
+        everything.SetIsDisabled(false);
+        Check("try all: the path goes through it", all.Describe(hiTarget)?.Text == "!hi");
+        Check("try all: only takes chat blocks", !tryAll.Children.Accepts(new RecordBlock()));
+
+        // Is User / From Channel: typed names, case and @ ignored, no blocks in the names
+        var who = Chatbot();
+        var isUser = new IsUserChatBlock();
+        isUser.Users.Items[0].SetText("@Viewer");
+        isUser.Users.Items[^1].SetText("friend");
+        isUser.Target.TryBind(Bind(new RecordBlock { Tag = "U" }));
+        var fromChannel = new FromChannelChatBlock();
+        fromChannel.Channels.Items[0].SetText("TestChannel");
+        fromChannel.Target.TryBind(Bind(new RecordBlock { Tag = "C" }));
+        var whoRoot = Top(who);
+        whoRoot.Rows.AddRow("!u").Target.Child.TrySetBlock(isUser);
+        whoRoot.Rows.AddRow("!c").Target.Child.TrySetBlock(fromChannel);
+        string Who(string text, Dictionary<string, string> p) { RecordBlock.Log.Clear(); who.TryMatchMessage(new ChatMatchState(text, 0, p)); return string.Join("", RecordBlock.Log); }
+        var stranger = Chat(); stranger["userLogin"] = "stranger";
+        var shared = Chat(); shared["fromChannelLogin"] = "otherstreamer";
+        Check("is user: a listed user passes (case and @ ignored), others don't", isUser.Users.Items.Count == 3 && Who("!u", Chat()) == "U" && Who("!u", stranger) == "");
+        Check("from channel: your own chat passes, another channel in a shared chat doesn't", Who("!c", Chat()) == "C" && Who("!c", shared) == "");
+        Check("is user / from channel: names refuse blocks", !isUser.Users.Items[0].BlockSlot.Accepts(new RandomTableRowBlock()));
+        Check("is user / from channel: the path goes through them", who.Describe(isUser.Target)?.Text == "!u");
+        var whoLoaded = JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(who))!;
+        Check("is user / from channel: saved and loaded", Top(whoLoaded) is var loadedRoot
+            && loadedRoot.Rows.Rows[0].Target.Child.Block is IsUserChatBlock { Users.Items.Count: 3 } loadedUser && loadedUser.Target.Bindable != null
+            && loadedRoot.Rows.Rows[1].Target.Child.Block is FromChannelChatBlock loadedChannel && loadedChannel.Channels.FilledTexts().SequenceEqual(new[] { "TestChannel" }));
 
         // configs: each holds both trees, switching swaps them, a new one starts as a copy of the one in use
         var configs = Chatbot();
@@ -243,7 +296,7 @@ internal static partial class EngineChecks
     private static void EditableCommandsUnderPrefix()
     {
         var m = Chatbot();
-        var editable = (MatchTextChatBlock)m.EditableRoot.Block!;
+        var editable = Editable(m);
         var bangMenu = new MatchTextChatBlock();
         editable.Rows.AddRow("!").Target.Child.TrySetBlock(bangMenu);
         var lurk = new SendChatMessageAction(); lurk.Message.SetText("LURK LURK LURK!!!");
@@ -271,6 +324,17 @@ internal static partial class EngineChecks
         var editableJson = JsonSerializer.Serialize(m);
         var m2 = JsonSerializer.Deserialize<ChatbotComponentModel>(editableJson)!;
         Check("nested: works after save/load", m2.TryEditCommand("!lurk", "again") && m2.TryDeleteCommand("!rec"));
+
+        // an Editable Commands block anywhere: through a // row, a filter and a Try All, the first one in the tree gets new commands
+        var m3 = Chatbot();
+        var deep = new EditableCommandsChatBlock();
+        var deepAll = new TryAllChatBlock(); deepAll.Children.TryInsertBlock(deep, 0);
+        var anyone = new HasPermissionChatBlock { Level = "Anyone" }; anyone.Target.Child.TrySetBlock(deepAll);
+        Top(m3).Rows.AddRow("//").Target.Child.TrySetBlock(anyone);
+        Check("anywhere: add goes to the first Editable Commands in the tree", m3.TryAddCommand("!deep", "x") && Patterns(deep) == "!deep" && Patterns(Editable(m3)) == ""
+            && m3.TryMatchMessage(new ChatMatchState("!deep", 0, new Dictionary<string, string>())));
+        Check("anywhere: edit and delete find it there", m3.TryEditCommand("!deep", "y") && m3.TryDeleteCommand("!deep") && Patterns(deep) == "");
+        Check("anywhere: it saves and loads as an Editable Commands", JsonSerializer.Deserialize<ChatbotComponentModel>(JsonSerializer.Serialize(m3))!.TryAddCommand("!again", "z"));
     }
 
 
@@ -279,7 +343,7 @@ internal static partial class EngineChecks
     private static void PlainTextAndRegexRows()
     {
         var m = Chatbot();
-        var top = (MatchTextChatBlock)m.Root.Block!;
+        var top = Top(m);
         var bang = new MatchTextChatBlock();
         top.Rows.AddRow("!").Target.Child.TrySetBlock(bang);
         BindableModel Rec(string tag) { var b = new BindableModel(); b.TryAddBlock(new RecordBlock { Tag = tag }); return b; }
@@ -309,14 +373,14 @@ internal static partial class EngineChecks
         // a parameter right after a symbol reads straight away
         var m2 = Chatbot();
         var p = new ParameterChatBlock { ParameterName = "cmd" }; p.Target.TryBind(Seen("cmd"));
-        ((MatchTextChatBlock)m2.Root.Block!).Rows.AddRow("!").Target.Child.TrySetBlock(p);
+        Top(m2).Rows.AddRow("!").Target.Child.TrySetBlock(p);
         string Cmd(string text) { ParamRecordBlock.Seen = null; m2.TryMatchMessage(new ChatMatchState(text, 0, new Dictionary<string, string>())); return ParamRecordBlock.Seen ?? "(none)"; }
         Check("param: after a symbol it reads right away", Cmd("!bob") == "bob" && Cmd("! bob") == "(none)");
         Check("param: shown glued to a symbol", m2.Describe(p.Target)?.Text == "!{cmd}");
 
         // editable commands only ever touch plain rows
         var e = Chatbot();
-        var editable = (MatchTextChatBlock)e.EditableRoot.Block!;
+        var editable = Editable(e);
         var catchAll = editable.Rows.AddRow("//"); catchAll.Target.TryBind(Rec("X"));
         var regexRow = editable.Rows.AddRow("/!r.*/"); regexRow.Target.TryBind(Rec("R"));
         Check("custom: a regex row isn't a command", !e.TryDeleteCommand("//", logErrors: false) && !e.TryDeleteCommand("/!r.*/", logErrors: false) && !e.TryDeleteCommand("!run", logErrors: false) && catchAll.Target.Bindable != null && regexRow.Target.Bindable != null);
@@ -413,7 +477,7 @@ internal static partial class EngineChecks
     private static void ParseParameterSpacing()
     {
         var m = Chatbot();
-        var top = (MatchTextChatBlock)m.Root.Block!;
+        var top = Top(m);
         var so = new ParameterChatBlock { ParameterName = "target" };
         var soBind = new BindableModel(); soBind.TryAddBlock(new ParamRecordBlock { Key = "target" }); so.Target.TryBind(soBind);
         top.Rows.AddRow("!so").Target.Child.TrySetBlock(so);
@@ -568,7 +632,7 @@ internal static partial class EngineChecks
         int chatChanges = 0; model.Changed += () => chatChanges++;
         var lurkBlock = M(("lurk", B("L")));
         var tree = M(("!", lurkBlock));
-        Check("fresh chatbot root starts with a Match Text", model.Root.Block is MatchTextChatBlock);
+        Check("fresh chatbot root starts with a Try All", model.Root.Block is TryAllChatBlock);
         model.Root.TrySetBlock(tree);
         chatChanges = 0;
         lurkBlock.Rows.Rows[0].SetPattern("lurk ");
@@ -674,6 +738,13 @@ internal static partial class EngineChecks
         var p = chatEvent.ChatParameters();
         Check("chat parameters", p["user"] == "Viewer32" && p["userLogin"] == "viewer32" && p["message"] == "!lurk" && p["channel"] == "Streamer"
             && p["isModerator"] == "true" && p["isSubscriber"] == "true" && p["isVip"] == "false" && p["badges"] == "moderator,subscriber");
+        Check("chat parameters: typed in your own chat", p["fromChannelLogin"] == "streamer" && p["fromChannel"] == "Streamer" && p["fromChannelId"] == "1");
+        var sharedEvent = EventSubMessage.Parse(
+            "{\"metadata\":{\"message_id\":\"x\",\"message_type\":\"notification\",\"message_timestamp\":\"2026-10-28T18:30:00Z\",\"subscription_type\":\"channel.chat.message\",\"subscription_version\":\"1\"},"
+            + "\"payload\":{\"subscription\":{\"id\":\"s\"},\"event\":{\"broadcaster_user_id\":\"1\",\"broadcaster_user_login\":\"streamer\",\"broadcaster_user_name\":\"Streamer\",\"chatter_user_id\":\"2\",\"chatter_user_login\":\"viewer32\",\"chatter_user_name\":\"Viewer32\",\"message_id\":\"m1\",\"message\":{\"text\":\"!lurk\"},\"badges\":[],"
+            + "\"source_broadcaster_user_id\":\"9\",\"source_broadcaster_user_login\":\"friend\",\"source_broadcaster_user_name\":\"Friend\",\"source_message_id\":\"m9\",\"source_badges\":[]}}}").Event!;
+        var sp = sharedEvent.ChatParameters();
+        Check("chat parameters: typed in another channel of a shared chat", sp["fromChannelLogin"] == "friend" && sp["fromChannel"] == "Friend" && sp["fromChannelId"] == "9" && sp["channelLogin"] == "streamer");
         var ctx = new TriggerContext(TriggerPhase.Once, default, p);
         Check("format placeholders", ctx.Format("{user} is lurking in {channel} {unknown}") == "Viewer32 is lurking in Streamer {unknown}");
     }

@@ -28,13 +28,37 @@ public partial class ChatbotManager
 
     // sends a message to the streamer's channel (a repeat of the last one gets an invisible character so twitch posts it)
     // replyTo: a chat message's id to answer as a threaded reply (null or empty: a plain message)
-    public Task<bool> TrySendChatMessageAsync(string message, CancellationToken ct = default, string? replyTo = null) =>
+    // thisChannelOnly: during shared chat only the streamer's own chat sees it (sent with the app token, see TwitchApi),
+    // otherwise every channel in the shared chat does
+    public Task<bool> TrySendChatMessageAsync(string message, CancellationToken ct = default, string? replyTo = null, bool thisChannelOnly = true) =>
         TryRunActionAsync("send chat message", async (account, channelId, token) =>
         {
             var text = AvoidDuplicate(message, _lastSentMessage);
-            await TwitchApi.SendChatMessageAsync(account, channelId, text, token, replyTo);
+            var appToken = thisChannelOnly ? await GetAppTokenAsync(account, token) : null;
+            try
+            {
+                await TwitchApi.SendChatMessageAsync(account, channelId, text, token, replyTo, appToken);
+            }
+            catch (TwitchUnauthorizedException ex) when (appToken != null)
+            {
+                // the app token was refused, not the account's login: get a fresh one next time
+                _appToken = null;
+                throw new Exception(ex.Message);
+            }
             _lastSentMessage = text;
         }, ct);
+
+
+
+    // the app's token, kept until shortly before it expires (only used inside the action queue, one at a time)
+    private async Task<string> GetAppTokenAsync(TwitchSession session, CancellationToken ct)
+    {
+        if (_appToken is { } kept && kept.ExpiresAt > DateTime.UtcNow) return kept.Token;
+
+        var (appToken, expiresIn) = await TwitchApi.GetAppTokenAsync(session.ClientId, session.ClientSecret, ct);
+        _appToken = (appToken, DateTime.UtcNow.AddSeconds(expiresIn - 300));
+        return appToken;
+    }
 
 
 
@@ -199,6 +223,17 @@ public partial class ChatbotManager
                 _ => throw new Exception($"unknown setting '{info.Name}'"),
             };
         }, ct);
+
+
+
+    // another channel's clips (only read: its most viewed 100), as the streamer; an unknown channel is an error
+    public Task<(bool Ok, List<TwitchClip>? Value)> TryGetClipsAsync(string channel, CancellationToken ct = default) =>
+        TryRunActionAsync<List<TwitchClip>>($"read twitch clips of '{channel}'", async (account, channelId, token) =>
+        {
+            var login = channel.Trim().TrimStart('@').ToLowerInvariant();
+            var user = await TwitchApi.GetUserAsync(account, login, token) ?? throw new Exception($"there's no twitch user '{login}'");
+            return await TwitchApi.GetClipsAsync(account, user.Id, token);
+        }, ct, asStreamer: true);
 
 
 

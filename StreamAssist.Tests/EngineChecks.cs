@@ -106,6 +106,8 @@ internal static partial class EngineChecks
         ListTypeFilter();
         WidgetModels();
         PlinkoModels();
+        ClipModels();
+        await ImagePartyModels();
         await WidgetBlockChecks();
         await WidgetServerChecks();
         await Scripts();

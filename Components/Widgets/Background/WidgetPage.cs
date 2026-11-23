@@ -7,7 +7,10 @@ namespace StreamAssist.Components.Widgets.Background;
 // glides. Wheel: drawn on a canvas, spinning with the same curve the app times its ticks with (1 - (1 - x)^4), then
 // the rest of the wheel darkens and the winner shows in front for a while. Plinko: the board (sent when anything about it
 // changes) and its balls, sent 50 times a second while there are any, drawn a little behind so each ball glides between
-// two of them, then a finished drop's result in front, fading in and out. It only draws while something moves (a level changing, a spin, the winner fading, balls on the board) and
+// two of them, then a finished drop's result in front, fading in and out. Clip: Twitch's own clip player filling the
+// page (autoplaying, with sound), made when a clip starts and removed when the app says it's over. Image Party: each item
+// an image or video in a canvas-sized area fitted to the page, gliding between the app's updates like plinko's balls;
+// each tells the app its shape once it has loaded (the app can't read a video's). It only draws while something moves (a level changing, a spin, the winner fading, balls on the board) and
 // sits idle otherwise, also while its widget is off or hidden (it shows nothing).
 // If the app goes away it shows nothing and keeps trying to reconnect, so a restart needs nothing done in OBS
 public static class WidgetPage
@@ -22,16 +25,23 @@ public static class WidgetPage
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
   #bounce { position: absolute; left: 50%; bottom: 0; display: none; max-width: 100%; }
   #wheel { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+  #clip { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: none; }
+  #party { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: none; }
+  #party > * { position: absolute; left: 0; top: 0; object-fit: contain; will-change: transform; }
 </style>
 </head>
 <body>
 <img id="bounce" alt="">
 <canvas id="wheel"></canvas>
+<iframe id="clip" allow="autoplay; fullscreen"></iframe>
+<div id="party"></div>
 <script>
 "use strict";
 const name = decodeURIComponent(location.pathname.split("/widget/")[1] || "");
 const img = document.getElementById("bounce");
 const canvas = document.getElementById("wheel");
+const clipFrame = document.getElementById("clip");
+const party = document.getElementById("party");
 const ctx = canvas.getContext("2d");
 
 let state = null;          // the widget's settings, as the app last sent them
@@ -41,15 +51,18 @@ let rotation = 0;          // wheel: where it rests (degrees)
 let spin = null;           // the spin running: { from, to, lengthMs, slices, winnerIndex, started }
 let winner = null;         // the winner showing: { slices, index, rotation, started, showMs }
 let frames = [];           // plinko: the last few ball updates { t, balls: Map(id -> [x, y, colour]), alpha, counts }
+let partyFrames = [];      // image party: the last few updates { t, items: Map(id -> [x, y]) }
+const partyItems = new Map(); // image party: id -> { el, key } (the element showing it, and what it was made for)
+let socket = null;
 let last = performance.now();
 let looping = false;       // a frame is coming
 
 // ---- the connection: everything the page draws comes from the app ----
 
 function connect() {
-  const socket = new WebSocket(`ws://${location.host}/ws/${encodeURIComponent(name)}`);
+  socket = new WebSocket(`ws://${location.host}/ws/${encodeURIComponent(name)}`);
   socket.onmessage = e => receive(JSON.parse(e.data));
-  socket.onclose = () => { state = null; spin = null; winner = null; frames = []; show(); setTimeout(connect, 2000); };
+  socket.onclose = () => { state = null; spin = null; winner = null; frames = []; partyFrames = []; show(); setTimeout(connect, 2000); };
   window.onresize = kick;
 }
 
@@ -64,6 +77,9 @@ function receive(m) {
     } else if (m.kind === "Plinko") {
       frames = [];
       addFrame(m.frame);
+    } else if (m.kind === "ImageParty") {
+      partyFrames = [];
+      addPartyFrame(m.frame);
     } else {
       level = m.level; talking = m.isTalking;
     }
@@ -75,6 +91,9 @@ function receive(m) {
     kick();
   } else if (m.type === "plinko") {
     addFrame(m);
+    kick();
+  } else if (m.type === "party") {
+    addPartyFrame(m);
     kick();
   } else if (m.type === "spin") {
     winner = null;
@@ -92,7 +111,17 @@ function show() {
   const on = state && state.found && !state.disabled && !state.hidden;
   const bounce = on && state.kind === "MicBounce" && state.idleUrl;
   img.style.display = bounce ? "block" : "none";
+
+  // a clip: the player is only made for a new clip (states come again for other reasons, which mustn't restart it)
+  const clip = on && state.kind === "Clip" && state.clip ? state.clip : null;
+  const src = clip ? `https://clips.twitch.tv/embed?clip=${encodeURIComponent(clip.id)}&parent=${location.hostname}&autoplay=true&muted=false` : "";
+  if (clipFrame.dataset.src !== src) {
+    clipFrame.dataset.src = src;
+    if (src) clipFrame.src = src; else clipFrame.removeAttribute("src");
+  }
+  clipFrame.style.display = clip ? "block" : "none";
   canvas.style.display = on && (state.kind === "Wheel" || state.kind === "Plinko") ? "block" : "none";
+  showParty(on && state.kind === "ImageParty" ? state : null);
   if (bounce) {
     const src = talking && state.talkingUrl ? state.talkingUrl : state.idleUrl;
     if (img.getAttribute("src") !== src) img.setAttribute("src", src);
@@ -127,9 +156,85 @@ function frame(now) {
   } else if (on && state.kind === "Plinko") {
     drawPlinko(now);
     moving = frames.some(f => f.balls.size > 0 || f.result);
+  } else if (on && state.kind === "ImageParty") {
+    drawParty(now);
+    moving = partyItems.size > 0;
   }
   if (moving) requestAnimationFrame(frame);
   else looping = false;
+}
+
+// ---- image party ----
+
+// its items' elements, made, changed or removed to match the app's list (none while off, hidden or another kind, so a
+// video's sound stops too)
+function showParty(s) {
+  const wanted = new Map((s ? s.items : []).map(i => [i.id, i]));
+  for (const [id, shown] of partyItems)
+    if (!wanted.has(id) || shown.key !== key(wanted.get(id))) { shown.el.remove(); partyItems.delete(id); }
+
+  for (const [id, item] of wanted) {
+    if (!partyItems.has(id)) {
+      const el = document.createElement(item.video ? "video" : "img");
+      if (item.video) {
+        el.autoplay = true; el.loop = true; el.playsInline = true; el.muted = item.muted;
+        el.onloadedmetadata = () => tellShape(id, el.videoHeight / el.videoWidth);
+      } else {
+        el.onload = () => tellShape(id, el.naturalHeight / el.naturalWidth);
+      }
+      el.src = item.url;
+      party.appendChild(el);
+      partyItems.set(id, { el, key: key(item) });
+    }
+    const el = partyItems.get(id).el;
+    el.style.width = `${item.w}px`; el.style.height = `${item.h}px`;
+  }
+
+  party.style.display = s ? "block" : "none";
+  if (s) {
+    party.style.width = `${s.canvas[0]}px`; party.style.height = `${s.canvas[1]}px`;
+    fitParty();
+  }
+}
+
+const key = item => `${item.url}|${item.video}|${item.muted}`;
+
+function tellShape(id, aspect) {
+  if (socket && socket.readyState === 1 && aspect > 0) socket.send(JSON.stringify({ type: "aspect", id, aspect }));
+}
+
+// the canvas scaled to fit the page, centred
+function fitParty() {
+  if (!state || !state.canvas) return;
+  const [cw, ch] = state.canvas;
+  const scale = Math.min(innerWidth / cw, innerHeight / ch);
+  party.style.transform = `translate(${(innerWidth - cw * scale) / 2}px, ${(innerHeight - ch * scale) / 2}px) scale(${scale})`;
+}
+
+function addPartyFrame(f) {
+  if (!f) return;
+  const items = new Map();
+  for (let i = 0; i + 2 < f.items.length; i += 3) items.set(f.items[i], [f.items[i + 1], f.items[i + 2]]);
+  partyFrames.push({ t: performance.now(), items });
+  if (partyFrames.length > 20) partyFrames.shift();
+}
+
+// each item between the two updates either side of the moment drawn (a little behind, so there's always a next one)
+function drawParty(now) {
+  fitParty();
+  const at = now - plinkoDelay;
+  while (partyFrames.length > 2 && partyFrames[1].t <= at) partyFrames.shift();
+  const a = partyFrames[0], c = partyFrames.length > 1 ? partyFrames[1] : null;
+  if (!a) return;
+  const f = c ? Math.min(1, Math.max(0, (at - a.t) / (c.t - a.t))) : 0;
+  for (const [id, shown] of partyItems) {
+    const to = (c || a).items.get(id), from = c ? a.items.get(id) : null;
+    if (!to) continue;
+    // a jump (more than a few hundred pixels: it was put somewhere new) isn't glided
+    const near = from && Math.abs(to[0] - from[0]) + Math.abs(to[1] - from[1]) < 400;
+    const x = near ? from[0] + (to[0] - from[0]) * f : to[0], y = near ? from[1] + (to[1] - from[1]) * f : to[1];
+    shown.el.style.transform = `translate(${x}px, ${y}px)`;
+  }
 }
 
 // ---- plinko ----

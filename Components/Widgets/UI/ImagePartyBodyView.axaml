@@ -1,0 +1,140 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StreamAssist.Components.Widgets.UI.ImagePartyBodyView"
+             x:DataType="ui:ImagePartyBodyViewModel"
+
+             xmlns:ui="using:StreamAssist.Components.Widgets.UI"
+             xmlns:blocks="using:StreamAssist.Components.Blocks.UI"
+        xmlns:s="using:StreamAssist.Styles">
+
+    <!-- the bind box's edit buttons show only while the pointer is on a bound one (hidden by opacity, so nothing moves) -->
+
+    <UserControl.Styles>
+        <Style Selector="blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.Bound:pointerover > Grid > Panel > blocks|EditButtons.HoverOnly">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- an Image Party's settings (a label and a box per row; When Corner Hit's bind box like a dock button's), its items
+         under a subheading, a divider, then its preview. Laid out like the other widgets: the divider runs the body's
+         full height, the settings and preview pad ContentPadding inside them -->
+
+    <Grid ColumnDefinitions="Auto,Auto,*">
+
+        <StackPanel Grid.Column="0" Spacing="{DynamicResource MediumVerticalGap}" VerticalAlignment="Top" Margin="{s:Gap PadAll}">
+
+            <Grid ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                  RowSpacing="{DynamicResource SmallVerticalGap}" ColumnSpacing="{DynamicResource SmallHorizontalGap}">
+
+                <!-- the screen the items bounce around: set the OBS browser source to the same size -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Classes="Label Colon" Text="Canvas Size:" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource SmallHorizontalGap}">
+                    <TextBox Classes="Commit" Text="{Binding CanvasWidthInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                    <TextBlock Classes="Label" Text="×" VerticalAlignment="Center"/>
+                    <TextBox Classes="Commit" Text="{Binding CanvasHeightInput}" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Classes="Label Colon" Text="Speed Multiplier:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Classes="Commit" Text="{Binding SpeedMultiplierInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <!-- 0: mirror bounces, 1: random ones -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Classes="Label Colon" Text="Randomness:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Classes="Commit" Text="{Binding RandomnessInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Classes="Label Colon" Text="Size Multiplier:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Classes="Commit" Text="{Binding SizeMultiplierInput}" HorizontalAlignment="Left"
+                         MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+
+                <!-- bind box: click to edit below, green = bound, red = off, flashes when a corner's hit -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Classes="Label Colon" Text="When Corner Hit:" VerticalAlignment="Center"/>
+                <Border Grid.Row="4" Grid.Column="1" DataContext="{Binding CornerBindBox}" x:DataType="ui:CornerBindBoxViewModel"
+                        Classes="Panel Droppable Clickable"
+                        Classes.Bound="{Binding IsBound}"
+                        Classes.Disabled="{Binding IsDisabled}"
+                        Classes.Triggered="{Binding IsTriggered}"
+                        MinWidth="{DynamicResource ControlMinWidth}" MinHeight="{DynamicResource ControlHeight}" HorizontalAlignment="Left"
+                        DragDrop.AllowDrop="True"
+                        DragDrop.DragOver="OnDragOver"
+                        DragDrop.DragLeave="OnDragLeave"
+                        DragDrop.Drop="OnDrop"
+                        PointerPressed="OnBindBoxPointerPressed">
+                    <!-- an invisible copy of the buttons keeps their room, so the text doesn't move -->
+                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                        <TextBlock Grid.Column="0" Classes="BoxText" Text="Corner Hit" Classes.Placeholder="{Binding !IsBound}"
+                                   Margin="{s:Gap BoxTextMargin}" HorizontalAlignment="Left"/>
+                        <Panel Grid.Column="1">
+                            <blocks:EditButtons Opacity="0" IsHitTestVisible="False"/>
+                            <blocks:EditButtons Classes="HoverOnly"/>
+                            <blocks:PasteButton HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{s:Gap CornerMargin}"/>
+                        </Panel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <TextBlock Classes="Label Subheading" Text="Items"/>
+
+            <!-- file | Browse… | size | speed | muted (a video's); the empty last row adds one, emptying a file removes it.
+                 Labels over size, speed and muted (the same shared columns, so they line up) -->
+            <StackPanel Spacing="{DynamicResource SmallVerticalGap}" Grid.IsSharedSizeScope="True">
+                <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartyPath"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartyBrowse"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartySize"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartySpeed"/>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartyMuted"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="2" Classes="Label" Text="Size (px)"/>
+                    <TextBlock Grid.Column="3" Classes="Label" Text="Speed (px/s)"/>
+                    <TextBlock Grid.Column="4" Classes="Label" Text="Muted"/>
+                </Grid>
+                <ScrollViewer MaxHeight="{DynamicResource WidgetListMaxHeight}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="{DynamicResource SmallVerticalGap}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="ui:PartyItemRowViewModel">
+                                <Grid ColumnSpacing="{DynamicResource SmallHorizontalGap}" HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartyPath"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartyBrowse"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartySize"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartySpeed"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PartyMuted"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Classes="Commit" Text="{Binding PathInput}" Classes.New="{Binding !HasPath}" HorizontalAlignment="Left"
+                                             PlaceholderText="New image, gif or video…" MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                    <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowsePressedCommand}" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="2" Classes="Commit" Text="{Binding SizeInput}" IsVisible="{Binding HasPath}"
+                                             MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                    <TextBox Grid.Column="3" Classes="Commit" Text="{Binding SpeedInput}" IsVisible="{Binding HasPath}"
+                                             MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"/>
+                                    <CheckBox Grid.Column="4" IsChecked="{Binding Muted}" IsVisible="{Binding IsVideo}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Column="1" Classes="VerticalDivider"/>
+
+        <ui:PartyPreview Grid.Column="2" Margin="{s:Gap PadAll}"
+                         MinWidth="{DynamicResource WidgetPreviewMinWidth}" MinHeight="{DynamicResource WidgetPreviewMinHeight}"
+                         Frame="{Binding PreviewFrame}"/>
+
+    </Grid>
+
+</UserControl>

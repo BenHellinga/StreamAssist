@@ -14,6 +14,8 @@ public sealed class WidgetCardViewModel(WidgetKind kind) : ViewModelBase, IDragg
     public string Description => kind switch
     {
         WidgetKind.MicBounce => "An image that rises as you talk, higher the louder you are, with an idle and a talking image",
+        WidgetKind.ImageParty => "Images, gifs and videos bouncing around the screen like a DVD logo, with a binding for when one hits a corner",
+        WidgetKind.Clip => "Plays a Twitch clip with sound in Twitch's player, e.g. a random one from a channel you shout out",
         WidgetKind.Plinko => "A triangle of pins that balls drop through into buckets at the bottom, as wide as their weights, with pin and land sounds",
         _ => "A wheel of options with colours and weights that spins and lands on a winner, with tick and win sounds",
     };

@@ -7,8 +7,8 @@ namespace StreamAssist.Components.Chatbot.Model;
 
 
 
-// one config of the Chat tab: both chat block trees (Built-in, tried first, and Custom, what !addcom changes).
-// Switching configs swaps both at once (see ChatbotComponentModel.ChatConfigs)
+// one config of the Chat tab: its chat block tree (what !addcom changes is the Editable Commands blocks in it).
+// Switching configs swaps the tree (see ChatbotComponentModel.ChatConfigs)
 public sealed class ChatConfigModel : INamedConfig
 {
     // private
@@ -17,7 +17,6 @@ public sealed class ChatConfigModel : INamedConfig
 
     private string _name;
     private readonly BlockSlot _root;
-    private readonly BlockSlot _editableRoot;
 
 
 
@@ -27,7 +26,6 @@ public sealed class ChatConfigModel : INamedConfig
 
     [JsonIgnore] public string Name => _name;
     [JsonIgnore] public BlockSlot Root => _root;
-    [JsonIgnore] public BlockSlot EditableRoot => _editableRoot;
 
 
 
@@ -49,12 +47,6 @@ public sealed class ChatConfigModel : INamedConfig
         set => _root.LoadData(value);
     }
 
-    [JsonInclude] [JsonPropertyName("editableRootBlock")]
-    private PendingBlockData? JsonEditableRoot
-    {
-        get => _editableRoot.GetData();
-        set => _editableRoot.LoadData(value);
-    }
 
 
 
@@ -74,12 +66,14 @@ public sealed class ChatConfigModel : INamedConfig
     {
         _name = "";
         _root = new("", typeof(ChatBlock));
-        _root.TrySetBlock(new MatchTextChatBlock()); // a fresh config starts with an empty Match Text
-        _editableRoot = new("", typeof(ChatBlock)) { Filter = block => block is MatchTextChatBlock }; // commands are its rows
-        _editableRoot.TrySetBlock(new MatchTextChatBlock()); // and an empty one for the commands chat can change
+
+        // a fresh config tries an empty Match Text and an empty Editable Commands (for !addcom) on every message
+        var tryAll = new TryAllChatBlock();
+        tryAll.Children.TryInsertBlock(new MatchTextChatBlock(), 0);
+        tryAll.Children.TryInsertBlock(new EditableCommandsChatBlock(), 1);
+        _root.TrySetBlock(tryAll);
 
         _root.Changed += OnContentsChanged;
-        _editableRoot.Changed += OnContentsChanged;
     }
 
 
@@ -113,8 +107,6 @@ public sealed class ChatConfigModel : INamedConfig
     public void Dispose()
     {
         _root.Changed -= OnContentsChanged;
-        _editableRoot.Changed -= OnContentsChanged;
         _root.Dispose();
-        _editableRoot.Dispose();
     }
 }

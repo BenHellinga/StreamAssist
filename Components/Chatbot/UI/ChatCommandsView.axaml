@@ -10,7 +10,7 @@
     <!-- chat command tree | chat block list -->
 
     <!-- a line under the config bar (ChatbotComponentView), then the page. Test (a made-up chat message run through
-         both trees, saying which command caught it) sits right above Built-in -->
+         the tree, saying whether a command caught it) sits right above Commands -->
 
     <DockPanel>
         <Border DockPanel.Dock="Top" Classes="Divider"/>
@@ -60,10 +60,8 @@
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
-                        <TextBlock Classes="Title" Text="Built-in"/>
+                        <TextBlock Classes="Title" Text="Commands"/>
                         <ContentControl Content="{Binding Root}"/>
-                        <TextBlock Classes="Title" Text="Custom"/>
-                        <ContentControl Content="{Binding EditableRoot}"/>
                     </StackPanel>
                 </Border>
             </ScrollViewer>

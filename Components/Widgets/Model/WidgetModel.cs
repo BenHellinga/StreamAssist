@@ -8,7 +8,7 @@ namespace StreamAssist.Components.Widgets.Model;
 
 // what a widget is (the widget list's cards, in this order), saved by name
 [JsonConverter(typeof(JsonStringEnumConverter<WidgetKind>))]
-public enum WidgetKind { MicBounce, Wheel, Plinko }
+public enum WidgetKind { MicBounce, Wheel, Plinko, Clip, ImageParty }
 
 
 
@@ -22,6 +22,8 @@ public enum WidgetKind { MicBounce, Wheel, Plinko }
 [JsonDerivedType(typeof(MicBounceWidget), "MicBounce")]
 [JsonDerivedType(typeof(WheelWidget), "Wheel")]
 [JsonDerivedType(typeof(PlinkoWidget), "Plinko")]
+[JsonDerivedType(typeof(ClipWidget), "Clip")]
+[JsonDerivedType(typeof(ImagePartyWidget), "ImageParty")]
 public abstract class WidgetModel : IDisposable
 {
     // private
@@ -124,6 +126,8 @@ public abstract class WidgetModel : IDisposable
         {
             WidgetKind.Wheel => new WheelWidget(),
             WidgetKind.Plinko => new PlinkoWidget(),
+            WidgetKind.Clip => new ClipWidget(),
+            WidgetKind.ImageParty => new ImagePartyWidget(),
             _ => new MicBounceWidget(),
         };
         widget._name = name;
@@ -156,6 +160,7 @@ public abstract class WidgetModel : IDisposable
     public static string KindTitle(WidgetKind kind) => kind switch
     {
         WidgetKind.MicBounce => "Mic Bounce",
+        WidgetKind.ImageParty => "Image Party",
         _ => kind.ToString(),
     };
 

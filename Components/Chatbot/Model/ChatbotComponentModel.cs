@@ -13,8 +13,8 @@ namespace StreamAssist.Components.Chatbot.Model;
 
 
 // everything the chatbot is configured with: the twitch app credentials, the two accounts' connection settings, the Chat tab's
-// configs (each: the two chat block trees) and the Events tab's (each: the channel point redeems and one binding per stream
-// event). Only the selected config of each runs, and Root / EditableRoot / Redeems / Events are always the selected one's
+// configs (each: one chat block tree) and the Events tab's (each: the channel point redeems and one binding per stream
+// event). Only the selected config of each runs, and Root / Redeems / Events are always the selected one's
 // (null / empty while a tab has no config: then no message, redeem or alert runs and nothing can be bound)
 // the credentials are saved to Config/auth.json by ChatbotSaveManager, the rest to chatbot.json
 public class ChatbotComponentModel : ModelBase
@@ -58,7 +58,6 @@ public class ChatbotComponentModel : ModelBase
     [JsonIgnore] public ConfigSet<ChatConfigModel> ChatConfigs => _chatConfigs;
     [JsonIgnore] public ConfigSet<EventsConfigModel> EventsConfigs => _eventsConfigs;
     [JsonIgnore] public BlockSlot? Root => _chatConfigs.Selected?.Root; // the built-in commands, every message is tried here first
-    [JsonIgnore] public BlockSlot? EditableRoot => _chatConfigs.Selected?.EditableRoot; // the commands chat can change (a Match Text, see TryAddCommand)
     [JsonIgnore] public RedeemList? Redeems => _eventsConfigs.Selected?.Redeems;
     [JsonIgnore] public IReadOnlyList<ChatEventSlot> Events => _eventsConfigs.Selected?.Events ?? []; // in ChatEvents.All order
     [JsonIgnore] public ChatHistoryModel ChatHistory => _chatHistory;
@@ -247,10 +246,8 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // runs a chat message through the built-in commands, then the custom ones (so chat can't override a built-in
-    // command), true once a binding has run
-    public bool TryMatchMessage(ChatMatchState state) =>
-        Root != null && (ChatBlock.TryMatchSlot(Root, state) || ChatBlock.TryMatchSlot(EditableRoot!, state));
+    // runs a chat message through the chat tree, true once a binding has run
+    public bool TryMatchMessage(ChatMatchState state) => Root != null && ChatBlock.TryMatchSlot(Root, state);
 
 
 
@@ -312,10 +309,11 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // custom commands (what chat's !addcom / !editcom / !delcom change)
-    // only the custom tree is touched, found by walking literal rows (see FindCommand), and only whole commands: a row
-    // whose text completes the command and that runs a binding (never one that leads into more blocks). logErrors is
-    // false when chat asked, so chatters can't fill the console, and failure says why (so chat can be told instead)
+    // editable commands (what chat's !addcom / !editcom / !delcom change)
+    // commands are found by walking the whole tree's literal rows (see FindCommandPlaces), but only ones inside an
+    // Editable Commands block can be changed, and only whole commands: a row whose text completes the command and that
+    // runs a binding (never one that leads into more blocks). logErrors is false when chat asked, so chatters can't
+    // fill the console, and failure says why (so chat can be told instead)
 
 
 
@@ -325,26 +323,29 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // adds a row that replies with the response, e.g. ("!hello", "hi there") adds hello after an existing "!" row, or
-    // !hello at the top if there's none (plain text rows match whole words, so it doesn't run for !helloworld)
+    // adds a row that replies with the response to the first Editable Commands block it fits, e.g. ("!hello", "hi there")
+    // adds hello to one after a "!" row, or !hello to one with no prefix (plain text rows match whole words, so it doesn't
+    // run for !helloworld). It mustn't already be a command anywhere in the tree
     public bool TryAddCommand(string command, string response, out CommandFailure failure, bool logErrors = true)
     {
-        if (!TryFindCommand(command, "add", logErrors, out failure, out var block, out var name)) return false;
+        if (!TryCheckCommand(command, "add", logErrors, out failure, out var name)) return false;
 
         var text = response.Trim();
         if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't add {name}, no response");
 
-        var place = FindCommand(block, name);
-        if (place.Row != null && !place.Row.Target.IsEmpty)
+        var places = FindCommandPlaces(Root!.Block, name, false).ToList();
+        if (places.Any(p => p.Row != null && !p.Row.Target.IsEmpty))
             return Refuse(logErrors, out failure, CommandFailure.AlreadyExists, $"can't add {name}, already exists");
 
+        // a row with just the command typed in gets the binding, otherwise a new row goes where the walk stopped
+        if (places.FirstOrDefault(p => p.Editable) is not { } place)
+            return Refuse(logErrors, out failure, CommandFailure.NoPlace, $"can't add {name}, no Editable Commands block fits it");
+
         var send = new SendChatMessageAction(); // commands answer the message that asked
-        send.Reply.SetText("Yes");
         send.Message.SetText(text);
         var bindable = new BindableModel();
         bindable.TryAddBlock(send);
 
-        // a row with just the command typed in gets the binding, otherwise a new row goes where the walk stopped
         (place.Row ?? place.Block.Rows.AddRow(place.Remaining)).Target.TryBind(bindable);
         return true;
     }
@@ -354,12 +355,12 @@ public class ChatbotComponentModel : ModelBase
     // changes what a command replies, only if all it does is send one typed message (anything more is edited in the app)
     public bool TryEditCommand(string command, string response, out CommandFailure failure, bool logErrors = true)
     {
-        if (!TryFindCommand(command, "edit", logErrors, out failure, out var block, out var name)) return false;
+        if (!TryCheckCommand(command, "edit", logErrors, out failure, out var name)) return false;
 
         var text = response.Trim();
         if (text == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't edit {name}, no response");
 
-        if (!TryFindBoundRow(block, name, "edit", logErrors, out failure, out _, out var row)) return false;
+        if (!TryFindEditableRow(name, "edit", logErrors, out failure, out _, out var row)) return false;
 
         if (row.Target.Bindable!.Root.Blocks is not [SendChatMessageAction send] || send.Message.BlockSlot.Block != null)
             return Refuse(logErrors, out failure, CommandFailure.NotSimple, $"can't edit {name}, not just a message");
@@ -372,8 +373,8 @@ public class ChatbotComponentModel : ModelBase
 
     public bool TryDeleteCommand(string command, out CommandFailure failure, bool logErrors = true)
     {
-        if (!TryFindCommand(command, "delete", logErrors, out failure, out var root, out var name)) return false;
-        if (!TryFindBoundRow(root, name, "delete", logErrors, out failure, out var block, out var row)) return false;
+        if (!TryCheckCommand(command, "delete", logErrors, out failure, out var name)) return false;
+        if (!TryFindEditableRow(name, "delete", logErrors, out failure, out var block, out var row)) return false;
 
         block.Rows.RemoveRow(row);
         return true;
@@ -450,19 +451,12 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // the custom root's Match Text, and the command trimmed (one word, the whole command, e.g. "!hello")
-    private bool TryFindCommand(string command, string verb, bool logErrors, out CommandFailure failure,
-        out MatchTextChatBlock block, out string name)
+    // the command trimmed (one word, the whole command, e.g. "!hello"), refused without a chat config
+    private bool TryCheckCommand(string command, string verb, bool logErrors, out CommandFailure failure, out string name)
     {
         name = command.Trim();
-        block = null!;
 
-        if (EditableRoot == null)
-            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no chat config");
-        if (EditableRoot.Block is not MatchTextChatBlock found)
-            return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no custom Match Text");
-
-        block = found;
+        if (Root == null) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, no chat config");
         if (name == "") return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} command, no name");
         if (name.Any(char.IsWhiteSpace)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, must be one word");
         if (ChatText.TryGetRegex(name, out _)) return Refuse(logErrors, out failure, CommandFailure.Invalid, $"can't {verb} {name}, slashes make it a regex");
@@ -473,18 +467,20 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // the command's row (and the Match Text it's in), which has to run a binding (a row that leads into more blocks
-    // isn't one command, so it counts as not found)
-    private static bool TryFindBoundRow(MatchTextChatBlock root, string name, string verb, bool logErrors, out CommandFailure failure,
+    // the command's row (and the Match Text it's in): the first one in the tree, which has to run a binding (a row that
+    // leads into more blocks isn't one command, so it counts as not found) and be inside an Editable Commands block
+    private bool TryFindEditableRow(string name, string verb, bool logErrors, out CommandFailure failure,
         out MatchTextChatBlock block, out MatchTextRow row)
     {
-        var place = FindCommand(root, name);
-        block = place.Block;
-        row = place.Row!;
-        if (row == null || row.Target.IsEmpty)
+        var place = FindCommandPlaces(Root!.Block, name, false).FirstOrDefault(p => p.Row != null && !p.Row.Target.IsEmpty);
+        block = place?.Block!;
+        row = place?.Row!;
+        if (place == null)
             return Refuse(logErrors, out failure, CommandFailure.NotFound, $"can't {verb} {name}, not found");
         if (row.Target.Bindable == null)
             return Refuse(logErrors, out failure, CommandFailure.NotFound, $"can't {verb} {name}, not a single command");
+        if (!place.Editable)
+            return Refuse(logErrors, out failure, CommandFailure.NotEditable, $"can't {verb} {name}, not in an Editable Commands block");
 
         failure = CommandFailure.None;
         return true;
@@ -492,31 +488,55 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // walks down through plain text rows like matching does (case ignored), e.g. "!lurk" through a "!" row into the Match Text
-    // after it, then its "lurk" row. Row = the row that is the whole command, or null; Block / Remaining = where it is, or where
-    // adding it goes: the first Match Text the walk reaches that has nothing more for it, and what's left of the command
-    private static (MatchTextChatBlock Block, string Remaining, MatchTextRow? Row) FindCommand(MatchTextChatBlock block, string command)
+    // where a command's text leads in the tree, in tree order: a row that is the whole command (Row), or, inside an
+    // Editable Commands block, a Match Text the walk reached with nothing more for it (Row null: adding it goes there,
+    // as Remaining, e.g. "hello" after a "!" row). Deeper places come before the Match Text they're under.
+    // Walks down plain text rows like matching does (case ignored, e.g. "!lurk" through a "!" row into the block after
+    // it, then its "lurk" row; "lu" isn't a prefix of "lurk", it would cut the word in half), through // rows (they
+    // match nothing), filters and Try All. Other /regex/ rows and Parse Parameters are never walked into
+    private sealed record CommandPlace(MatchTextChatBlock Block, string Remaining, MatchTextRow? Row, bool Editable);
+
+
+
+    private static IEnumerable<CommandPlace> FindCommandPlaces(BlockModel? block, string command, bool editable)
     {
-        (MatchTextChatBlock, string, MatchTextRow?)? addHere = null;
-
-        foreach (var row in block.Rows.Rows)
+        switch (block)
         {
-            if (row.IsRegex) continue; // a /regex/ row is never a command, and never walked into
-            var text = row.Pattern.Trim();
-            if (text == "") continue;
-            if (string.Equals(text, command, StringComparison.OrdinalIgnoreCase)) return (block, command, row);
+            case MatchTextChatBlock match:
+                var inside = editable || match is EditableCommandsChatBlock;
+                foreach (var row in match.Rows.Rows.ToArray())
+                {
+                    if (row.IsRegex)
+                    {
+                        if (ChatText.TryGetRegex(row.Pattern, out var body) && body == "")
+                            foreach (var place in FindCommandPlaces(row.Target.Child.Block, command, inside)) yield return place;
+                        continue;
+                    }
 
-            // a prefix row leading into another Match Text, e.g. "!" (only where matching would carry on: "lu" isn't a
-            // prefix of "lurk", it would cut the word in half)
-            if (!command.StartsWith(text, StringComparison.OrdinalIgnoreCase) || !ChatText.EndsCleanly(command, text.Length, text)) continue;
-            if (row.Target.Child.Block is not MatchTextChatBlock child) continue;
+                    var text = row.Pattern.Trim();
+                    if (text == "") continue;
+                    if (string.Equals(text, command, StringComparison.OrdinalIgnoreCase))
+                    {
+                        yield return new(match, command, row, inside);
+                        continue;
+                    }
 
-            var deeper = FindCommand(child, command[text.Length..]);
-            if (deeper.Row != null) return deeper;
-            addHere ??= deeper;
+                    if (!command.StartsWith(text, StringComparison.OrdinalIgnoreCase) || !ChatText.EndsCleanly(command, text.Length, text)) continue;
+                    foreach (var place in FindCommandPlaces(row.Target.Child.Block, command[text.Length..], inside)) yield return place;
+                }
+
+                if (inside) yield return new(match, command, null, true);
+                break;
+
+            case FilterChatBlock filter:
+                foreach (var place in FindCommandPlaces(filter.Target.Child.Block, command, editable)) yield return place;
+                break;
+
+            case TryAllChatBlock tryAll:
+                foreach (var child in tryAll.Children.Blocks.ToArray())
+                    foreach (var place in FindCommandPlaces(child, command, editable)) yield return place;
+                break;
         }
-
-        return addHere ?? (block, command, null);
     }
 
 
@@ -530,11 +550,11 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // the steps down to the first target isEnd says yes to, in either root
+    // the steps down to the first target isEnd says yes to
     private List<PathStep>? FindPath(Func<ChatTarget, bool> isEnd)
     {
         var path = new List<PathStep>();
-        return FindPath(Root?.Block, isEnd, path) || FindPath(EditableRoot?.Block, isEnd, path) ? path : null;
+        return FindPath(Root?.Block, isEnd, path) ? path : null;
     }
 
 
@@ -563,8 +583,13 @@ public class ChatbotComponentModel : ModelBase
                 }
                 break;
 
-            case HasPermissionChatBlock permission:
-                if (FindPath(null, permission.Target, isEnd, path)) return true; // matches no text, so it adds no step
+            case FilterChatBlock filter:
+                if (FindPath(null, filter.Target, isEnd, path)) return true; // matches no text, so it adds no step
+                break;
+
+            case TryAllChatBlock tryAll:
+                foreach (var child in tryAll.Children.Blocks) // each starts where the Try All is, so it adds no step
+                    if (FindPath(child, isEnd, path)) return true;
                 break;
 
             case ParameterChatBlock parameter:
@@ -584,7 +609,7 @@ public class ChatbotComponentModel : ModelBase
 
 
 
-    // a null step (Has Permission) goes through without adding anything to the path
+    // a null step (a filter like Has Permission) goes through without adding anything to the path
     private static bool FindPath(PathStep? step, ChatTarget current, Func<ChatTarget, bool> isEnd, List<PathStep> path)
     {
         if (step != null) path.Add(step);

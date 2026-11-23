@@ -65,6 +65,8 @@ public class TwitchAuthManager
         [
             "user:read:chat",                  // read chat messages and chat notifications
             "user:write:chat",                 // send chat when there's no bot account
+            "user:bot",                        // send chat with the app token when there's no bot (this channel only in shared chat)
+            "channel:bot",                     // lets the bot send chat with the app token here, even if it isn't a moderator
             "channel:read:redemptions",        // channel point redeems
             "channel:manage:redemptions",      // read, change and create channel point rewards (Get / Set Reward Setting, New redeem)
             "moderator:manage:announcements",  // Send Announcement
@@ -86,6 +88,7 @@ public class TwitchAuthManager
         :
         [
             "user:write:chat",                 // send chat
+            "user:bot",                        // send chat with the app token (this channel only in shared chat)
             "moderator:manage:banned_users",   // ban / timeout (the bot must be a mod)
             "moderator:manage:chat_messages",  // delete messages (the bot must be a mod)
             "moderator:manage:announcements",  // announcements (the bot must be a mod)

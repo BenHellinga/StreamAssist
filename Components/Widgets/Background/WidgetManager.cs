@@ -15,6 +15,7 @@ using StreamAssist.Components.OutputConsole.Model;
 using StreamAssist.Components.Widgets.Model;
 using StreamAssist.Core.Connections;
 using StreamAssist.Core.Persistence;
+using StreamAssist.Shell;
 
 namespace StreamAssist.Components.Widgets.Background;
 
@@ -25,7 +26,9 @@ namespace StreamAssist.Components.Widgets.Background;
 // Mic Bounce's level from its microphone box (50 times a second), and each spin's timing: the ticks as slices pass the
 // pointer, the win sound when it stops, then FinishSpin; and each plinko board's physics (stepped 50 times a second while
 // it has balls, which are sent to its pages each time), its pin sounds and a finished drop's win sound. Sounds play through the app (the
-// widget's output device), not OBS. Only the config in use's widgets are drawn; a spin that started carries on to its
+// widget's output device), not OBS; and each clip's length (it's ended then, the next queued one plays; its sound is
+// the page's, so OBS's), and the clips a clip box's Play Clip asks for; and each image party's items (moved 50 times a
+// second, sent to its pages each time), their shapes (an image's read from its file, a video's told by its page). Only the config in use's widgets are drawn; a spin that started carries on to its
 // end whatever happens to the tab
 public sealed class WidgetManager : IDisposable
 {
@@ -50,6 +53,7 @@ public sealed class WidgetManager : IDisposable
     private readonly Stopwatch _clock;
     private readonly Dictionary<WheelWidget, CancellationTokenSource> _spins;
     private readonly Dictionary<PlinkoWidget, PlinkoSounds> _plinkos; // the boards with balls on them, and their sounds
+    private readonly Dictionary<ClipWidget, CancellationTokenSource> _clips; // the clips playing, timed
     private WidgetsConfigModel? _config; // the one listened to
     private readonly List<WidgetModel> _widgets; // its widgets, listened to
     private TimeSpan _lastTick;
@@ -86,6 +90,7 @@ public sealed class WidgetManager : IDisposable
         _clock = Stopwatch.StartNew();
         _spins = [];
         _plinkos = [];
+        _clips = [];
         _widgets = [];
         Status = ConnectionStatus.NotConnected;
         StatusMessage = "Not running";
@@ -93,6 +98,7 @@ public sealed class WidgetManager : IDisposable
         _model.ServerChanged += OnServerChanged;
         _model.Configs.ListChanged += OnConfigsChanged;
         _server.Joined += OnPageJoined;
+        _server.Received += OnPageMessage;
         if (_theme != null) _theme.ValueChanged += OnThemeValueChanged;
 
         _timer = new DispatcherTimer { Interval = Tick };
@@ -153,6 +159,23 @@ public sealed class WidgetManager : IDisposable
 
     // a page connected (on the server's thread): it gets everything
     private void OnPageJoined(string name) => Dispatcher.UIThread.Post(() => SendState(name));
+
+
+
+    // a page told us something (on the server's thread): an image party's video's shape, once it has loaded
+    private void OnPageMessage(string name, string json) => Dispatcher.UIThread.Post(() =>
+    {
+        try
+        {
+            var message = JsonNode.Parse(json);
+            if (message?["type"]?.GetValue<string>() != "aspect" || _config?.FindWidget(name) is not ImagePartyWidget party) return;
+            party.SetItemAspect(message["id"]!.GetValue<int>(), message["aspect"]!.GetValue<double>());
+        }
+        catch (Exception)
+        {
+            // not one of ours: ignored
+        }
+    });
 
 
 
@@ -259,9 +282,29 @@ public sealed class WidgetManager : IDisposable
                 };
                 state["frame"] = FrameJson(plinko.Frame());
                 break;
+
+            case ImagePartyWidget party:
+                state["canvas"] = new JsonArray(party.CanvasWidth, party.CanvasHeight);
+                state["items"] = new JsonArray([.. party.Frame().Select(i => (JsonNode)new JsonObject
+                    { ["id"] = i.Id, ["url"] = AssetUrl(i.Path), ["video"] = i.IsVideo, ["muted"] = i.Muted, ["w"] = i.Width, ["h"] = i.Height })]);
+                state["frame"] = PartyJson(party);
+                break;
+
+            case ClipWidget clip:
+                state["clip"] = clip.Playing is { } play ? new JsonObject { ["id"] = play.Clip.Id, ["startedAt"] = play.StartedAt.ToString("O") } : null;
+                break;
         }
         return state;
     }
+
+
+
+    // where an image party's items are (id, x, y, flattened)
+    private static JsonObject PartyJson(ImagePartyWidget party) => new()
+    {
+        ["type"] = "party",
+        ["items"] = new JsonArray([.. party.Frame().SelectMany(i => new JsonNode[] { i.Id, Math.Round(i.X, 1), Math.Round(i.Y, 1) })]),
+    };
 
 
 
@@ -373,6 +416,16 @@ public sealed class WidgetManager : IDisposable
         if (widget is MicBounceWidget bounce) bounce.LiveChanged += OnLiveChanged;
         if (widget is WheelWidget wheel) wheel.SpinStarted += OnSpinStarted;
         if (widget is PlinkoWidget plinko) plinko.DropStarted += OnDropStarted;
+        if (widget is ImagePartyWidget party)
+        {
+            party.ItemsChanged += OnPartyItemsChanged;
+            ReadShapes(party);
+        }
+        if (widget is ClipWidget clip)
+        {
+            clip.PlayStarted += OnClipStarted;
+            clip.ClipRequested += OnClipRequested;
+        }
     }
 
 
@@ -388,6 +441,13 @@ public sealed class WidgetManager : IDisposable
         {
             plinko.DropStarted -= OnDropStarted;
             _plinkos.Remove(plinko);
+        }
+        if (widget is ImagePartyWidget party) party.ItemsChanged -= OnPartyItemsChanged;
+        if (widget is ClipWidget clip)
+        {
+            clip.PlayStarted -= OnClipStarted;
+            clip.ClipRequested -= OnClipRequested;
+            if (_clips.Remove(clip, out var timing)) timing.Cancel(); // nothing left to end
         }
     }
 
@@ -430,6 +490,60 @@ public sealed class WidgetManager : IDisposable
         }
 
         StepPlinkos(elapsed / 1000);
+        StepParties(elapsed / 1000);
+    }
+
+
+
+    // image parties: each one with items moves on (hidden too: it still runs, corners and all; not while off), its pages
+    // get them
+
+
+
+    private void StepParties(double seconds)
+    {
+        foreach (var party in _widgets.OfType<ImagePartyWidget>().Where(p => !p.IsDisabled && p.FilledItems.Count > 0).ToList())
+        {
+            party.Step(seconds);
+            _server.Send(party.Name, PartyJson(party).ToJsonString());
+        }
+    }
+
+
+
+    private void OnPartyItemsChanged()
+    {
+        foreach (var party in _widgets.OfType<ImagePartyWidget>()) ReadShapes(party);
+    }
+
+
+
+    // each image's shape from its file (once per path; a video's comes from its page, a missing file stays square)
+    private readonly Dictionary<string, double?> _shapes = [];
+
+    private void ReadShapes(ImagePartyWidget party)
+    {
+        foreach (var item in party.FilledItems.Where(i => !i.IsVideo))
+        {
+            if (!_shapes.TryGetValue(item.Path, out var aspect))
+            {
+                aspect = null;
+                try
+                {
+                    if (AppPaths.TryResolveAsset(item.Path, out var full, out _) && File.Exists(full))
+                    {
+                        using var bitmap = new Avalonia.Media.Imaging.Bitmap(full);
+                        if (bitmap.PixelSize.Width > 0) aspect = (double)bitmap.PixelSize.Height / bitmap.PixelSize.Width;
+                    }
+                }
+                catch (Exception)
+                {
+                    // not an image it can read: stays square
+                }
+                if (aspect != null) _shapes[item.Path] = aspect;
+            }
+            if (aspect is { } known) party.SetItemAspect(item.Id, known);
+        }
     }
 
 
@@ -564,6 +678,63 @@ public sealed class WidgetManager : IDisposable
 
 
 
+    // clips: ending each one after its length
+
+
+
+    private void OnClipStarted()
+    {
+        foreach (var clip in _widgets.OfType<ClipWidget>().Where(c => c.Playing != null).ToList())
+        {
+            if (_clips.Remove(clip, out var old)) old.Cancel(); // one stopped early: its timing goes
+            var cancel = new CancellationTokenSource();
+            _clips[clip] = cancel;
+            _ = RunClipAsync(clip, clip.Playing!, cancel.Token);
+        }
+    }
+
+
+
+    // a clip box's Play Clip: a random clip of that channel (asked of Twitch, so on its own), then played or queued.
+    // Twitch not reached: the chatbot said why; none that fit: said here (a channel was named that has none)
+    private async void OnClipRequested(ClipWidget clip, string channel)
+    {
+        if (GlobalContext.ChatbotManager is not { } chatbot)
+        {
+            AppLog.WriteError($"can't play a clip on '{clip.Name}', twitch not set up");
+            return;
+        }
+
+        var (ok, picked, name) = await ClipPicker.TryPickAsync(chatbot, clip, channel, CancellationToken.None);
+        if (!ok) return;
+        if (picked == null)
+        {
+            AppLog.WriteError($"can't play a clip on '{clip.Name}', '{name}' has no clips{(clip.MaxClipSeconds is { } max ? $" up to {max} s" : "")}");
+            return;
+        }
+        clip.TryPlay(picked, null);
+    }
+
+
+
+    // the clip shows for its length, plus a moment for Twitch's player to load, then it's ended (the next queued one
+    // plays) and Play Clip's When Done runs (only if it's still that clip: one skipped or stopped ran its own)
+    private async Task RunClipAsync(ClipWidget clip, ClipPlay play, CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(play.Clip.Seconds + ClipWidget.LoadSeconds), ct);
+            if (_clips.TryGetValue(clip, out var current) && current.Token == ct) _clips.Remove(clip);
+            clip.FinishPlay(play)?.Invoke();
+        }
+        catch (OperationCanceledException)
+        {
+            // the widget was removed, another clip started, or the app is closing
+        }
+    }
+
+
+
     private static string Capitalize(string text) => text == "" ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
 
@@ -580,6 +751,7 @@ public sealed class WidgetManager : IDisposable
         _model.Configs.ListChanged -= OnConfigsChanged;
         if (_theme != null) _theme.ValueChanged -= OnThemeValueChanged;
         _server.Joined -= OnPageJoined;
+        _server.Received -= OnPageMessage;
         if (_config != null)
         {
             _config.WidgetAdded -= OnWidgetAdded;
@@ -588,6 +760,8 @@ public sealed class WidgetManager : IDisposable
         foreach (var widget in _widgets.ToList()) Forget(widget);
         foreach (var spin in _spins.Values) spin.Cancel();
         _spins.Clear();
+        foreach (var timing in _clips.Values) timing.Cancel();
+        _clips.Clear();
         if (_microphones != null) _microphones.ExtraInputs = null;
         _server.Dispose();
     }

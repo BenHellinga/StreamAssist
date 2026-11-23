@@ -22,7 +22,8 @@
 
     <!-- a widget box, like an input device box: a green outline (red while off), a LineGap ring inside it. Its header like
          a dock's: the name box and the buttons every widget has (Copy URL, Open, Show / Hide), then a row of its kind's
-         own buttons (Spin for a wheel, a ball count and Drop for plinko) when it has any, at fixed sizes, cropped on the
+         own buttons (Spin for a wheel, a ball count and Drop for plinko, a channel and Play Clip / Next / Stop for a clip)
+         when it has any, at fixed sizes, cropped on the
          right when the box is narrow; a
          divider at the ring, then its settings and preview (hidden while collapsed). The corner buttons (copy, collapse,
          on / off, drag, remove) show on hover, CornerGap from the border, out of the ring -->
@@ -57,6 +58,18 @@
                                  Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
                         <Button Content="Drop" Command="{Binding DropPressedCommand}" VerticalAlignment="Center"
                                 IsVisible="{Binding IsPlinko}" IsEnabled="{Binding !IsDisabled}"/>
+
+                        <!-- a clip: a random clip of the typed channel (the box's ghost text is what it's doing), the
+                             next queued one now, or stop and empty the queue -->
+                        <TextBox Text="{Binding ClipChannelInput}" IsVisible="{Binding IsClip}" PlaceholderText="{Binding ClipStatus}"
+                                 MinWidth="{DynamicResource ControlMinWidth}" MaxWidth="{DynamicResource ControlMaxWidth}"
+                                 Height="{DynamicResource ControlHeight}" MinHeight="0" VerticalContentAlignment="Center"/>
+                        <Button Content="Play Clip" Command="{Binding PlayClipPressedCommand}" VerticalAlignment="Center"
+                                IsVisible="{Binding IsClip}" IsEnabled="{Binding !IsDisabled}"/>
+                        <Button Content="Next" Command="{Binding NextClipPressedCommand}" VerticalAlignment="Center"
+                                IsVisible="{Binding IsClip}" IsEnabled="{Binding IsClipPlaying}"/>
+                        <Button Content="Stop" Command="{Binding StopClipPressedCommand}" VerticalAlignment="Center"
+                                IsVisible="{Binding IsClip}" IsEnabled="{Binding IsClipPlaying}"/>
                     </StackPanel>
                 </StackPanel>
 

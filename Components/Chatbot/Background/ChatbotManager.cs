@@ -38,6 +38,7 @@ public partial class ChatbotManager : IDisposable
     private readonly TwitchAuthManager _auth;
     private readonly TwitchActionQueue _actions;
     private string? _lastSentMessage; // exactly what went out last (only touched inside the action queue, one at a time)
+    private (string Token, DateTime ExpiresAt)? _appToken; // for chat that stays in this channel during shared chat (same)
 
     private CancellationTokenSource? _run;
     private CancellationTokenSource? _botLogin;

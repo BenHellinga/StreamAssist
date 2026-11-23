@@ -12,12 +12,17 @@ namespace StreamAssist.Styles;
 
 
 // a number the Themes tab can change: its resource key, the letter recipes use for it, what the tab calls it, the range
-// it accepts, other resources that always take the same number (e.g. the theme's checkbox height), and, for a component's
-// value, the subsection it's listed under
-public sealed record ThemeValue(string Key, string Letter, string Label, double Min, double Max, string[]? AlsoSets = null, string? Group = null)
+// it accepts, other resources that always follow it as a multiple of it (e.g. the theme's checkbox height, the medium
+// and large gaps), and, for a component's value, the subsection it's listed under
+public sealed record ThemeValue(string Key, string Letter, string Label, double Min, double Max, ScaledResource[]? AlsoSets = null, string? Group = null)
 {
     public bool Accepts(double value) => value >= Min && value <= Max; // NaN isn't
 }
+
+
+
+// a resource that's always Times its theme value
+public sealed record ScaledResource(string Key, double Times);
 
 
 
@@ -31,12 +36,9 @@ public static class SpacingRecipes
     [
         new("LineGap", "L", "Line gap", 0, 100),
         new("ContentGap", "C", "Content gap", 0, 100),
-        new("SmallHorizontalGap", "SH", "Small horizontal gap", 0, 100),
-        new("MediumHorizontalGap", "MH", "Medium horizontal gap", 0, 100),
-        new("LargeHorizontalGap", "LH", "Large horizontal gap", 0, 100),
-        new("SmallVerticalGap", "SV", "Small vertical gap", 0, 100),
-        new("MediumVerticalGap", "MV", "Medium vertical gap", 0, 100),
-        new("LargeVerticalGap", "LV", "Large vertical gap", 0, 100),
+        // the gap between content, the medium and large ones (around subheadings and big titles) are 2x and 3x it
+        new("SmallHorizontalGap", "SH", "Horizontal gap", 0, 100, [new("MediumHorizontalGap", 2), new("LargeHorizontalGap", 3)]),
+        new("SmallVerticalGap", "SV", "Vertical gap", 0, 100, [new("MediumVerticalGap", 2), new("LargeVerticalGap", 3)]),
         new("CornerGap", "CG", "Corner gap", 0, 100),
         new("BoxTextInset", "BT", "Box text inset", 0, 100),
     ];
@@ -49,7 +51,7 @@ public static class SpacingRecipes
         new("FontSizeTitle", "FL", "Large text", 6, 72),
         new("FontSizeNormal", "FM", "Medium text", 6, 72),
         new("FontSizeSmall", "FS", "Small text", 6, 72),
-        new("ControlHeight", "H", "Control height", 10, 100, ["CheckBoxMinHeight"]),
+        new("ControlHeight", "H", "Control height", 10, 100, [new("CheckBoxMinHeight", 1)]),
         new("ControlMinWidth", "WN", "Control min width", 20, 1000),
         new("ControlMaxWidth", "WX", "Control max width", 20, 2000),
         new("SmallButtonSize", "SB", "Corner button size", 5, 100),
@@ -82,7 +84,7 @@ public static class SpacingRecipes
 
     // name -> recipe: one part = a number (Spacing), several = a margin (left,top,right,bottom like any Thickness),
     // "radius:" first = a CornerRadius. A part is a sum of terms, each a letter or number or a product of them, e.g.
-    // C-L, LV-C-5, -L, WN*1.5. P is ContentGap - LineGap (ContentPadding)
+    // C-L, 3*SV-C-5, -L, WN*1.5. P is ContentGap - LineGap (ContentPadding)
     public static readonly IReadOnlyDictionary<string, string> Recipes = new Dictionary<string, string>
     {
         // lines: the zone each keeps clear (their styles)
@@ -105,10 +107,10 @@ public static class SpacingRecipes
         ["ScrollInset"] = "0,3,0,0",
         ["LinedScrollEdgeMargin"] = "0,P-3,0,P", // a page of sections and dividers: no sides, the sections pad themselves
         // big titles (TextBlock.Title's style, never on a view): the 18px font leaves ~5 above its capitals and ~4 under
-        // its letters, taken back so the title's box is its letters and its container's LV is the gap on both sides.
-        // Right under a line content is only C away, so a title there (UnderLine) adds LV-C
+        // its letters, taken back so the title's box is its letters and its container's large gap (3*SV) is the gap on
+        // both sides. Right under a line content is only C away, so a title there (UnderLine) adds 3*SV-C
         ["TitleTrim"] = "0,-5,0,-4",
-        ["TitleUnderLineMargin"] = "0,LV-C-5,0,-4",
+        ["TitleUnderLineMargin"] = "0,3*SV-C-5,0,-4",
 
         // content to content
         ["SmallGapBefore"] = "SH,0,0,0",
@@ -116,11 +118,11 @@ public static class SpacingRecipes
 
         // inside blocks, cards and tables (to be revised)
         // a block: its title's letters P from the ring (the 18px font leaves ~4 above its capitals and ~4 under its
-        // letters), then MV to its body; the body's rows are SV apart, text rows (settings, value boxes) pad their sides
+        // letters), then the medium gap (2*SV) to its body; the body's rows are SV apart, text rows (settings, value boxes) pad their sides
         // P and end P above the ring, nested blocks sit at the ring
         ["BlockTitleMargin"] = "P,P-4,P,P-4", // a block with no settings or slots
         ["BlockTitleBodyMargin"] = "P,P-4,P,-4", // a block with a body under its title
-        ["BlockBodyTop"] = "0,MV,0,0",
+        ["BlockBodyTop"] = "0,2*SV,0,0",
         ["BlockSlotsMargin"] = "0,SV,0,0", // slots under settings
         ["BlockSlotsPadBelowMargin"] = "0,SV,0,P", // slots under settings
         // a value box sits in an invisible BW border (lit while a block is dragged over it), pulled back so the box
@@ -145,7 +147,7 @@ public static class SpacingRecipes
         ["CardTitleMargin"] = "P,P,P,2",
         ["CardBodyMargin"] = "P,0,P,P",
         ["SearchRowMargin"] = "P,0,P,P",
-        ["SubgroupIndent"] = "MH,0,0,0", // a block list's subgroup (its heading and cards) under its group's heading
+        ["SubgroupIndent"] = "2*SH,0,0,0", // a block list's subgroup (its heading and cards) under its group's heading
         ["SearchBoxWidth"] = "2*WN", // a list's search box: two minimum boxes wide (its type dropdown is one)
         ["TableHeaderLineMargin"] = "0,C,0,C", // the line under a table's column headers: C from them and from the first row
         ["SmallGapBelow"] = "0,0,0,SV", // a table row: SV to the next (or to the empty row after the last)
